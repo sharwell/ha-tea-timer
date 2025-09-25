@@ -11,6 +11,14 @@ Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the p
 
 ### Installation
 
+#### Via HACS (recommended)
+
+1. Add this repository as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS using the **Lovelace** category.
+2. Install **Tea Timer Card** from the HACS frontend.
+3. Reload your browser or clear the Lovelace resources cache so Home Assistant picks up the new card bundle.
+
+#### Manual build
+
 ```bash
 npm ci
 ```
