@@ -1,0 +1,47 @@
+{
+  "name": "ha-tea-timer",
+  "version": "0.1.0",
+  "description": "Tea Timer custom card for Home Assistant",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "start": "vite dev",
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card"
+  ],
+  "author": "Tea Timer Contributors",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/tea-timer-card.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jsdom": "^24.0.0",
+    "lit": "^3.1.0",
+    "typescript": "5.3.3",
+    "vite": "^5.1.6",
+    "vitest": "^1.4.0"
+  },
+  "dependencies": {
+    "tslib": "^2.6.2"
+  }
+}

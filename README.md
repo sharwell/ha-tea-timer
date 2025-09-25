@@ -1,5 +1,57 @@
-# ha-tea-timer
-A tea timer for Home Assistant
+# Tea Timer Card
+
+Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the perfect cup. The project is currently in a preview state while core functionality is being implemented.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm 9+
+
+### Installation
+
+```bash
+npm ci
+```
+
+### Available Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start a local development server with Vite. |
+| `npm run build` | Build the card bundle for distribution. |
+| `npm test` | Run unit tests with Vitest. |
+| `npm run lint` | Run ESLint static analysis. |
+| `npm run typecheck` | Type-check the project with TypeScript. |
+
+### Using the Card in Home Assistant
+
+1. Build the project to produce `dist/tea-timer-card.js`.
+2. Copy the `dist` output to your Home Assistant `www` folder.
+3. Add the following resource reference in your Lovelace configuration:
+
+   ```yaml
+   url: /local/tea-timer-card.js
+   type: module
+   ```
+
+4. Configure the card in Lovelace:
+
+   ```yaml
+   type: custom:tea-timer-card
+   title: Kitchen Tea Timer
+   entity: timer.kitchen_tea
+   presets:
+     - label: Green Tea
+       durationSeconds: 120
+     - label: Black Tea
+       durationSeconds: 240
+   ```
+
+### Documentation
+
+- [Getting Started Guide](docs/getting-started.md)
 
 Below is a crisp, implementation‑ready specification for a **Tea Timer Card** as an independent Home Assistant extension (custom Lovelace card + optional helper). It’s organized into **MVD** (minimum viable deliverable) and **Post‑MVD**. Every item is numbered for easy re‑ordering. After the spec, you’ll find a set of **concrete unit milestones**.
 
