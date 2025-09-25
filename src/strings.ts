@@ -6,6 +6,19 @@ export interface StringTable {
   gettingStartedLabel: string;
   gettingStartedUrl: string;
   presetsGroupLabel: string;
+  statusIdle: string;
+  statusRunning: string;
+  statusFinished: string;
+  statusUnavailable: string;
+  timerFinished: string;
+  timerUnavailable: string;
+  timeUnknown: string;
+  remainingEstimateNotice: string;
+  ariaIdle: string;
+  ariaRunning: string;
+  ariaFinished: string;
+  ariaUnavailable: string;
+  entityUnavailableWithId: (entityId: string) => string;
   validation: {
     notAnObject: string;
     presetsTooLong: string;
@@ -24,6 +37,19 @@ export const STRINGS: StringTable = {
   gettingStartedLabel: "Getting Started",
   gettingStartedUrl: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/getting-started.md",
   presetsGroupLabel: "Presets",
+  statusIdle: "Idle",
+  statusRunning: "Running",
+  statusFinished: "Finished",
+  statusUnavailable: "Entity unavailable",
+  timerFinished: "Done",
+  timerUnavailable: "Unavailable",
+  timeUnknown: "--:--",
+  remainingEstimateNotice: "Time remaining is estimated (waiting for Home Assistant update).",
+  ariaIdle: "Timer idle.",
+  ariaRunning: "Timer running.",
+  ariaFinished: "Timer finished.",
+  ariaUnavailable: "Timer unavailable.",
+  entityUnavailableWithId: (entityId: string) => `Entity unavailable (${entityId}).`,
   validation: {
     notAnObject: "Card configuration must be an object.",
     presetsTooLong: "Presets are limited to a maximum of 8 items.",

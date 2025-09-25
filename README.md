@@ -33,6 +33,24 @@ npm ci
 | `npm run lint` | Run ESLint static analysis. |
 | `npm run typecheck` | Type-check the project with TypeScript. |
 
+### How state sync works
+
+- Each card instance binds to a Home Assistant `timer` entity specified by the required `entity` option.
+- The card derives a normalized `TimerViewState` from the entity’s attributes (`state`, `duration`, `remaining`, `last_changed`).
+- WebSocket subscriptions mirror Home Assistant updates:
+  - `state_changed` keeps the card synchronized with the entity’s state.
+  - `timer.finished` triggers a five-second overlay before settling back to Idle.
+- When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
+- The card never interpolates or counts down client-side; Home Assistant remains the source of truth for countdown values.
+
+### Troubleshooting
+
+- **Entity unavailable**: Verify the `entity` option matches an existing Home Assistant timer (e.g., `timer.tea_timer_kitchen`). The card will display the configured entity id to help diagnose typos.
+- **No live updates**: Ensure the Home Assistant WebSocket connection is available. The card falls back to the latest `hass` object update but real-time updates rely on the connection being online.
+- **Estimated remaining time**: If Home Assistant does not provide `remaining`, the card estimates the value. When the estimate drifts more than ~2 seconds, a note appears until Home Assistant reports an authoritative value.
+
+To experiment locally, run `npm run dev` and open the playground at http://localhost:5173/. The demo page includes controls to simulate timer runs, finished events, and unavailable states.
+
 ### Using the Card in Home Assistant
 
 1. Build the project to produce `dist/tea-timer-card.js`.
