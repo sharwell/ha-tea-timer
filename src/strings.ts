@@ -21,6 +21,7 @@ export interface StringTable {
   entityUnavailableWithId: (entityId: string) => string;
   validation: {
     notAnObject: string;
+    entityRequired: string;
     presetsTooLong: string;
     presetsInvalidType: string;
     presetInvalid: string;
@@ -52,6 +53,7 @@ export const STRINGS: StringTable = {
   entityUnavailableWithId: (entityId: string) => `Entity unavailable (${entityId}).`,
   validation: {
     notAnObject: "Card configuration must be an object.",
+    entityRequired: "The \"entity\" option is required.",
     presetsTooLong: "Presets are limited to a maximum of 8 items.",
     presetsInvalidType: "Presets must be an array of preset definitions.",
     presetInvalid: "Each preset must be an object with a label and durationSeconds.",
