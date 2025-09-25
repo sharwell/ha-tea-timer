@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tea Timer Card Preview</title>
+    <script type="module" src="../src/index.ts"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        font-family: sans-serif;
+        background: #f5f7fa;
+      }
+
+      main {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tea Timer Card Preview</h1>
+    <main>
+      <tea-timer-card></tea-timer-card>
+      <tea-timer-card></tea-timer-card>
+    </main>
+    <script type="module">
+      const cards = document.querySelectorAll("tea-timer-card");
+      const configs = [
+        {
+          title: "Kitchen Tea Timer",
+          entity: "timer.kitchen_tea",
+          presets: [
+            { label: "Green", durationSeconds: 120 },
+            { label: "Black", durationSeconds: 240 },
+            { label: "Herbal", durationSeconds: 300 },
+          ],
+        },
+        {
+          title: "Office Break Timer",
+          presets: [],
+        },
+      ];
+      cards.forEach((card, index) => {
+        card.setConfig(configs[index]);
+      });
+    </script>
+  </body>
+</html>
