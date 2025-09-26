@@ -3,12 +3,17 @@ import { property, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
 import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
-import { createTeaTimerViewModel, TeaTimerViewModel } from "../view/TeaTimerViewModel";
+import {
+  createTeaTimerViewModel,
+  TeaTimerViewModel,
+  updateDialSelection,
+} from "../view/TeaTimerViewModel";
 import { STRINGS } from "../strings";
 import type { HomeAssistant, LovelaceCard } from "../types/home-assistant";
 import { TimerStateController } from "../state/TimerStateController";
 import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
 import { formatDurationSeconds } from "../model/duration";
+import "../dial/TeaTimerDial";
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
@@ -40,29 +45,42 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _timerState: TimerViewState;
 
   @state()
+  private _dialTooltipVisible = false;
+
+  @state()
   private _ariaAnnouncement = "";
 
   private _lastAnnouncedStatus?: TimerStatus;
 
   private readonly _timerStateController: TimerStateController;
 
+  private _previousTimerState?: TimerViewState;
+
+  private _dialTooltipTimer?: number;
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
       finishedOverlayMs: 5000,
       onStateChanged: (state) => {
-        this._timerState = state;
-        this._handleAriaAnnouncement(state);
+        this._handleTimerStateChanged(state);
       },
     });
     this._timerState = this._timerStateController.state;
+    this._previousTimerState = this._timerState;
   }
 
   public setConfig(config: unknown): void {
     const result = parseTeaTimerConfig(config);
     this._errors = result.errors;
     this._config = result.config ?? undefined;
-    this._viewModel = this._config ? createTeaTimerViewModel(this._config) : undefined;
+    const state = this._timerStateController.state;
+    if (this._config) {
+      this._viewModel = createTeaTimerViewModel(this._config, state);
+    } else {
+      this._viewModel = undefined;
+    }
+    this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
     this.requestUpdate();
   }
@@ -119,13 +137,30 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const primary = this._getPrimaryDialLabel(state);
     const secondary = this._getSecondaryDialLabel(state);
     const estimation = this._getEstimationNotice(state);
+    const dial = this._viewModel?.dial;
+    const bounds = dial?.bounds ?? { min: 0, max: 0, step: 1 };
 
     return html`
-      <div class="dial" data-status=${status} aria-hidden="true">
-        <span class="dial-primary">${primary}</span>
-        <span class="dial-secondary">${secondary}</span>
+      <div class="dial-wrapper">
+        <tea-timer-dial
+          .value=${dial?.selectedDurationSeconds ?? bounds.min}
+          .bounds=${bounds}
+          .interactive=${dial?.isInteractive ?? false}
+          .angleRadians=${dial?.visual.angleRadians ?? 0}
+          .status=${status}
+          .ariaLabel=${dial?.aria.label ?? STRINGS.dialLabel}
+          .valueText=${dial?.aria.valueText ?? ""}
+          @dial-input=${this._onDialInput}
+          @dial-blocked=${this._onDialBlocked}
+        >
+          <span slot="primary">${primary}</span>
+          <span slot="secondary">${secondary}</span>
+        </tea-timer-dial>
+        ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
+        ${this._dialTooltipVisible
+          ? html`<div class="dial-tooltip" role="status">${STRINGS.dialBlockedTooltip}</div>`
+          : nothing}
       </div>
-      ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
     `;
   }
 
@@ -173,11 +208,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status === "idle") {
-      if (state.remainingSeconds !== undefined) {
-        return formatDurationSeconds(state.remainingSeconds);
-      }
-      if (state.durationSeconds !== undefined) {
-        return formatDurationSeconds(state.durationSeconds);
+      if (this._viewModel?.dial.selectedDurationSeconds !== undefined) {
+        return formatDurationSeconds(this._viewModel.dial.selectedDurationSeconds);
       }
       return STRINGS.timeUnknown;
     }
@@ -248,6 +280,50 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._ariaAnnouncement = STRINGS.ariaUnavailable;
         break;
     }
+  }
+
+  private _handleTimerStateChanged(state: TimerViewState) {
+    const previousState = this._previousTimerState;
+    this._timerState = state;
+    if (this._config) {
+      this._viewModel = createTeaTimerViewModel(this._config, state, {
+        previousState,
+        previousViewModel: this._viewModel,
+      });
+    }
+    this._handleAriaAnnouncement(state);
+    this._previousTimerState = state;
+  }
+
+  private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
+    event.stopPropagation();
+    if (!this._viewModel) {
+      return;
+    }
+
+    this._viewModel = updateDialSelection(this._viewModel, event.detail.value);
+  };
+
+  private readonly _onDialBlocked = (event: Event) => {
+    event.stopPropagation();
+    this._dialTooltipVisible = true;
+    this._clearDialTooltipTimer();
+    this._dialTooltipTimer = window.setTimeout(() => {
+      this._dialTooltipVisible = false;
+      this._dialTooltipTimer = undefined;
+    }, 1800);
+  };
+
+  private _clearDialTooltipTimer() {
+    if (this._dialTooltipTimer !== undefined) {
+      clearTimeout(this._dialTooltipTimer);
+      this._dialTooltipTimer = undefined;
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._clearDialTooltipTimer();
   }
 }
 

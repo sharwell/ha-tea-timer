@@ -29,47 +29,23 @@ export const cardStyles = css`
     word-break: break-word;
   }
 
-  .dial {
-    width: 184px;
-    height: 184px;
-    border-radius: 50%;
-    border: 3px solid var(--divider-color, rgba(0, 0, 0, 0.12));
-    align-self: center;
+  .dial-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
+  }
+
+  tea-timer-dial {
+    width: 100%;
+  }
+
+  .dial-tooltip {
+    font-size: 0.8rem;
     color: var(--secondary-text-color, #52606d);
-    text-align: center;
-    padding: 16px;
-    gap: 4px;
-  }
-
-  .dial[data-status="finished"] {
-    border-color: var(--success-color, rgba(73, 190, 125, 0.6));
-    background: rgba(73, 190, 125, 0.08);
-    color: var(--primary-text-color, #1f2933);
-  }
-
-  .dial[data-status="running"] {
-    border-color: var(--info-color, rgba(0, 122, 255, 0.4));
-    background: rgba(0, 122, 255, 0.05);
-    color: var(--primary-text-color, #1f2933);
-  }
-
-  .dial[data-status="unavailable"] {
-    opacity: 0.6;
-  }
-
-  .dial-primary {
-    font-size: 1.8rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-
-  .dial-secondary {
-    font-size: 0.95rem;
-    color: var(--secondary-text-color, #52606d);
+    background: rgba(0, 0, 0, 0.08);
+    padding: 6px 12px;
+    border-radius: 999px;
   }
 
   .status-pill {

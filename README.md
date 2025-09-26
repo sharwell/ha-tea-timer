@@ -43,6 +43,16 @@ npm ci
 - When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
 - The card never interpolates or counts down client-side; Home Assistant remains the source of truth for countdown values.
 
+### Dial duration configuration
+
+- The circular dial is interactive only while the timer is Idle. Dragging or using the keyboard updates the local `selectedDurationSeconds` field shown in the time text; no Home Assistant service calls are made yet.
+- Duration selection is bounded and rounded with optional card options:
+  - `minDurationSeconds` (default `15` seconds)
+  - `maxDurationSeconds` (default `1200` seconds / 20 minutes)
+  - `stepSeconds` (default `5` seconds)
+- Values are clamped within the configured range and rounded to the nearest step. Crossing the 12‑o’clock boundary is smoothed so the value continues naturally.
+- Accessibility: the dial exposes `role="slider"` with `aria-valuemin`, `aria-valuemax`, and `aria-valuenow`. Keyboard controls mirror the pointer interactions (`←`/`↓` decrease by `stepSeconds`, `→`/`↑` increase by `stepSeconds`, `PageDown`/`PageUp` adjust by 30 seconds).
+
 ### Troubleshooting
 
 - **Entity unavailable**: Verify the `entity` option matches an existing Home Assistant timer (e.g., `timer.tea_timer_kitchen`). The card will display the configured entity id to help diagnose typos.
@@ -73,6 +83,14 @@ To experiment locally, run `npm run dev` and open the playground at http://local
        durationSeconds: 120
      - label: Black Tea
        durationSeconds: 240
+  ```
+
+   Optional dial bounds (add alongside the other card options):
+
+   ```yaml
+   minDurationSeconds: 30
+   maxDurationSeconds: 900
+   stepSeconds: 10
    ```
 
 ### Documentation
@@ -143,7 +161,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    9.2. `title` (optional).
    9.3. `presets` (array of `{label, duration}`; at least 3, up to 8).
    9.4. `default_preset` (optional index or label).
-   9.5. `min_duration`, `max_duration`, `step_seconds` (optional, with MVD defaults).
+   9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
    9.6. `finished_auto_idle_ms` (default 5000).
    9.7. `confirm_restart` (default false).
 
@@ -221,7 +239,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 2. `title` (string)
 3. `presets` (array of `{ label: string, duration: "MM:SS" | seconds }`)
 4. `default_preset` (string|number)
-5. `min_duration` (seconds), `max_duration` (seconds), `step_seconds` (number)
+5. `minDurationSeconds` (seconds), `maxDurationSeconds` (seconds), `stepSeconds` (number)
 6. `confirm_restart` (boolean)
 7. `finished_auto_idle_ms` (number)
 8. *(Post‑MVD)* `plus_button_increment_s`, `show_plus_button`, `pause_enabled`, `preset_icons`, `preset_colors`, `compact`

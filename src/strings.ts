@@ -14,6 +14,8 @@ export interface StringTable {
   timerUnavailable: string;
   timeUnknown: string;
   remainingEstimateNotice: string;
+  dialLabel: string;
+  dialBlockedTooltip: string;
   ariaIdle: string;
   ariaRunning: string;
   ariaFinished: string;
@@ -26,6 +28,10 @@ export interface StringTable {
     presetsInvalidType: string;
     presetInvalid: string;
     presetDurationInvalid: string;
+    minDurationInvalid: string;
+    maxDurationInvalid: string;
+    stepSecondsInvalid: string;
+    durationBoundsInvalid: string;
     reservedOption: (name: string) => string;
   };
 }
@@ -46,6 +52,8 @@ export const STRINGS: StringTable = {
   timerUnavailable: "Unavailable",
   timeUnknown: "--:--",
   remainingEstimateNotice: "Time remaining is estimated (waiting for Home Assistant update).",
+  dialLabel: "Brew duration",
+  dialBlockedTooltip: "Timer is running—cannot change duration.",
   ariaIdle: "Timer idle.",
   ariaRunning: "Timer running.",
   ariaFinished: "Timer finished.",
@@ -58,6 +66,10 @@ export const STRINGS: StringTable = {
     presetsInvalidType: "Presets must be an array of preset definitions.",
     presetInvalid: "Each preset must be an object with a label and durationSeconds.",
     presetDurationInvalid: "Preset durations must be positive numbers of seconds.",
+    minDurationInvalid: "minDurationSeconds must be a non-negative number of seconds.",
+    maxDurationInvalid: "maxDurationSeconds must be a positive number of seconds.",
+    stepSecondsInvalid: "stepSeconds must be a positive number of seconds.",
+    durationBoundsInvalid: "maxDurationSeconds must be greater than minDurationSeconds.",
     reservedOption: (name: string) => `The "${name}" option is reserved for a future release.`,
   },
 };

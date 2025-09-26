@@ -1,3 +1,4 @@
+import { DurationBounds } from "./duration";
 import { createCardInstanceId } from "./instance";
 import { STRINGS } from "../strings";
 
@@ -25,6 +26,7 @@ export interface TeaTimerConfig {
   entity?: string;
   presets: TeaTimerPresetDefinition[];
   cardInstanceId: string;
+  dialBounds: DurationBounds;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -33,13 +35,14 @@ export interface ParsedTeaTimerConfig {
 }
 
 const RESERVED_OPTIONS = new Set([
-  "minDurationSeconds",
-  "maxDurationSeconds",
-  "stepSeconds",
   "defaultPreset",
   "confirmRestart",
   "finishedAutoIdleMs",
 ]);
+
+const DEFAULT_MIN_DURATION_SECONDS = 15;
+const DEFAULT_MAX_DURATION_SECONDS = 1200;
+const DEFAULT_STEP_SECONDS = 5;
 
 export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
   const errors: string[] = [];
@@ -99,11 +102,62 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     }
   }
 
+  const rawMinDuration =
+    typeof raw.minDurationSeconds === "number" && Number.isFinite(raw.minDurationSeconds)
+      ? Math.round(raw.minDurationSeconds)
+      : undefined;
+  const rawMaxDuration =
+    typeof raw.maxDurationSeconds === "number" && Number.isFinite(raw.maxDurationSeconds)
+      ? Math.round(raw.maxDurationSeconds)
+      : undefined;
+  const rawStepSeconds =
+    typeof raw.stepSeconds === "number" && Number.isFinite(raw.stepSeconds)
+      ? Math.round(raw.stepSeconds)
+      : undefined;
+
+  let minDurationSeconds = DEFAULT_MIN_DURATION_SECONDS;
+  if (rawMinDuration !== undefined) {
+    if (rawMinDuration < 0) {
+      errors.push(STRINGS.validation.minDurationInvalid);
+    } else {
+      minDurationSeconds = rawMinDuration;
+    }
+  }
+
+  let maxDurationSeconds = DEFAULT_MAX_DURATION_SECONDS;
+  if (rawMaxDuration !== undefined) {
+    if (rawMaxDuration <= 0) {
+      errors.push(STRINGS.validation.maxDurationInvalid);
+    } else {
+      maxDurationSeconds = rawMaxDuration;
+    }
+  }
+
+  if (maxDurationSeconds <= minDurationSeconds) {
+    errors.push(STRINGS.validation.durationBoundsInvalid);
+    maxDurationSeconds = Math.max(minDurationSeconds + DEFAULT_STEP_SECONDS, minDurationSeconds + 1);
+  }
+
+  let stepSeconds = DEFAULT_STEP_SECONDS;
+  if (rawStepSeconds !== undefined) {
+    if (rawStepSeconds <= 0) {
+      errors.push(STRINGS.validation.stepSecondsInvalid);
+    } else {
+      stepSeconds = rawStepSeconds;
+    }
+  }
+
   for (const key of RESERVED_OPTIONS) {
     if (key in raw) {
       errors.push(STRINGS.validation.reservedOption(key));
     }
   }
+
+  const dialBounds: DurationBounds = {
+    min: Math.min(minDurationSeconds, maxDurationSeconds),
+    max: Math.max(minDurationSeconds, maxDurationSeconds),
+    step: Math.max(1, stepSeconds),
+  };
 
   const config: TeaTimerConfig = {
     type,
@@ -111,6 +165,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     entity,
     presets,
     cardInstanceId: createCardInstanceId(),
+    dialBounds,
   };
 
   return { config, errors };
