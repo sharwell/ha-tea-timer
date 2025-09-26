@@ -10,7 +10,11 @@ describe("TeaTimerCard", () => {
   }
 
   function createCard(): TeaTimerCard {
-    return document.createElement(tagName) as TeaTimerCard;
+    const element = document.createElement(tagName);
+    if (!(element instanceof TeaTimerCard)) {
+      throw new Error("failed to create tea timer card element");
+    }
+    return element;
   }
 
   function setTimerState(card: TeaTimerCard, state: TimerViewState) {
