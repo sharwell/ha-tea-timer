@@ -12,7 +12,7 @@ import { STRINGS } from "../strings";
 import type { HomeAssistant, LovelaceCard } from "../types/home-assistant";
 import { TimerStateController } from "../state/TimerStateController";
 import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
-import { formatDurationSeconds } from "../model/duration";
+import { durationToAngleRadians, formatDurationSeconds } from "../model/duration";
 import "../dial/TeaTimerDial";
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
@@ -140,20 +140,21 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const status = state.status;
     const dial = this._viewModel?.dial;
     const bounds = dial?.bounds ?? { min: 0, max: 0, step: 1 };
-    const displaySeconds = this._displayDurationSeconds ?? dial?.selectedDurationSeconds;
-    const dialValue = displaySeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
-    const dialValueText = formatDurationSeconds(dialValue);
-    const primary = this._getPrimaryDialLabel(state, dialValue);
+    const displaySeconds =
+      this._displayDurationSeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
+    const dialAngle = durationToAngleRadians(displaySeconds, bounds);
+    const dialValueText = formatDurationSeconds(displaySeconds);
+    const primary = this._getPrimaryDialLabel(state, displaySeconds);
     const secondary = this._getSecondaryDialLabel(state);
     const estimation = this._getEstimationNotice(state);
 
     return html`
       <div class="dial-wrapper">
         <tea-timer-dial
-          .value=${dialValue}
+          .value=${displaySeconds}
           .bounds=${bounds}
           .interactive=${dial?.isInteractive ?? false}
-          .angleRadians=${dial?.visual.angleRadians ?? 0}
+          .angleRadians=${dialAngle}
           .status=${status}
           .ariaLabel=${dial?.aria.label ?? STRINGS.dialLabel}
           .valueText=${dialValueText}
@@ -312,7 +313,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    this._displayDurationSeconds = event.detail.value;
+    this._setDisplayDurationSeconds(event.detail.value);
     this._viewModel = updateDialSelection(this._viewModel, event.detail.value);
   };
 
@@ -365,9 +366,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         break;
     }
 
-    if (next !== this._displayDurationSeconds) {
-      this._displayDurationSeconds = next;
+    this._setDisplayDurationSeconds(next);
+  }
+
+  private _setDisplayDurationSeconds(next: number | undefined) {
+    if (this._displayDurationSeconds === next) {
+      return;
     }
+
+    this._displayDurationSeconds = next;
   }
 }
 
