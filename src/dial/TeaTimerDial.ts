@@ -214,12 +214,12 @@ export class TeaTimerDial extends LitElement {
     target.addEventListener("pointerup", this.pointerEndHandler);
     target.addEventListener("pointercancel", this.pointerEndHandler);
 
-    this.pointerActive = true;
+    this.setPointerActive(true);
     this.gestureTracker.setNormalized(this.normalizedValue);
 
     const raw = this.getRawNormalized(event, target);
     const normalized = this.gestureTracker.jumpToRaw(raw);
-    this.normalizedValue = normalized;
+    this.setNormalizedValue(normalized);
     this.emitValueFromNormalized(normalized);
   }
 
@@ -236,7 +236,7 @@ export class TeaTimerDial extends LitElement {
     event.preventDefault();
     const raw = this.getRawNormalized(event, target);
     const normalized = this.gestureTracker.updateFromRaw(raw);
-    this.normalizedValue = normalized;
+    this.setNormalizedValue(normalized);
     this.emitValueFromNormalized(normalized);
   }
 
@@ -251,7 +251,7 @@ export class TeaTimerDial extends LitElement {
       }
     }
 
-    this.pointerActive = false;
+    this.setPointerActive(false);
     this.gestureTracker.setNormalized(this.normalizedValue);
 
     if (this.pendingValue === undefined) {
@@ -376,13 +376,31 @@ export class TeaTimerDial extends LitElement {
 
   private syncNormalizedFromValue(): void {
     const normalized = this.valueToNormalized(this.value);
-    this.normalizedValue = normalized;
+    this.setNormalizedValue(normalized);
 
     if (this.pointerActive) {
       this.gestureTracker.synchronize(normalized);
     } else {
       this.gestureTracker.setNormalized(normalized);
     }
+  }
+
+  private setPointerActive(active: boolean): void {
+    if (this.pointerActive === active) {
+      return;
+    }
+
+    this.pointerActive = active;
+    this.requestUpdate();
+  }
+
+  private setNormalizedValue(normalized: number): void {
+    if (Math.abs(this.normalizedValue - normalized) <= 1e-6) {
+      return;
+    }
+
+    this.normalizedValue = normalized;
+    this.requestUpdate();
   }
 
   disconnectedCallback(): void {

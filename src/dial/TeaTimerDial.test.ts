@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TeaTimerDial } from "./TeaTimerDial";
 
 describe("TeaTimerDial", () => {
@@ -47,5 +47,18 @@ describe("TeaTimerDial", () => {
     handleKeyDown.handleKeyDown.call(dial, new KeyboardEvent("keydown", { key: "ArrowUp" }));
 
     expect(dispatched.some((event) => event.type === "dial-blocked")).toBe(true);
+  });
+
+  it("requests an update when normalized value changes locally", () => {
+    const dial = document.createElement("tea-timer-dial");
+    const requestUpdate = vi.spyOn(dial, "requestUpdate");
+
+    const internals = TeaTimerDial.prototype as unknown as {
+      setNormalizedValue(this: TeaTimerDial, normalized: number): void;
+    };
+
+    internals.setNormalizedValue.call(dial, 0.25);
+
+    expect(requestUpdate).toHaveBeenCalled();
   });
 });
