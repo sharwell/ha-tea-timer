@@ -1,0 +1,191 @@
+import { HassEntity } from "../types/home-assistant";
+
+export type TimerStatus = "idle" | "running" | "finished" | "unavailable";
+
+export interface TimerViewState {
+  status: TimerStatus;
+  durationSeconds?: number;
+  remainingSeconds?: number;
+  lastChangedTs?: number;
+  finishedUntilTs?: number;
+  remainingIsEstimated?: boolean;
+  estimationDriftSeconds?: number;
+}
+
+export interface TimerStateMachineOptions {
+  finishedOverlayMs: number;
+  now?: () => number;
+}
+
+function parseTimestamp(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseHaTime(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const parts = value.split(":").map((part) => part.trim());
+  if (parts.length === 0 || parts.length > 3 || parts.some((part) => part === "" || Number.isNaN(Number(part)))) {
+    return undefined;
+  }
+
+  while (parts.length < 3) {
+    parts.unshift("0");
+  }
+
+  const [hours, minutes, seconds] = parts.map((part) => Number(part));
+  if (![hours, minutes, seconds].every((item) => Number.isFinite(item) && item >= 0)) {
+    return undefined;
+  }
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function normalizeEntity(entity: HassEntity | undefined, now: number): TimerViewState {
+  if (!entity) {
+    return { status: "unavailable" };
+  }
+
+  const rawState = entity.state ?? "";
+  const state = rawState.toLowerCase();
+
+  if (state === "unavailable" || state === "unknown") {
+    return { status: "unavailable" };
+  }
+
+  const lastChangedTs = parseTimestamp(entity.last_changed);
+  const durationSeconds = parseHaTime(entity.attributes?.duration);
+  const reportedRemainingSeconds = parseHaTime(entity.attributes?.remaining);
+
+  if (state === "active" || state === "paused") {
+    let remainingSeconds = reportedRemainingSeconds;
+    let remainingIsEstimated = false;
+    let estimationDriftSeconds: number | undefined;
+
+    if (remainingSeconds === undefined && durationSeconds !== undefined && lastChangedTs !== undefined) {
+      const elapsedMs = Math.max(0, now - lastChangedTs);
+      const elapsedSeconds = Math.floor(elapsedMs / 1000);
+      const computedRemaining = Math.max(0, durationSeconds - elapsedSeconds);
+      remainingSeconds = computedRemaining;
+      remainingIsEstimated = true;
+
+      const driftSeconds = Math.max(0, Math.floor(elapsedSeconds - durationSeconds));
+      if (driftSeconds > 0) {
+        estimationDriftSeconds = driftSeconds;
+      }
+    }
+
+    return {
+      status: "running",
+      durationSeconds,
+      remainingSeconds,
+      lastChangedTs,
+      remainingIsEstimated,
+      estimationDriftSeconds,
+    };
+  }
+
+  if (state === "idle") {
+    const remainingSeconds = reportedRemainingSeconds ?? durationSeconds;
+    return {
+      status: "idle",
+      durationSeconds,
+      remainingSeconds,
+      lastChangedTs,
+    };
+  }
+
+  return {
+    status: "idle",
+    durationSeconds,
+    remainingSeconds: reportedRemainingSeconds ?? durationSeconds,
+    lastChangedTs,
+  };
+}
+
+export class TimerStateMachine {
+  private readonly finishedOverlayMs: number;
+
+  private readonly now: () => number;
+
+  private overlayUntil?: number;
+
+  private lastEntity?: HassEntity;
+
+  private current: TimerViewState = { status: "unavailable" };
+
+  constructor(options: TimerStateMachineOptions) {
+    this.finishedOverlayMs = Math.max(0, options.finishedOverlayMs);
+    this.now = options.now ?? (() => Date.now());
+  }
+
+  public get state(): TimerViewState {
+    return this.current;
+  }
+
+  public updateFromEntity(entity: HassEntity | undefined, atTime = this.now()): TimerViewState {
+    this.lastEntity = entity ?? undefined;
+    const baseState = normalizeEntity(entity, atTime);
+    const state = this.applyOverlay(baseState, atTime);
+    this.current = state;
+    return state;
+  }
+
+  public markFinished(atTime = this.now()): TimerViewState {
+    this.overlayUntil = atTime + this.finishedOverlayMs;
+    const baseState = normalizeEntity(this.lastEntity, atTime);
+    const state = this.applyOverlay(baseState, atTime);
+    this.current = state;
+    return state;
+  }
+
+  public handleTimeAdvance(atTime = this.now()): TimerViewState {
+    const baseState = normalizeEntity(this.lastEntity, atTime);
+    const state = this.applyOverlay(baseState, atTime);
+    this.current = state;
+    return state;
+  }
+
+  public clear(): TimerViewState {
+    this.lastEntity = undefined;
+    this.overlayUntil = undefined;
+    this.current = { status: "unavailable" };
+    return this.current;
+  }
+
+  public getOverlayDeadline(): number | undefined {
+    return this.overlayUntil;
+  }
+
+  private applyOverlay(baseState: TimerViewState, atTime: number): TimerViewState {
+    if (this.overlayUntil === undefined) {
+      return baseState;
+    }
+
+    if (this.overlayUntil <= atTime) {
+      this.overlayUntil = undefined;
+      return baseState;
+    }
+
+    return {
+      ...baseState,
+      status: "finished",
+      finishedUntilTs: this.overlayUntil,
+    };
+  }
+}
+
+export function normalizeTimerEntity(entity: HassEntity | undefined, now: number): TimerViewState {
+  return normalizeEntity(entity, now);
+}

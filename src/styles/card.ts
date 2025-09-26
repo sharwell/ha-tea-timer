@@ -30,18 +30,79 @@ export const cardStyles = css`
   }
 
   .dial {
-    width: 160px;
-    height: 160px;
+    width: 184px;
+    height: 184px;
     border-radius: 50%;
     border: 3px solid var(--divider-color, rgba(0, 0, 0, 0.12));
     align-self: center;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     color: var(--secondary-text-color, #52606d);
-    font-size: 0.875rem;
-    letter-spacing: 0.08em;
+    text-align: center;
+    padding: 16px;
+    gap: 4px;
+  }
+
+  .dial[data-status="finished"] {
+    border-color: var(--success-color, rgba(73, 190, 125, 0.6));
+    background: rgba(73, 190, 125, 0.08);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .dial[data-status="running"] {
+    border-color: var(--info-color, rgba(0, 122, 255, 0.4));
+    background: rgba(0, 122, 255, 0.05);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .dial[data-status="unavailable"] {
+    opacity: 0.6;
+  }
+
+  .dial-primary {
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .dial-secondary {
+    font-size: 0.95rem;
+    color: var(--secondary-text-color, #52606d);
+  }
+
+  .status-pill {
+    align-self: flex-start;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--chip-background-color, rgba(0, 0, 0, 0.04));
+    color: var(--secondary-text-color, #52606d);
+  }
+
+  .status-pill.status-running {
+    background: rgba(0, 122, 255, 0.12);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .status-pill.status-finished {
+    background: rgba(73, 190, 125, 0.16);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .status-pill.status-unavailable {
+    background: rgba(128, 128, 128, 0.14);
+  }
+
+  .estimation {
+    font-size: 0.8rem;
+    color: var(--warning-color, #a86a13);
+    text-align: center;
+    margin: 8px 0 0;
   }
 
   .presets {

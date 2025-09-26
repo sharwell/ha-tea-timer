@@ -17,6 +17,25 @@
         gap: 24px;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .controls button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        background: white;
+        cursor: pointer;
+      }
+
+      .controls button:active {
+        transform: translateY(1px);
+      }
     </style>
   </head>
   <body>
@@ -25,8 +44,130 @@
       <tea-timer-card></tea-timer-card>
       <tea-timer-card></tea-timer-card>
     </main>
+    <section class="controls" aria-label="Timer controls">
+      <button type="button" id="btn-idle">Set idle</button>
+      <button type="button" id="btn-run">Set running (2:30)</button>
+      <button type="button" id="btn-estimate">Set running (estimated)</button>
+      <button type="button" id="btn-finish">Emit finished event</button>
+      <button type="button" id="btn-unavailable">Mark unavailable</button>
+    </section>
     <script type="module">
-      const cards = document.querySelectorAll("tea-timer-card");
+      class DemoConnection {
+        constructor() {
+          this._listeners = new Map();
+        }
+
+        async subscribeMessage(callback, message) {
+          const eventType = message?.event_type;
+          if (!eventType) {
+            return () => {};
+          }
+
+          const listeners = this._listeners.get(eventType) ?? new Set();
+          listeners.add(callback);
+          this._listeners.set(eventType, listeners);
+
+          return () => {
+            listeners.delete(callback);
+          };
+        }
+
+        emit(eventType, data) {
+          const listeners = this._listeners.get(eventType);
+          if (!listeners) {
+            return;
+          }
+
+          const message = { event_type: eventType, data };
+          listeners.forEach((listener) => listener(message));
+        }
+      }
+
+      function toDuration(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
+          .toString()
+          .padStart(2, "0");
+        const seconds = Math.floor(totalSeconds % 60)
+          .toString()
+          .padStart(2, "0");
+        return `${hours}:${minutes}:${seconds}`;
+      }
+
+      function createEntity(entityId, state, durationSeconds, remainingSeconds) {
+        const now = new Date();
+        return {
+          entity_id: entityId,
+          state,
+          attributes: {
+            duration: toDuration(durationSeconds),
+            ...(remainingSeconds !== undefined ? { remaining: toDuration(remainingSeconds) } : {}),
+          },
+          last_changed: now.toISOString(),
+          last_updated: now.toISOString(),
+        };
+      }
+
+      function createDemoEnvironment(entityId, durationSeconds = 240) {
+        const connection = new DemoConnection();
+        const states = {};
+        let current = createEntity(entityId, "idle", durationSeconds, durationSeconds);
+        states[entityId] = current;
+
+        const hass = {
+          locale: { language: "en" },
+          states,
+          connection,
+        };
+
+        function emitState(newState) {
+          const oldState = current;
+          current = newState;
+          states[entityId] = newState;
+          connection.emit("state_changed", {
+            entity_id: entityId,
+            old_state: oldState,
+            new_state: newState,
+          });
+        }
+
+        return {
+          hass,
+          setIdle() {
+            emitState(createEntity(entityId, "idle", durationSeconds, durationSeconds));
+          },
+          setRunning(remainingSeconds, includeRemaining = true) {
+            const remaining = includeRemaining ? remainingSeconds : undefined;
+            const entity = createEntity(entityId, "active", durationSeconds, remaining);
+            if (!includeRemaining && remainingSeconds !== undefined) {
+              const lastChanged = new Date(Date.now() - (durationSeconds - remainingSeconds) * 1000).toISOString();
+              entity.last_changed = lastChanged;
+              entity.last_updated = lastChanged;
+            }
+            emitState(entity);
+          },
+          setUnavailable() {
+            const now = new Date().toISOString();
+            emitState({
+              entity_id: entityId,
+              state: "unavailable",
+              attributes: {},
+              last_changed: now,
+              last_updated: now,
+            });
+          },
+          emitFinished() {
+            connection.emit("timer.finished", {
+              entity_id: entityId,
+            });
+            setTimeout(() => {
+              this.setIdle();
+            }, 400);
+          },
+        };
+      }
+
+      const cards = Array.from(document.querySelectorAll("tea-timer-card"));
       const configs = [
         {
           title: "Kitchen Tea Timer",
@@ -42,9 +183,18 @@
           presets: [],
         },
       ];
+
+      const environment = createDemoEnvironment("timer.kitchen_tea", 240);
       cards.forEach((card, index) => {
         card.setConfig(configs[index]);
+        card.hass = environment.hass;
       });
+
+      document.getElementById("btn-idle").addEventListener("click", () => environment.setIdle());
+      document.getElementById("btn-run").addEventListener("click", () => environment.setRunning(150));
+      document.getElementById("btn-estimate").addEventListener("click", () => environment.setRunning(120, false));
+      document.getElementById("btn-finish").addEventListener("click", () => environment.emitFinished());
+      document.getElementById("btn-unavailable").addEventListener("click", () => environment.setUnavailable());
     </script>
   </body>
 </html>

@@ -11,7 +11,7 @@ describe("parseTeaTimerConfig", () => {
   it("parses valid configuration", () => {
     const result = parseTeaTimerConfig({
       title: "Kitchen",
-      entity: "timer.kitchen",
+      entity: " timer.kitchen ",
       presets: [
         { label: "Green", durationSeconds: 120 },
         { label: "Black", durationSeconds: 240 },
@@ -21,6 +21,7 @@ describe("parseTeaTimerConfig", () => {
     expect(result.errors).toHaveLength(0);
     expect(result.config).not.toBeNull();
     expect(result.config?.presets).toHaveLength(2);
+    expect(result.config?.entity).toBe("timer.kitchen");
   });
 
   it("limits presets to 8 items", () => {
@@ -51,5 +52,14 @@ describe("parseTeaTimerConfig", () => {
 
     expect(result.errors).toContain("Preset durations must be positive numbers of seconds. (index 0)");
     expect(result.config?.presets).toHaveLength(0);
+  });
+
+  it("requires an entity id", () => {
+    const result = parseTeaTimerConfig({
+      title: "Kitchen",
+      presets: [],
+    });
+
+    expect(result.errors).toContain('The "entity" option is required.');
   });
 });

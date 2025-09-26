@@ -53,7 +53,12 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
 
   const type = typeof raw.type === "string" ? raw.type : "custom:tea-timer-card";
   const title = typeof raw.title === "string" ? raw.title : undefined;
-  const entity = typeof raw.entity === "string" ? raw.entity : undefined;
+  const rawEntity = typeof raw.entity === "string" ? raw.entity : undefined;
+  const entity = rawEntity?.trim() ? rawEntity.trim() : undefined;
+
+  if (!entity) {
+    errors.push(STRINGS.validation.entityRequired);
+  }
 
   const presetValues = Array.isArray(raw.presets) ? (raw.presets as unknown[]) : undefined;
 
