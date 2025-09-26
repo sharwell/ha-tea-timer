@@ -1,5 +1,4 @@
 import { html, LitElement, nothing } from "lit";
-import type { PropertyValues } from "lit";
 import { property, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
@@ -14,8 +13,19 @@ import { formatDurationSeconds } from "../model/duration";
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
 
+  private _hass?: HomeAssistant;
+
   @property({ attribute: false })
-  public hass?: HomeAssistant;
+  public get hass(): HomeAssistant | undefined {
+    return this._hass;
+  }
+
+  public set hass(value: HomeAssistant | undefined) {
+    const oldValue = this._hass;
+    this._hass = value;
+    this._timerStateController.setHass(value);
+    this.requestUpdate("hass", oldValue);
+  }
 
   @state()
   private _config?: TeaTimerConfig;
@@ -60,13 +70,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   // eslint-disable-next-line class-methods-use-this
   public getCardSize(): number {
     return 4;
-  }
-
-  protected updated(changedProps: PropertyValues<this>) {
-    super.updated(changedProps);
-    if (changedProps.has("hass")) {
-      this._timerStateController.setHass(this.hass);
-    }
   }
 
   protected render() {
