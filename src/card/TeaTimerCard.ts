@@ -50,6 +50,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   @state()
   private _ariaAnnouncement = "";
 
+  @state()
+  private _displayDurationSeconds?: number;
+
   private _lastAnnouncedStatus?: TimerStatus;
 
   private readonly _timerStateController: TimerStateController;
@@ -80,6 +83,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     } else {
       this._viewModel = undefined;
     }
+    this._syncDisplayDuration(state);
     this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
     this.requestUpdate();
@@ -134,22 +138,25 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _renderDial() {
     const state = this._timerState ?? this._timerStateController.state;
     const status = state.status;
-    const primary = this._getPrimaryDialLabel(state);
-    const secondary = this._getSecondaryDialLabel(state);
-    const estimation = this._getEstimationNotice(state);
     const dial = this._viewModel?.dial;
     const bounds = dial?.bounds ?? { min: 0, max: 0, step: 1 };
+    const displaySeconds = this._displayDurationSeconds ?? dial?.selectedDurationSeconds;
+    const dialValue = displaySeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
+    const dialValueText = formatDurationSeconds(dialValue);
+    const primary = this._getPrimaryDialLabel(state, dialValue);
+    const secondary = this._getSecondaryDialLabel(state);
+    const estimation = this._getEstimationNotice(state);
 
     return html`
       <div class="dial-wrapper">
         <tea-timer-dial
-          .value=${dial?.selectedDurationSeconds ?? bounds.min}
+          .value=${dialValue}
           .bounds=${bounds}
           .interactive=${dial?.isInteractive ?? false}
           .angleRadians=${dial?.visual.angleRadians ?? 0}
           .status=${status}
           .ariaLabel=${dial?.aria.label ?? STRINGS.dialLabel}
-          .valueText=${dial?.aria.valueText ?? ""}
+          .valueText=${dialValueText}
           @dial-input=${this._onDialInput}
           @dial-blocked=${this._onDialBlocked}
         >
@@ -195,7 +202,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return html`<span class="status-pill status-${state.status}" aria-hidden="true">${label}</span>`;
   }
 
-  private _getPrimaryDialLabel(state: TimerViewState): string {
+  private _getPrimaryDialLabel(state: TimerViewState, displaySeconds?: number): string {
     if (state.status === "finished") {
       return STRINGS.timerFinished;
     }
@@ -204,12 +211,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (state.remainingSeconds !== undefined) {
         return formatDurationSeconds(state.remainingSeconds);
       }
+      if (displaySeconds !== undefined) {
+        return formatDurationSeconds(displaySeconds);
+      }
       return STRINGS.timeUnknown;
     }
 
     if (state.status === "idle") {
-      if (this._viewModel?.dial.selectedDurationSeconds !== undefined) {
-        return formatDurationSeconds(this._viewModel.dial.selectedDurationSeconds);
+      if (displaySeconds !== undefined) {
+        return formatDurationSeconds(displaySeconds);
       }
       return STRINGS.timeUnknown;
     }
@@ -293,6 +303,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
     this._handleAriaAnnouncement(state);
     this._previousTimerState = state;
+    this._syncDisplayDuration(state);
   }
 
   private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
@@ -301,6 +312,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    this._displayDurationSeconds = event.detail.value;
     this._viewModel = updateDialSelection(this._viewModel, event.detail.value);
   };
 
@@ -324,6 +336,38 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     this._clearDialTooltipTimer();
+  }
+
+  private _syncDisplayDuration(state: TimerViewState) {
+    const viewModel = this._viewModel;
+
+    if (!viewModel) {
+      if (this._displayDurationSeconds !== undefined) {
+        this._displayDurationSeconds = undefined;
+      }
+      return;
+    }
+
+    let next: number | undefined;
+
+    switch (state.status) {
+      case "running":
+        next = state.remainingSeconds ?? viewModel.dial.selectedDurationSeconds;
+        break;
+      case "finished":
+        next = state.remainingSeconds ?? state.durationSeconds ?? viewModel.dial.selectedDurationSeconds;
+        break;
+      case "idle":
+        next = viewModel.dial.selectedDurationSeconds;
+        break;
+      default:
+        next = viewModel.dial.selectedDurationSeconds;
+        break;
+    }
+
+    if (next !== this._displayDurationSeconds) {
+      this._displayDurationSeconds = next;
+    }
   }
 }
 

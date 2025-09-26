@@ -163,6 +163,9 @@ export class TeaTimerDial extends LitElement {
     const baseAngle = this.pointerActive ? this.normalizedValue * TAU : this.angleRadians;
     const angleDegrees = (baseAngle * 180) / Math.PI;
     const ariaReadonly = this.interactive ? "false" : "true";
+    const displayValue = this.pointerActive
+      ? normalizeDurationSeconds(this.normalizedToValue(this.normalizedValue), this.bounds)
+      : this.value;
 
     return html`
       <div
@@ -175,7 +178,7 @@ export class TeaTimerDial extends LitElement {
         aria-readonly=${ariaReadonly}
         aria-valuemin=${this.bounds.min}
         aria-valuemax=${this.bounds.max}
-        aria-valuenow=${Math.round(this.value)}
+        aria-valuenow=${Math.round(displayValue)}
         aria-valuetext=${this.valueText || nothing}
         @pointerdown=${this.rootPointerDownHandler}
         @keydown=${this.rootKeyDownHandler}
