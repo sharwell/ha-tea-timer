@@ -41,15 +41,6 @@ describe("parseTeaTimerConfig", () => {
     expect(result.config?.presets).toHaveLength(8);
   });
 
-  it("flags reserved options", () => {
-    const result = parseTeaTimerConfig({
-      presets: [],
-      defaultPreset: 1,
-    });
-
-    expect(result.errors).toContain('The "defaultPreset" option is reserved for a future release.');
-  });
-
   it("parses confirmRestart flag", () => {
     const result = parseTeaTimerConfig({
       entity: "timer.test",
@@ -104,5 +95,33 @@ describe("parseTeaTimerConfig", () => {
     });
 
     expect(result.errors).toContain('The "entity" option is required.');
+  });
+
+  it("selects default preset by index", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+      defaultPreset: 1,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.config?.defaultPresetId).toBe(1);
+  });
+
+  it("selects default preset by label", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+      defaultPreset: "Black",
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.config?.defaultPresetId).toBe(1);
   });
 });

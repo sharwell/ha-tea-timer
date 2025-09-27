@@ -79,6 +79,7 @@ To experiment locally, run `npm run dev` and open the playground at http://local
    type: custom:tea-timer-card
    title: Kitchen Tea Timer
    entity: timer.kitchen_tea
+   defaultPreset: Black Tea
    presets:
      - label: Green Tea
        durationSeconds: 120
@@ -94,6 +95,8 @@ To experiment locally, run `npm run dev` and open the playground at http://local
    stepSeconds: 10
    confirmRestart: true # optional—require confirmation before restarting a running timer
    ```
+
+   Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
 
 ### Documentation
 

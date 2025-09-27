@@ -6,6 +6,9 @@ export interface StringTable {
   gettingStartedLabel: string;
   gettingStartedUrl: string;
   presetsGroupLabel: string;
+  presetsMissing: string;
+  presetsCustomLabel: string;
+  presetsQueuedLabel: (label: string, durationLabel: string) => string;
   statusIdle: string;
   statusRunning: string;
   statusFinished: string;
@@ -54,6 +57,10 @@ export const STRINGS: StringTable = {
   gettingStartedLabel: "Getting Started",
   gettingStartedUrl: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/getting-started.md",
   presetsGroupLabel: "Presets",
+  presetsMissing: "Add at least one preset to start brewing.",
+  presetsCustomLabel: "Custom duration",
+  presetsQueuedLabel: (label: string, durationLabel: string) =>
+    `Next: ${label} ${durationLabel}`,
   statusIdle: "Idle",
   statusRunning: "Running",
   statusFinished: "Finished",

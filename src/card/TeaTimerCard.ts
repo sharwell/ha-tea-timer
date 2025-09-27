@@ -5,9 +5,13 @@ import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
 import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
 import {
+  applyPresetSelection,
+  applyQueuedPreset,
   clearPendingAction,
+  clearQueuedPreset,
   createTeaTimerViewModel,
   PendingTimerAction,
+  queuePresetSelection,
   setPendingAction,
   setViewModelError,
   TeaTimerViewModel,
@@ -77,6 +81,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _awaitingDialElementSync = false;
   private _errorTimer?: number;
   private _confirmRestartDuration?: number;
+  private _lastPointerPresetId?: number;
+  private _lastKeyboardPresetId?: number;
 
   private readonly _primaryLabelRef = createRef<HTMLSpanElement>();
 
@@ -127,6 +133,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onCardClick}
       >
         ${this._renderHeader()}
+        ${this._renderSubtitle()}
         ${this._renderStatusPill()}
         ${this._renderDial()}
         ${this._renderPresets()}
@@ -164,6 +171,25 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         <span class="entity">${entityLabel}</span>
       </header>
     `;
+  }
+
+  private _renderSubtitle() {
+    if (!this._viewModel) {
+      return nothing;
+    }
+
+    const queuedId = this._viewModel.ui.queuedPresetId;
+    if (typeof queuedId !== "number") {
+      return nothing;
+    }
+
+    const preset = this._viewModel.ui.presets.find((item) => item.id === queuedId);
+    if (!preset) {
+      return nothing;
+    }
+
+    const label = STRINGS.presetsQueuedLabel(preset.label, preset.durationLabel);
+    return html`<p class="subtitle" role="note">${label}</p>`;
   }
 
   private _renderDial() {
@@ -205,28 +231,168 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _renderPresets() {
-    if (!this._viewModel || !this._viewModel.ui.hasPresets) {
+    if (!this._viewModel) {
       return html`<div class="empty-state">${STRINGS.emptyState}</div>`;
     }
 
+    if (!this._viewModel.ui.hasPresets) {
+      return html`<div class="empty-state">${STRINGS.presetsMissing}</div>`;
+    }
+
+    const selectedId = this._viewModel.ui.selectedPresetId;
+    const queuedId = this._viewModel.ui.queuedPresetId;
+    const isCustom = this._viewModel.ui.isCustomDuration;
+
     return html`
-      <div class="presets" role="group" aria-label=${STRINGS.presetsGroupLabel}>
-        ${this._viewModel.ui.presets.map(
-          (preset) => html`
+      <div class="presets" role="radiogroup" aria-label=${STRINGS.presetsGroupLabel}>
+        ${this._viewModel.ui.presets.map((preset) => {
+          const isSelected = !isCustom && selectedId === preset.id;
+          const isQueued = queuedId === preset.id;
+          const classNames = [
+            "preset-chip",
+            isSelected ? "preset-selected" : "",
+            isQueued ? "preset-queued" : "",
+          ]
+            .filter((name) => name)
+            .join(" ");
+          const ariaChecked = isSelected ? "true" : "false";
+          return html`
             <button
-              class="preset-chip"
               type="button"
-              role="button"
-              disabled
-              aria-disabled="true"
+              class=${classNames}
+              role="radio"
+              aria-checked=${ariaChecked}
+              @pointerdown=${(event: PointerEvent) =>
+                this._onPresetPointerDown(event, preset.id)}
+              @keydown=${(event: KeyboardEvent) => this._onPresetKeyDown(event, preset.id)}
+              @click=${(event: MouseEvent) => this._onPresetClick(event, preset.id)}
             >
-              <span>${preset.label}</span>
-              <span>${preset.durationLabel}</span>
+              <span class="preset-label">${preset.label}</span>
+              <span class="preset-duration">${preset.durationLabel}</span>
             </button>
-          `,
-        )}
+          `;
+        })}
       </div>
+      ${isCustom
+        ? html`<span class="preset-custom" role="note">${STRINGS.presetsCustomLabel}</span>`
+        : nothing}
     `;
+  }
+
+  private _onPresetClick(event: MouseEvent, presetId: number) {
+    event.stopPropagation();
+    if (event.detail > 0 && this._lastPointerPresetId === presetId) {
+      event.preventDefault();
+      this._lastPointerPresetId = undefined;
+      return;
+    }
+
+    if (event.detail === 0 && this._lastKeyboardPresetId === presetId) {
+      event.preventDefault();
+      this._lastKeyboardPresetId = undefined;
+      return;
+    }
+
+    this._lastPointerPresetId = undefined;
+    this._lastKeyboardPresetId = undefined;
+    if (!this._viewModel) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+
+    if (state.status === "running") {
+      if (this._viewModel.ui.queuedPresetId === presetId) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      if (
+        this._viewModel.ui.selectedPresetId === presetId &&
+        this._viewModel.ui.queuedPresetId === undefined
+      ) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      this._viewModel = queuePresetSelection(this._viewModel, presetId);
+      return;
+    }
+
+    this._viewModel = applyPresetSelection(this._viewModel, presetId);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+  }
+
+  private _onPresetPointerDown(event: PointerEvent, presetId: number) {
+    if (event.button !== undefined && event.button !== 0 && event.pointerType !== "touch") {
+      return;
+    }
+
+    if (event.isPrimary === false) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const target = event.currentTarget as HTMLButtonElement | null;
+    target?.focus();
+
+    this._lastPointerPresetId = presetId;
+    this._lastKeyboardPresetId = undefined;
+    this._activatePreset(presetId);
+  }
+
+  private _onPresetKeyDown(event: KeyboardEvent, presetId: number) {
+    if (event.key !== " " && event.key !== "Spacebar" && event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    this._lastPointerPresetId = undefined;
+    this._lastKeyboardPresetId = presetId;
+    this._activatePreset(presetId);
+  }
+
+  private _activatePreset(presetId: number) {
+    if (!this._viewModel) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+
+    if (state.status === "running") {
+      if (this._viewModel.ui.queuedPresetId === presetId) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      if (
+        this._viewModel.ui.selectedPresetId === presetId &&
+        this._viewModel.ui.queuedPresetId === undefined
+      ) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      this._viewModel = queuePresetSelection(this._viewModel, presetId);
+      return;
+    }
+
+    this._viewModel = applyPresetSelection(this._viewModel, presetId);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+  }
+
+  private _applyQueuedPresetSelection() {
+    if (!this._viewModel) {
+      return;
+    }
+
+    if (this._viewModel.ui.queuedPresetId !== undefined) {
+      this._viewModel = applyQueuedPreset(this._viewModel);
+    }
   }
 
   private _renderPendingOverlay() {
@@ -357,6 +523,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return;
       }
 
+      this._applyQueuedPresetSelection();
       void this._restartTimerAction(durationSeconds);
       return;
     }
@@ -369,7 +536,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return 0;
     }
 
-    const selected = this._viewModel.selectedDurationSeconds ?? this._viewModel.dial.selectedDurationSeconds;
+    const selected =
+      this._viewModel.pendingDurationSeconds ??
+      this._viewModel.selectedDurationSeconds ??
+      this._viewModel.dial.selectedDurationSeconds;
     return normalizeDurationSeconds(selected, this._config.dialBounds);
   }
 
@@ -465,6 +635,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    this._applyQueuedPresetSelection();
     void this._restartTimerAction(this._confirmRestartDuration);
   };
 
@@ -617,6 +788,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._viewModel = setViewModelError(this._viewModel, undefined);
         this._clearErrorTimer();
       }
+
+      if (
+        previousViewModel?.ui.queuedPresetId !== undefined &&
+        previousState?.status === "running" &&
+        state.status !== "running" &&
+        this._viewModel.ui.queuedPresetId !== undefined
+      ) {
+        this._viewModel = applyQueuedPreset(this._viewModel);
+      }
     }
 
     this._handleAriaAnnouncement(state);
@@ -733,7 +913,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const dialElement = this._resolveDialElement();
     if (dialElement) {
+      if (dialElement.value !== resolvedSeconds) {
+        dialElement.value = resolvedSeconds;
+      }
       dialElement.valueText = formatDurationSeconds(resolvedSeconds);
+      this._syncDialHandleTransform(dialElement, resolvedSeconds);
       return;
     }
 
@@ -769,6 +953,32 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     return undefined;
+  }
+
+  private _syncDialHandleTransform(dialElement: TeaTimerDial, seconds: number) {
+    const handle = dialElement.shadowRoot?.querySelector<HTMLElement>(".dial-handle");
+    if (!handle) {
+      return;
+    }
+
+    const bounds =
+      dialElement.bounds ??
+      this._viewModel?.dial.bounds ??
+      this._config?.dialBounds ??
+      ({ min: 0, max: 0, step: 1 } as const);
+
+    const span = bounds.max - bounds.min;
+    let normalized = 0;
+    if (span > 0) {
+      const clamped = Math.min(bounds.max, Math.max(bounds.min, seconds));
+      normalized = (clamped - bounds.min) / span;
+    }
+
+    const angle = normalized * 360;
+    const transform = `rotate(${angle}deg)`;
+    if (handle.style.transform !== transform) {
+      handle.style.transform = transform;
+    }
   }
 }
 
