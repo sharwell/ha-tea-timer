@@ -42,6 +42,7 @@ npm ci
   - `timer.finished` triggers a five-second overlay before settling back to Idle.
 - When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
 - The card never interpolates or counts down client-side; Home Assistant remains the source of truth for countdown values.
+- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration, and running taps issue `timer.cancel` followed by `timer.start` to guarantee a clean restart event stream. The UI shows a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant reports the updated state.
 
 ### Dial duration configuration
 
@@ -91,6 +92,7 @@ To experiment locally, run `npm run dev` and open the playground at http://local
    minDurationSeconds: 30
    maxDurationSeconds: 900
    stepSeconds: 10
+   confirmRestart: true # optional—require confirmation before restarting a running timer
    ```
 
 ### Documentation
@@ -163,7 +165,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    9.4. `default_preset` (optional index or label).
    9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
    9.6. `finished_auto_idle_ms` (default 5000).
-   9.7. `confirm_restart` (default false).
+   9.7. `confirmRestart` (default false).
 
 10. **Accessibility & Internationalization**
     10.1. Full keyboard support: focusable chips; Space/Enter to start/restart; arrow keys to nudge dial when idle (+/‑ step).

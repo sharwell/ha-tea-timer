@@ -19,15 +19,27 @@ export interface TeaTimerDialViewModel {
   };
 }
 
+export type PendingTimerAction = "none" | "start" | "restart";
+
+export interface TeaTimerViewModelError {
+  message: string;
+  code?: string;
+}
+
 export interface TeaTimerViewModel {
   ui: {
     title: string;
     entityLabel: string;
     presets: TeaTimerPresetViewModel[];
     hasPresets: boolean;
+    confirmRestart: boolean;
+    pendingAction: PendingTimerAction;
+    lastActionTs?: number;
+    error?: TeaTimerViewModelError;
   };
   status: TimerStatus;
   dial: TeaTimerDialViewModel;
+  selectedDurationSeconds: number;
 }
 
 export interface CreateTeaTimerViewModelOptions {
@@ -42,13 +54,15 @@ function normalizeSelectedDuration(
 ): number {
   const previousState = options.previousState;
   const previousViewModel = options.previousViewModel;
-  const stateDuration = state.remainingSeconds ?? state.durationSeconds;
+  const stateDuration = state.durationSeconds ?? state.remainingSeconds;
   const previousStateDuration = previousState?.remainingSeconds ?? previousState?.durationSeconds;
 
   let selected = previousViewModel?.dial.selectedDurationSeconds;
 
   if (state.status !== "idle") {
-    if (stateDuration !== undefined) {
+    if (state.durationSeconds !== undefined) {
+      selected = state.durationSeconds;
+    } else if (stateDuration !== undefined) {
       selected = stateDuration;
     }
   } else {
@@ -72,8 +86,9 @@ function createDialViewModel(
   bounds: DurationBounds,
   selectedDurationSeconds: number,
   status: TimerStatus,
+  pendingAction: PendingTimerAction,
 ): TeaTimerDialViewModel {
-  const isInteractive = status === "idle";
+  const isInteractive = status === "idle" && pendingAction === "none";
 
   return {
     selectedDurationSeconds,
@@ -91,11 +106,17 @@ export function updateDialSelection(
   selectedDurationSeconds: number,
 ): TeaTimerViewModel {
   const normalized = normalizeDurationSeconds(selectedDurationSeconds, viewModel.dial.bounds);
-  const dial = createDialViewModel(viewModel.dial.bounds, normalized, viewModel.status);
+  const dial = createDialViewModel(
+    viewModel.dial.bounds,
+    normalized,
+    viewModel.status,
+    viewModel.ui.pendingAction,
+  );
 
   return {
     ...viewModel,
     dial,
+    selectedDurationSeconds: dial.selectedDurationSeconds,
   };
 }
 
@@ -110,9 +131,11 @@ export function createTeaTimerViewModel(
     durationSeconds: preset.durationSeconds,
   }));
 
+  const previousUi = options.previousViewModel?.ui;
   const dialBounds = config.dialBounds;
   const selectedDurationSeconds = normalizeSelectedDuration(state, dialBounds, options);
-  const dial = createDialViewModel(dialBounds, selectedDurationSeconds, state.status);
+  const pendingAction = previousUi?.pendingAction ?? "none";
+  const dial = createDialViewModel(dialBounds, selectedDurationSeconds, state.status, pendingAction);
 
   return {
     ui: {
@@ -120,8 +143,72 @@ export function createTeaTimerViewModel(
       entityLabel: config.entity?.trim() || STRINGS.missingEntity,
       presets,
       hasPresets: presets.length > 0,
+      confirmRestart: config.confirmRestart,
+      pendingAction,
+      lastActionTs: previousUi?.lastActionTs,
+      error: previousUi?.error,
     },
     status: state.status,
     dial,
+    selectedDurationSeconds,
+  };
+}
+
+export function setPendingAction(
+  viewModel: TeaTimerViewModel,
+  action: PendingTimerAction,
+  timestamp: number,
+): TeaTimerViewModel {
+  const pendingAction = action;
+  const dial = createDialViewModel(
+    viewModel.dial.bounds,
+    viewModel.selectedDurationSeconds,
+    viewModel.status,
+    pendingAction,
+  );
+
+  return {
+    ...viewModel,
+    ui: {
+      ...viewModel.ui,
+      pendingAction,
+      lastActionTs: timestamp,
+    },
+    dial,
+  };
+}
+
+export function clearPendingAction(viewModel: TeaTimerViewModel): TeaTimerViewModel {
+  if (viewModel.ui.pendingAction === "none") {
+    return viewModel;
+  }
+
+  const dial = createDialViewModel(
+    viewModel.dial.bounds,
+    viewModel.selectedDurationSeconds,
+    viewModel.status,
+    "none",
+  );
+
+  return {
+    ...viewModel,
+    ui: {
+      ...viewModel.ui,
+      pendingAction: "none",
+    },
+    dial,
+  };
+}
+
+export function setViewModelError(
+  viewModel: TeaTimerViewModel,
+  error: TeaTimerViewModelError | undefined,
+): TeaTimerViewModel {
+  return {
+    ...viewModel,
+    ui: {
+      ...viewModel.ui,
+      error,
+    },
   };
 }

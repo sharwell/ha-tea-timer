@@ -9,6 +9,7 @@ export const cardStyles = css`
     display: flex;
     flex-direction: column;
     gap: 16px;
+    position: relative;
   }
 
   .header {
@@ -130,5 +131,109 @@ export const cardStyles = css`
 
   .errors li + li {
     margin-top: 4px;
+  }
+
+  .action-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(2px);
+    font-weight: 600;
+    color: var(--primary-text-color, #1f2933);
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid rgba(0, 0, 0, 0.12);
+    border-top-color: var(--info-color, rgba(0, 122, 255, 0.6));
+    animation: tea-timer-spin 900ms linear infinite;
+  }
+
+  @keyframes tea-timer-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .confirm-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 16px;
+    z-index: 2;
+  }
+
+  .confirm-surface {
+    background: var(--ha-card-background, #fff);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 260px;
+    width: 100%;
+  }
+
+  .confirm-message {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .confirm-actions button {
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .confirm-primary {
+    background: var(--primary-color, #1f2933);
+    color: #fff;
+  }
+
+  .confirm-secondary {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 16px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #fff;
+    z-index: 3;
+  }
+
+  .toast-error {
+    background: rgba(191, 26, 47, 0.9);
+  }
+
+  .toast-info {
+    background: rgba(0, 0, 0, 0.75);
   }
 `;

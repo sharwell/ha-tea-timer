@@ -26,6 +26,7 @@ describe("parseTeaTimerConfig", () => {
     expect(result.config?.presets).toHaveLength(2);
     expect(result.config?.entity).toBe("timer.kitchen");
     expect(result.config?.dialBounds).toEqual({ min: 30, max: 600, step: 15 });
+    expect(result.config?.confirmRestart).toBe(false);
   });
 
   it("limits presets to 8 items", () => {
@@ -47,6 +48,17 @@ describe("parseTeaTimerConfig", () => {
     });
 
     expect(result.errors).toContain('The "defaultPreset" option is reserved for a future release.');
+  });
+
+  it("parses confirmRestart flag", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [],
+      confirmRestart: true,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.config?.confirmRestart).toBe(true);
   });
 
   it("validates dial bounds", () => {
