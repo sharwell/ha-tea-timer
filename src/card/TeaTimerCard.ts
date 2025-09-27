@@ -917,6 +917,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         dialElement.value = resolvedSeconds;
       }
       dialElement.valueText = formatDurationSeconds(resolvedSeconds);
+      this._syncDialHandleTransform(dialElement, resolvedSeconds);
       return;
     }
 
@@ -952,6 +953,32 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     return undefined;
+  }
+
+  private _syncDialHandleTransform(dialElement: TeaTimerDial, seconds: number) {
+    const handle = dialElement.shadowRoot?.querySelector<HTMLElement>(".dial-handle");
+    if (!handle) {
+      return;
+    }
+
+    const bounds =
+      dialElement.bounds ??
+      this._viewModel?.dial.bounds ??
+      this._config?.dialBounds ??
+      ({ min: 0, max: 0, step: 1 } as const);
+
+    const span = bounds.max - bounds.min;
+    let normalized = 0;
+    if (span > 0) {
+      const clamped = Math.min(bounds.max, Math.max(bounds.min, seconds));
+      normalized = (clamped - bounds.min) / span;
+    }
+
+    const angle = normalized * 360;
+    const transform = `rotate(${angle}deg)`;
+    if (handle.style.transform !== transform) {
+      handle.style.transform = transform;
+    }
   }
 }
 

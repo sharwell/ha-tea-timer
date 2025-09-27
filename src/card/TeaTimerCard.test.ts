@@ -4,9 +4,11 @@ import type { TemplateResult } from "lit";
 import { TeaTimerCard } from "./TeaTimerCard";
 import type { TimerViewState } from "../state/TimerStateMachine";
 import { formatDurationSeconds } from "../model/duration";
+import type { DurationBounds } from "../model/duration";
 import { STRINGS } from "../strings";
 import type { HomeAssistant } from "../types/home-assistant";
 import { restartTimer, startTimer } from "../ha/services/timer";
+import type { TeaTimerDial } from "../dial/TeaTimerDial";
 
 vi.mock("../ha/services/timer", () => ({
   startTimer: vi.fn(),
@@ -406,6 +408,53 @@ describe("TeaTimerCard", () => {
     expect(internals._displayDurationSeconds).toBe(240);
     expect(dialElement.value).toBe(240);
     expect(dialElement.valueText).toBe(formatDurationSeconds(240));
+  });
+
+  it("rotates the dial handle to match preset selection", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 120,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, idleState);
+
+    const internals = card as unknown as {
+      _config?: { dialBounds: DurationBounds };
+      _dialElement?: TeaTimerDial;
+    };
+
+    const handle = document.createElement("div");
+    const dialBounds = internals._config?.dialBounds ?? { min: 0, max: 0, step: 1 };
+    const dialElement = {
+      value: 0,
+      valueText: "",
+      bounds: dialBounds,
+      shadowRoot: {
+        querySelector: (selector: string) => (selector === ".dial-handle" ? handle : null),
+      },
+    } as unknown as TeaTimerDial;
+
+    internals._dialElement = dialElement;
+
+    pointerSelectPreset(card, 1);
+
+    const span = dialBounds.max - dialBounds.min;
+    const clamped = Math.min(dialBounds.max, Math.max(dialBounds.min, 240));
+    const normalized = span > 0 ? (clamped - dialBounds.min) / span : 0;
+    const expectedAngle = normalized * 360;
+
+    expect(handle.style.transform).toBe(`rotate(${expectedAngle}deg)`);
   });
 
   it("activates presets via keyboard without delay", () => {
