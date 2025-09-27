@@ -16,12 +16,16 @@ describe("parseTeaTimerConfig", () => {
         { label: "Green", durationSeconds: 120 },
         { label: "Black", durationSeconds: 240 },
       ],
+      minDurationSeconds: 30,
+      maxDurationSeconds: 600,
+      stepSeconds: 15,
     });
 
     expect(result.errors).toHaveLength(0);
     expect(result.config).not.toBeNull();
     expect(result.config?.presets).toHaveLength(2);
     expect(result.config?.entity).toBe("timer.kitchen");
+    expect(result.config?.dialBounds).toEqual({ min: 30, max: 600, step: 15 });
   });
 
   it("limits presets to 8 items", () => {
@@ -39,10 +43,37 @@ describe("parseTeaTimerConfig", () => {
   it("flags reserved options", () => {
     const result = parseTeaTimerConfig({
       presets: [],
-      minDurationSeconds: 10,
+      defaultPreset: 1,
     });
 
-    expect(result.errors).toContain('The "minDurationSeconds" option is reserved for a future release.');
+    expect(result.errors).toContain('The "defaultPreset" option is reserved for a future release.');
+  });
+
+  it("validates dial bounds", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [],
+      minDurationSeconds: -5,
+      maxDurationSeconds: 0,
+      stepSeconds: 0,
+    });
+
+    expect(result.errors).toContain("minDurationSeconds must be a non-negative number of seconds.");
+    expect(result.errors).toContain("maxDurationSeconds must be a positive number of seconds.");
+    expect(result.errors).toContain("stepSeconds must be a positive number of seconds.");
+  });
+
+  it("ensures max is greater than min", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [],
+      minDurationSeconds: 100,
+      maxDurationSeconds: 80,
+    });
+
+    expect(result.errors).toContain("maxDurationSeconds must be greater than minDurationSeconds.");
+    expect(result.config?.dialBounds.min).toBe(100);
+    expect(result.config?.dialBounds.max).toBeGreaterThan(100);
   });
 
   it("rejects invalid preset entries", () => {

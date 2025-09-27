@@ -1,14 +1,20 @@
 import { html, LitElement, nothing } from "lit";
-import { property, state } from "lit/decorators.js";
+import { property, query, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
 import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
-import { createTeaTimerViewModel, TeaTimerViewModel } from "../view/TeaTimerViewModel";
+import {
+  createTeaTimerViewModel,
+  TeaTimerViewModel,
+  updateDialSelection,
+} from "../view/TeaTimerViewModel";
 import { STRINGS } from "../strings";
 import type { HomeAssistant, LovelaceCard } from "../types/home-assistant";
 import { TimerStateController } from "../state/TimerStateController";
 import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
 import { formatDurationSeconds } from "../model/duration";
+import "../dial/TeaTimerDial";
+import type { TeaTimerDial } from "../dial/TeaTimerDial";
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
@@ -40,29 +46,52 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _timerState: TimerViewState;
 
   @state()
+  private _dialTooltipVisible = false;
+
+  @state()
   private _ariaAnnouncement = "";
+
+  @state()
+  private _displayDurationSeconds?: number;
+
+  @query("tea-timer-dial")
+  private _dialElement?: TeaTimerDial;
 
   private _lastAnnouncedStatus?: TimerStatus;
 
   private readonly _timerStateController: TimerStateController;
+
+  private _previousTimerState?: TimerViewState;
+
+  private _dialTooltipTimer?: number;
+
+  private _cachedDialPrimaryLabel?: HTMLElement;
+  private _awaitingDialElementSync = false;
 
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
       finishedOverlayMs: 5000,
       onStateChanged: (state) => {
-        this._timerState = state;
-        this._handleAriaAnnouncement(state);
+        this._handleTimerStateChanged(state);
       },
     });
     this._timerState = this._timerStateController.state;
+    this._previousTimerState = this._timerState;
   }
 
   public setConfig(config: unknown): void {
     const result = parseTeaTimerConfig(config);
     this._errors = result.errors;
     this._config = result.config ?? undefined;
-    this._viewModel = this._config ? createTeaTimerViewModel(this._config) : undefined;
+    const state = this._timerStateController.state;
+    if (this._config) {
+      this._viewModel = createTeaTimerViewModel(this._config, state);
+    } else {
+      this._viewModel = undefined;
+    }
+    this._syncDisplayDuration(state);
+    this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
     this.requestUpdate();
   }
@@ -116,16 +145,35 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _renderDial() {
     const state = this._timerState ?? this._timerStateController.state;
     const status = state.status;
-    const primary = this._getPrimaryDialLabel(state);
+    const dial = this._viewModel?.dial;
+    const bounds = dial?.bounds ?? { min: 0, max: 0, step: 1 };
+    const displaySeconds =
+      this._displayDurationSeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
+    const dialValueText = formatDurationSeconds(displaySeconds);
+    const primary = this._getPrimaryDialLabel(state, displaySeconds);
     const secondary = this._getSecondaryDialLabel(state);
     const estimation = this._getEstimationNotice(state);
 
     return html`
-      <div class="dial" data-status=${status} aria-hidden="true">
-        <span class="dial-primary">${primary}</span>
-        <span class="dial-secondary">${secondary}</span>
+      <div class="dial-wrapper">
+        <tea-timer-dial
+          .value=${displaySeconds}
+          .bounds=${bounds}
+          .interactive=${dial?.isInteractive ?? false}
+          .status=${status}
+          .ariaLabel=${dial?.aria.label ?? STRINGS.dialLabel}
+          .valueText=${dialValueText}
+          @dial-input=${this._onDialInput}
+          @dial-blocked=${this._onDialBlocked}
+        >
+          <span slot="primary" data-role="dial-primary">${primary}</span>
+          <span slot="secondary">${secondary}</span>
+        </tea-timer-dial>
+        ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
+        ${this._dialTooltipVisible
+          ? html`<div class="dial-tooltip" role="status">${STRINGS.dialBlockedTooltip}</div>`
+          : nothing}
       </div>
-      ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
     `;
   }
 
@@ -160,7 +208,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return html`<span class="status-pill status-${state.status}" aria-hidden="true">${label}</span>`;
   }
 
-  private _getPrimaryDialLabel(state: TimerViewState): string {
+  private _getPrimaryDialLabel(state: TimerViewState, displaySeconds?: number): string {
     if (state.status === "finished") {
       return STRINGS.timerFinished;
     }
@@ -169,15 +217,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (state.remainingSeconds !== undefined) {
         return formatDurationSeconds(state.remainingSeconds);
       }
+      if (displaySeconds !== undefined) {
+        return formatDurationSeconds(displaySeconds);
+      }
       return STRINGS.timeUnknown;
     }
 
     if (state.status === "idle") {
-      if (state.remainingSeconds !== undefined) {
-        return formatDurationSeconds(state.remainingSeconds);
-      }
-      if (state.durationSeconds !== undefined) {
-        return formatDurationSeconds(state.durationSeconds);
+      if (displaySeconds !== undefined) {
+        return formatDurationSeconds(displaySeconds);
       }
       return STRINGS.timeUnknown;
     }
@@ -248,6 +296,187 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._ariaAnnouncement = STRINGS.ariaUnavailable;
         break;
     }
+  }
+
+  private _handleTimerStateChanged(state: TimerViewState) {
+    const previousState = this._previousTimerState;
+    this._timerState = state;
+    if (this._config) {
+      this._viewModel = createTeaTimerViewModel(this._config, state, {
+        previousState,
+        previousViewModel: this._viewModel,
+      });
+    }
+    this._handleAriaAnnouncement(state);
+    this._previousTimerState = state;
+    this._syncDisplayDuration(state);
+  }
+
+  private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
+    event.stopPropagation();
+    if (!this._viewModel) {
+      return;
+    }
+
+    const value = event.detail.value;
+    const state = this._timerState ?? this._timerStateController.state;
+
+    this._setDisplayDurationSeconds(value, state);
+    this._viewModel = updateDialSelection(this._viewModel, value);
+  };
+
+  private readonly _onDialBlocked = (event: Event) => {
+    event.stopPropagation();
+    this._dialTooltipVisible = true;
+    this._clearDialTooltipTimer();
+    this._dialTooltipTimer = window.setTimeout(() => {
+      this._dialTooltipVisible = false;
+      this._dialTooltipTimer = undefined;
+    }, 1800);
+  };
+
+  private _clearDialTooltipTimer() {
+    if (this._dialTooltipTimer !== undefined) {
+      clearTimeout(this._dialTooltipTimer);
+      this._dialTooltipTimer = undefined;
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._clearDialTooltipTimer();
+  }
+
+  private _syncDisplayDuration(state: TimerViewState) {
+    const viewModel = this._viewModel;
+
+    if (!viewModel) {
+      if (this._displayDurationSeconds !== undefined) {
+        this._displayDurationSeconds = undefined;
+      }
+      return;
+    }
+
+    let next: number | undefined;
+
+    switch (state.status) {
+      case "running":
+        next = state.remainingSeconds ?? viewModel.dial.selectedDurationSeconds;
+        break;
+      case "finished":
+        next = state.remainingSeconds ?? state.durationSeconds ?? viewModel.dial.selectedDurationSeconds;
+        break;
+      case "idle":
+        next = viewModel.dial.selectedDurationSeconds;
+        break;
+      default:
+        next = viewModel.dial.selectedDurationSeconds;
+        break;
+    }
+
+    this._setDisplayDurationSeconds(next, state);
+  }
+
+  private _setDisplayDurationSeconds(
+    next: number | undefined,
+    state: TimerViewState = this._timerState ?? this._timerStateController.state,
+  ) {
+    if (this._displayDurationSeconds === next) {
+      if (state) {
+        this._applyDialDisplay(state, next);
+      }
+      return;
+    }
+
+    this._displayDurationSeconds = next;
+    if (state) {
+      this._applyDialDisplay(state, next);
+    }
+  }
+
+  private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
+    const primaryLabelElement = this._resolveDialPrimaryLabel();
+    if (primaryLabelElement) {
+      primaryLabelElement.textContent = this._getPrimaryDialLabel(state, displaySeconds);
+    }
+
+    if (displaySeconds === undefined) {
+      return;
+    }
+
+    const dialElement = this._resolveDialElement();
+    if (dialElement) {
+      dialElement.valueText = formatDurationSeconds(displaySeconds);
+      return;
+    }
+
+    if (this._awaitingDialElementSync) {
+      return;
+    }
+
+    this._awaitingDialElementSync = true;
+    void this.updateComplete.then(() => {
+      this._awaitingDialElementSync = false;
+      const nextState = this._timerState ?? this._timerStateController.state;
+      this._applyDialDisplay(nextState, this._displayDurationSeconds);
+    });
+  }
+
+  private _resolveDialPrimaryLabel(): HTMLElement | undefined {
+    const cached = this._cachedDialPrimaryLabel;
+    if (cached?.isConnected) {
+      return cached;
+    }
+
+    const labelFromRenderRoot = this.renderRoot?.querySelector<HTMLElement>(
+      'tea-timer-dial [slot="primary"][data-role="dial-primary"]',
+    );
+    if (labelFromRenderRoot?.isConnected) {
+      this._cachedDialPrimaryLabel = labelFromRenderRoot;
+      return labelFromRenderRoot;
+    }
+
+    const dialElement = this._resolveDialElement();
+    if (!dialElement) {
+      this._cachedDialPrimaryLabel = undefined;
+      return undefined;
+    }
+
+    const lightDomLabel = dialElement.querySelector<HTMLElement>("[slot=\"primary\"][data-role=\"dial-primary\"]");
+    if (lightDomLabel?.isConnected) {
+      this._cachedDialPrimaryLabel = lightDomLabel;
+      return lightDomLabel;
+    }
+
+    const primarySlot = dialElement.shadowRoot?.querySelector<HTMLSlotElement>("slot[name=\"primary\"]");
+    const assignedElements = primarySlot?.assignedElements({ flatten: true }) ?? [];
+    const label = assignedElements.find(
+      (element): element is HTMLElement =>
+        element instanceof HTMLElement && element.dataset.role === "dial-primary",
+    );
+
+    this._cachedDialPrimaryLabel = label;
+    return label;
+  }
+
+  private _resolveDialElement(): TeaTimerDial | undefined {
+    const dialElement = this._dialElement;
+    if (dialElement) {
+      const node = dialElement as unknown as Partial<Node>;
+      if (!("isConnected" in node) || node.isConnected) {
+        return dialElement;
+      }
+    }
+
+    const queried = this.renderRoot?.querySelector<TeaTimerDial>("tea-timer-dial");
+    if (queried) {
+      const node = queried as unknown as Partial<Node>;
+      if (!("isConnected" in node) || node.isConnected) {
+        return queried;
+      }
+    }
+
+    return undefined;
   }
 }
 
