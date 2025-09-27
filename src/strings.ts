@@ -20,6 +20,16 @@ export interface StringTable {
   ariaRunning: string;
   ariaFinished: string;
   ariaUnavailable: string;
+  ariaStarting: (durationLabel: string) => string;
+  ariaRestarting: (durationLabel: string) => string;
+  pendingStartLabel: string;
+  pendingRestartLabel: string;
+  toastStartFailed: string;
+  toastRestartFailed: string;
+  toastEntityUnavailable: (entityId: string) => string;
+  restartConfirmMessage: (durationLabel: string) => string;
+  restartConfirmConfirm: string;
+  restartConfirmCancel: string;
   entityUnavailableWithId: (entityId: string) => string;
   validation: {
     notAnObject: string;
@@ -58,6 +68,16 @@ export const STRINGS: StringTable = {
   ariaRunning: "Timer running.",
   ariaFinished: "Timer finished.",
   ariaUnavailable: "Timer unavailable.",
+  ariaStarting: (durationLabel: string) => "Starting timer for " + durationLabel + ".",
+  ariaRestarting: (durationLabel: string) => "Restarting timer for " + durationLabel + ".",
+  pendingStartLabel: "Starting…",
+  pendingRestartLabel: "Restarting…",
+  toastStartFailed: "Couldn't start the timer. Please try again.",
+  toastRestartFailed: "Couldn't restart the timer. Please try again.",
+  toastEntityUnavailable: (entityId: string) => "Timer entity " + entityId + " is unavailable.",
+  restartConfirmMessage: (durationLabel: string) => "Restart the timer for " + durationLabel + "?",
+  restartConfirmConfirm: "Restart",
+  restartConfirmCancel: "Cancel",
   entityUnavailableWithId: (entityId: string) => `Entity unavailable (${entityId}).`,
   validation: {
     notAnObject: "Card configuration must be an object.",

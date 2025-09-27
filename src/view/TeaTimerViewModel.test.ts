@@ -13,6 +13,7 @@ const config: TeaTimerConfig = {
   ],
   cardInstanceId: "test",
   dialBounds: { min: 15, max: 1200, step: 5 },
+  confirmRestart: false,
 };
 
 describe("createTeaTimerViewModel", () => {
@@ -31,6 +32,9 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.presets[0].durationLabel).toBe("2:00");
     expect(viewModel.dial.selectedDurationSeconds).toBe(180);
     expect(viewModel.dial.bounds).toEqual(config.dialBounds);
+    expect(viewModel.selectedDurationSeconds).toBe(180);
+    expect(viewModel.ui.confirmRestart).toBe(false);
+    expect(viewModel.ui.pendingAction).toBe("none");
   });
 
   it("falls back to defaults when title missing", () => {
@@ -44,6 +48,7 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.entityLabel).toBe("Timer entity not configured.");
     expect(viewModel.ui.hasPresets).toBe(false);
     expect(viewModel.dial.selectedDurationSeconds).toBe(config.dialBounds.min);
+    expect(viewModel.selectedDurationSeconds).toBe(config.dialBounds.min);
   });
 
   it("retains user-selected duration while idle when state unchanged", () => {
@@ -62,6 +67,7 @@ describe("createTeaTimerViewModel", () => {
     });
 
     expect(nextViewModel.dial.selectedDurationSeconds).toBe(305);
+    expect(nextViewModel.selectedDurationSeconds).toBe(305);
   });
 
   it("syncs to Home Assistant updates when idle duration changes", () => {
@@ -85,5 +91,6 @@ describe("createTeaTimerViewModel", () => {
     });
 
     expect(viewModel.dial.selectedDurationSeconds).toBe(260);
+    expect(viewModel.selectedDurationSeconds).toBe(260);
   });
 });
