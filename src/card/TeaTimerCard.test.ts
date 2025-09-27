@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, nothing } from "lit";
+import type { TemplateResult } from "lit";
 import { TeaTimerCard } from "./TeaTimerCard";
 import type { TimerViewState } from "../state/TimerStateMachine";
 import { formatDurationSeconds } from "../model/duration";
+import { STRINGS } from "../strings";
 import type { HomeAssistant } from "../types/home-assistant";
 import { restartTimer, startTimer } from "../ha/services/timer";
 
@@ -41,6 +44,13 @@ describe("TeaTimerCard", () => {
       _onDialInput(event: CustomEvent<{ value: number }>): void;
     };
     handler._onDialInput(new CustomEvent("dial-input", { detail: { value } }));
+  }
+
+  function selectPreset(card: TeaTimerCard, presetId: number) {
+    const handler = card as unknown as {
+      _onPresetClick(event: Event, presetId: number): void;
+    };
+    handler._onPresetClick(new Event("click"), presetId);
   }
 
   function invokePrimaryAction(card: TeaTimerCard) {
@@ -314,6 +324,168 @@ describe("TeaTimerCard", () => {
     await Promise.resolve();
 
     expect(startTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 180);
+  });
+
+  it("selects the configured default preset on load", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+      defaultPreset: "Black",
+    });
+
+    setTimerState(card, { status: "idle" });
+
+    const internals = card as unknown as {
+      _viewModel?: { ui: { selectedPresetId?: unknown }; pendingDurationSeconds: number };
+    };
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
+    expect(internals._viewModel?.pendingDurationSeconds).toBe(240);
+  });
+
+  it("queues presets while running and surfaces next message", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 180,
+    };
+    setTimerState(card, runningState);
+
+    selectPreset(card, 0);
+
+    const internals = card as unknown as {
+      _viewModel?: { ui: { queuedPresetId?: unknown }; pendingDurationSeconds: number };
+    };
+    expect(internals._viewModel?.ui.queuedPresetId).toBe(0);
+    expect(internals._viewModel?.pendingDurationSeconds).toBe(120);
+    const subtitleTemplate = (card as unknown as { _renderSubtitle(): unknown })._renderSubtitle();
+    const container = document.createElement("div");
+    if (subtitleTemplate && subtitleTemplate !== nothing) {
+      render(subtitleTemplate as TemplateResult, container);
+    }
+    expect(container.textContent).toContain("Next");
+  });
+
+  it("restarts with queued preset and clears the queue", async () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+    card.hass = createHass();
+
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    };
+    setTimerState(card, runningState);
+
+    selectPreset(card, 0);
+
+    invokePrimaryAction(card);
+
+    await Promise.resolve();
+
+    expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 120);
+    const internals = card as unknown as {
+      _viewModel?: { ui: { queuedPresetId?: unknown; selectedPresetId?: unknown } };
+    };
+    expect(internals._viewModel?.ui.queuedPresetId).toBeUndefined();
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
+  });
+
+  it("applies queued presets when the timer returns to idle", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 60,
+    };
+    setTimerState(card, runningState);
+    selectPreset(card, 0);
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 180,
+      remainingSeconds: 180,
+    };
+    setTimerState(card, idleState);
+
+    const internals = card as unknown as {
+      _viewModel?: { ui: { queuedPresetId?: unknown; selectedPresetId?: unknown } };
+    };
+    expect(internals._viewModel?.ui.queuedPresetId).toBeUndefined();
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
+  });
+
+  it("shows custom preset indicator after dial adjustment", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 120,
+      remainingSeconds: 120,
+    };
+    setTimerState(card, idleState);
+
+    triggerDialInput(card, 195);
+
+    const internals = card as unknown as { _viewModel?: { ui: { selectedPresetId?: unknown } } };
+    expect(internals._viewModel?.ui.selectedPresetId).toBe("custom");
+    const presetsTemplate = (card as unknown as { _renderPresets(): unknown })._renderPresets();
+    const container = document.createElement("div");
+    render(presetsTemplate as TemplateResult, container);
+    const customLabel = container.querySelector(".preset-custom");
+    expect(customLabel?.textContent).toBe(STRINGS.presetsCustomLabel);
+  });
+
+  it("renders a helpful message when presets are missing", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle", presets: [] });
+    setTimerState(card, { status: "idle" });
+
+    const presetsTemplate = (card as unknown as { _renderPresets(): unknown })._renderPresets();
+    const container = document.createElement("div");
+    render(presetsTemplate as TemplateResult, container);
+    const emptyState = container.querySelector(".empty-state");
+    expect(emptyState?.textContent).toBe(STRINGS.presetsMissing);
   });
 
   it("clears the pending action when Home Assistant reports running", async () => {

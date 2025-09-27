@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createTeaTimerViewModel, updateDialSelection } from "./TeaTimerViewModel";
+import {
+  applyPresetSelection,
+  applyQueuedPreset,
+  clearQueuedPreset,
+  createTeaTimerViewModel,
+  CUSTOM_PRESET_ID,
+  queuePresetSelection,
+  updateDialSelection,
+} from "./TeaTimerViewModel";
 import { TeaTimerConfig } from "../model/config";
 import type { TimerViewState } from "../state/TimerStateMachine";
 
@@ -30,9 +38,13 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.entityLabel).toBe("timer.kitchen");
     expect(viewModel.ui.presets).toHaveLength(2);
     expect(viewModel.ui.presets[0].durationLabel).toBe("2:00");
-    expect(viewModel.dial.selectedDurationSeconds).toBe(180);
+    expect(viewModel.ui.presets[0].id).toBe(0);
+    expect(viewModel.dial.selectedDurationSeconds).toBe(120);
     expect(viewModel.dial.bounds).toEqual(config.dialBounds);
-    expect(viewModel.selectedDurationSeconds).toBe(180);
+    expect(viewModel.selectedDurationSeconds).toBe(120);
+    expect(viewModel.pendingDurationSeconds).toBe(120);
+    expect(viewModel.ui.selectedPresetId).toBe(0);
+    expect(viewModel.ui.isCustomDuration).toBe(false);
     expect(viewModel.ui.confirmRestart).toBe(false);
     expect(viewModel.ui.pendingAction).toBe("none");
   });
@@ -49,6 +61,7 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.hasPresets).toBe(false);
     expect(viewModel.dial.selectedDurationSeconds).toBe(config.dialBounds.min);
     expect(viewModel.selectedDurationSeconds).toBe(config.dialBounds.min);
+    expect(viewModel.pendingDurationSeconds).toBe(config.dialBounds.min);
   });
 
   it("retains user-selected duration while idle when state unchanged", () => {
@@ -68,6 +81,8 @@ describe("createTeaTimerViewModel", () => {
 
     expect(nextViewModel.dial.selectedDurationSeconds).toBe(305);
     expect(nextViewModel.selectedDurationSeconds).toBe(305);
+    expect(nextViewModel.pendingDurationSeconds).toBe(305);
+    expect(nextViewModel.ui.selectedPresetId).toBe(CUSTOM_PRESET_ID);
   });
 
   it("syncs to Home Assistant updates when idle duration changes", () => {
@@ -92,5 +107,54 @@ describe("createTeaTimerViewModel", () => {
 
     expect(viewModel.dial.selectedDurationSeconds).toBe(260);
     expect(viewModel.selectedDurationSeconds).toBe(260);
+    expect(viewModel.pendingDurationSeconds).toBe(260);
+    expect(viewModel.ui.selectedPresetId).toBe(CUSTOM_PRESET_ID);
+  });
+
+  it("selects the configured default preset on first load", () => {
+    const configWithDefault: TeaTimerConfig = {
+      ...config,
+      defaultPresetId: 1,
+    };
+
+    const state: TimerViewState = { status: "idle" };
+    const viewModel = createTeaTimerViewModel(configWithDefault, state);
+
+    expect(viewModel.ui.selectedPresetId).toBe(1);
+    expect(viewModel.pendingDurationSeconds).toBe(240);
+    expect(viewModel.ui.isCustomDuration).toBe(false);
+  });
+});
+
+describe("preset helpers", () => {
+  it("queues and applies presets", () => {
+    const state: TimerViewState = { status: "running", durationSeconds: 240 };
+    const base = createTeaTimerViewModel(config, state);
+    const queued = queuePresetSelection(base, 0);
+    expect(queued.ui.queuedPresetId).toBe(0);
+    expect(queued.pendingDurationSeconds).toBe(120);
+
+    const applied = applyQueuedPreset(queued);
+    expect(applied.ui.queuedPresetId).toBeUndefined();
+    expect(applied.ui.selectedPresetId).toBe(0);
+    expect(applied.pendingDurationSeconds).toBe(120);
+  });
+
+  it("clears queued preset when deselected", () => {
+    const state: TimerViewState = { status: "running", durationSeconds: 240 };
+    const base = createTeaTimerViewModel(config, state);
+    const queued = queuePresetSelection(base, 0);
+    const cleared = clearQueuedPreset(queued);
+    expect(cleared.ui.queuedPresetId).toBeUndefined();
+    expect(cleared.pendingDurationSeconds).toBe(cleared.selectedDurationSeconds);
+  });
+
+  it("applies preset selection for idle", () => {
+    const state: TimerViewState = { status: "idle" };
+    const base = createTeaTimerViewModel(config, state);
+    const applied = applyPresetSelection(base, 1);
+    expect(applied.ui.selectedPresetId).toBe(1);
+    expect(applied.pendingDurationSeconds).toBe(240);
+    expect(applied.ui.isCustomDuration).toBe(false);
   });
 });

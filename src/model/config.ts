@@ -28,6 +28,7 @@ export interface TeaTimerConfig {
   cardInstanceId: string;
   dialBounds: DurationBounds;
   confirmRestart: boolean;
+  defaultPresetId?: number;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -35,7 +36,7 @@ export interface ParsedTeaTimerConfig {
   errors: string[];
 }
 
-const RESERVED_OPTIONS = new Set(["defaultPreset", "finishedAutoIdleMs"]);
+const RESERVED_OPTIONS = new Set(["finishedAutoIdleMs"]);
 
 const DEFAULT_MIN_DURATION_SECONDS = 15;
 const DEFAULT_MAX_DURATION_SECONDS = 1200;
@@ -150,6 +151,22 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     }
   }
 
+  let defaultPresetId: number | undefined;
+  if (Array.isArray(presets) && presets.length) {
+    const defaultPreset = raw.defaultPreset;
+    if (typeof defaultPreset === "number" && Number.isFinite(defaultPreset)) {
+      const index = Math.floor(defaultPreset);
+      if (index >= 0 && index < presets.length) {
+        defaultPresetId = index;
+      }
+    } else if (typeof defaultPreset === "string") {
+      const index = presets.findIndex((preset) => preset.label === defaultPreset);
+      if (index >= 0) {
+        defaultPresetId = index;
+      }
+    }
+  }
+
   const dialBounds: DurationBounds = {
     min: Math.min(minDurationSeconds, maxDurationSeconds),
     max: Math.max(minDurationSeconds, maxDurationSeconds),
@@ -166,6 +183,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     cardInstanceId: createCardInstanceId(),
     dialBounds,
     confirmRestart,
+    defaultPresetId,
   };
 
   return { config, errors };

@@ -5,9 +5,13 @@ import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
 import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
 import {
+  applyPresetSelection,
+  applyQueuedPreset,
   clearPendingAction,
+  clearQueuedPreset,
   createTeaTimerViewModel,
   PendingTimerAction,
+  queuePresetSelection,
   setPendingAction,
   setViewModelError,
   TeaTimerViewModel,
@@ -127,6 +131,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onCardClick}
       >
         ${this._renderHeader()}
+        ${this._renderSubtitle()}
         ${this._renderStatusPill()}
         ${this._renderDial()}
         ${this._renderPresets()}
@@ -164,6 +169,25 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         <span class="entity">${entityLabel}</span>
       </header>
     `;
+  }
+
+  private _renderSubtitle() {
+    if (!this._viewModel) {
+      return nothing;
+    }
+
+    const queuedId = this._viewModel.ui.queuedPresetId;
+    if (typeof queuedId !== "number") {
+      return nothing;
+    }
+
+    const preset = this._viewModel.ui.presets.find((item) => item.id === queuedId);
+    if (!preset) {
+      return nothing;
+    }
+
+    const label = STRINGS.presetsQueuedLabel(preset.label, preset.durationLabel);
+    return html`<p class="subtitle" role="note">${label}</p>`;
   }
 
   private _renderDial() {
@@ -205,28 +229,89 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _renderPresets() {
-    if (!this._viewModel || !this._viewModel.ui.hasPresets) {
+    if (!this._viewModel) {
       return html`<div class="empty-state">${STRINGS.emptyState}</div>`;
     }
 
+    if (!this._viewModel.ui.hasPresets) {
+      return html`<div class="empty-state">${STRINGS.presetsMissing}</div>`;
+    }
+
+    const selectedId = this._viewModel.ui.selectedPresetId;
+    const queuedId = this._viewModel.ui.queuedPresetId;
+    const isCustom = this._viewModel.ui.isCustomDuration;
+
     return html`
-      <div class="presets" role="group" aria-label=${STRINGS.presetsGroupLabel}>
-        ${this._viewModel.ui.presets.map(
-          (preset) => html`
+      <div class="presets" role="radiogroup" aria-label=${STRINGS.presetsGroupLabel}>
+        ${this._viewModel.ui.presets.map((preset) => {
+          const isSelected = !isCustom && selectedId === preset.id;
+          const isQueued = queuedId === preset.id;
+          const classNames = [
+            "preset-chip",
+            isSelected ? "preset-selected" : "",
+            isQueued ? "preset-queued" : "",
+          ]
+            .filter((name) => name)
+            .join(" ");
+          const ariaChecked = isSelected ? "true" : "false";
+          return html`
             <button
-              class="preset-chip"
               type="button"
-              role="button"
-              disabled
-              aria-disabled="true"
+              class=${classNames}
+              role="radio"
+              aria-checked=${ariaChecked}
+              @click=${(event: Event) => this._onPresetClick(event, preset.id)}
             >
-              <span>${preset.label}</span>
-              <span>${preset.durationLabel}</span>
+              <span class="preset-label">${preset.label}</span>
+              <span class="preset-duration">${preset.durationLabel}</span>
             </button>
-          `,
-        )}
+          `;
+        })}
       </div>
+      ${isCustom
+        ? html`<span class="preset-custom" role="note">${STRINGS.presetsCustomLabel}</span>`
+        : nothing}
     `;
+  }
+
+  private _onPresetClick(event: Event, presetId: number) {
+    event.stopPropagation();
+    if (!this._viewModel) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+
+    if (state.status === "running") {
+      if (this._viewModel.ui.queuedPresetId === presetId) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      if (
+        this._viewModel.ui.selectedPresetId === presetId &&
+        this._viewModel.ui.queuedPresetId === undefined
+      ) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      this._viewModel = queuePresetSelection(this._viewModel, presetId);
+      return;
+    }
+
+    this._viewModel = applyPresetSelection(this._viewModel, presetId);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+  }
+
+  private _applyQueuedPresetSelection() {
+    if (!this._viewModel) {
+      return;
+    }
+
+    if (this._viewModel.ui.queuedPresetId !== undefined) {
+      this._viewModel = applyQueuedPreset(this._viewModel);
+    }
   }
 
   private _renderPendingOverlay() {
@@ -357,6 +442,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return;
       }
 
+      this._applyQueuedPresetSelection();
       void this._restartTimerAction(durationSeconds);
       return;
     }
@@ -369,7 +455,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return 0;
     }
 
-    const selected = this._viewModel.selectedDurationSeconds ?? this._viewModel.dial.selectedDurationSeconds;
+    const selected =
+      this._viewModel.pendingDurationSeconds ??
+      this._viewModel.selectedDurationSeconds ??
+      this._viewModel.dial.selectedDurationSeconds;
     return normalizeDurationSeconds(selected, this._config.dialBounds);
   }
 
@@ -465,6 +554,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    this._applyQueuedPresetSelection();
     void this._restartTimerAction(this._confirmRestartDuration);
   };
 
@@ -616,6 +706,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (previousViewModel?.ui.error) {
         this._viewModel = setViewModelError(this._viewModel, undefined);
         this._clearErrorTimer();
+      }
+
+      if (
+        previousViewModel?.ui.queuedPresetId !== undefined &&
+        previousState?.status === "running" &&
+        state.status !== "running" &&
+        this._viewModel.ui.queuedPresetId !== undefined
+      ) {
+        this._viewModel = applyQueuedPreset(this._viewModel);
       }
     }
 

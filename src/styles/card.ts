@@ -30,6 +30,12 @@ export const cardStyles = css`
     word-break: break-word;
   }
 
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--secondary-text-color, #52606d);
+    margin: -8px 0 0;
+  }
+
   .dial-wrapper {
     display: flex;
     flex-direction: column;
@@ -89,7 +95,7 @@ export const cardStyles = css`
   }
 
   .preset-chip {
-    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
     border-radius: 16px;
     padding: 6px 12px;
     background: var(--chip-background-color, rgba(0, 0, 0, 0.04));
@@ -98,11 +104,38 @@ export const cardStyles = css`
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    cursor: not-allowed;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
   }
 
-  .preset-chip[disabled] {
-    opacity: 0.6;
+  .preset-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.4);
+  }
+
+  .preset-chip.preset-selected {
+    background: rgba(0, 122, 255, 0.12);
+    border-color: rgba(0, 122, 255, 0.3);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .preset-chip.preset-queued {
+    border-style: dashed;
+  }
+
+  .preset-label {
+    font-weight: 600;
+  }
+
+  .preset-duration {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .preset-custom {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--secondary-text-color, #52606d);
   }
 
   .empty-state {
