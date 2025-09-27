@@ -41,6 +41,10 @@ describe("TeaTimerCard", () => {
     internals._handleTimerStateChanged.call(card, state);
   }
 
+  function getDisplayDuration(card: TeaTimerCard): number | undefined {
+    return (card as unknown as { _displayDurationSeconds?: number })._displayDurationSeconds;
+  }
+
   function triggerDialInput(card: TeaTimerCard, value: number) {
     const handler = card as unknown as {
       _onDialInput(event: CustomEvent<{ value: number }>): void;
@@ -112,12 +116,12 @@ describe("TeaTimerCard", () => {
 
     setTimerState(card, idleState);
 
-    const before = (card as unknown as { _displayDurationSeconds?: number })._displayDurationSeconds;
+    const before = getDisplayDuration(card);
     expect(before).toBe(120);
 
     triggerDialInput(card, 150);
 
-    const after = (card as unknown as { _displayDurationSeconds?: number })._displayDurationSeconds;
+    const after = getDisplayDuration(card);
     expect(after).toBe(150);
   });
 
@@ -164,8 +168,115 @@ describe("TeaTimerCard", () => {
 
     setTimerState(card, runningState);
 
-    const display = (card as unknown as { _displayDurationSeconds?: number })._displayDurationSeconds;
+    const display = getDisplayDuration(card);
     expect(display).toBe(180);
+  });
+
+  it("ticks the running display once per second while counting down", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 600,
+        remainingSeconds: 125,
+      };
+
+      setTimerState(card, runningState);
+
+      expect(getDisplayDuration(card)).toBe(125);
+
+      vi.advanceTimersByTime(1000);
+      expect(getDisplayDuration(card)).toBe(124);
+
+      vi.advanceTimersByTime(1000);
+      expect(getDisplayDuration(card)).toBe(123);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("resynchronizes the running display when the server sends updates", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 200,
+      };
+
+      setTimerState(card, runningState);
+      expect(getDisplayDuration(card)).toBe(200);
+
+      vi.advanceTimersByTime(5000);
+      expect(getDisplayDuration(card)).toBe(195);
+
+      const resyncedState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 160,
+      };
+
+      setTimerState(card, resyncedState);
+      expect(getDisplayDuration(card)).toBe(160);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("applies elapsed time after long pauses in ticking", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 120,
+        remainingSeconds: 90,
+      };
+
+      setTimerState(card, runningState);
+      expect(getDisplayDuration(card)).toBe(90);
+
+      vi.advanceTimersByTime(10000);
+      expect(getDisplayDuration(card)).toBe(80);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows the finished label immediately when the timer completes", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+    const finishedState: TimerViewState = {
+      status: "finished",
+      durationSeconds: 240,
+      remainingSeconds: 0,
+    };
+
+    setTimerState(card, finishedState);
+
+    const internals = card as unknown as {
+      _getPrimaryDialLabel(state: TimerViewState, displaySeconds?: number): string;
+    };
+
+    expect(internals._getPrimaryDialLabel(finishedState, 0)).toBe(STRINGS.timerFinished);
   });
 
   it("starts the timer when tapping the card from idle", async () => {
