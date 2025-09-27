@@ -73,7 +73,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _dialTooltipTimer?: number;
 
-  private _cachedDialPrimaryLabel?: HTMLElement;
   private _awaitingDialElementSync = false;
   private _errorTimer?: number;
   private _confirmRestartDuration?: number;
@@ -703,11 +702,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
-    const primaryLabelElement = this._resolveDialPrimaryLabel();
-    if (primaryLabelElement) {
-      primaryLabelElement.textContent = this._getPrimaryDialLabel(state, displaySeconds);
-    }
-
     if (displaySeconds === undefined) {
       return;
     }
@@ -728,43 +722,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       const nextState = this._timerState ?? this._timerStateController.state;
       this._applyDialDisplay(nextState, this._displayDurationSeconds);
     });
-  }
-
-  private _resolveDialPrimaryLabel(): HTMLElement | undefined {
-    const cached = this._cachedDialPrimaryLabel;
-    if (cached?.isConnected) {
-      return cached;
-    }
-
-    const labelFromRenderRoot = this.renderRoot?.querySelector<HTMLElement>(
-      'tea-timer-dial [slot="primary"][data-role="dial-primary"]',
-    );
-    if (labelFromRenderRoot?.isConnected) {
-      this._cachedDialPrimaryLabel = labelFromRenderRoot;
-      return labelFromRenderRoot;
-    }
-
-    const dialElement = this._resolveDialElement();
-    if (!dialElement) {
-      this._cachedDialPrimaryLabel = undefined;
-      return undefined;
-    }
-
-    const lightDomLabel = dialElement.querySelector<HTMLElement>("[slot=\"primary\"][data-role=\"dial-primary\"]");
-    if (lightDomLabel?.isConnected) {
-      this._cachedDialPrimaryLabel = lightDomLabel;
-      return lightDomLabel;
-    }
-
-    const primarySlot = dialElement.shadowRoot?.querySelector<HTMLSlotElement>("slot[name=\"primary\"]");
-    const assignedElements = primarySlot?.assignedElements({ flatten: true }) ?? [];
-    const label = assignedElements.find(
-      (element): element is HTMLElement =>
-        element instanceof HTMLElement && element.dataset.role === "dial-primary",
-    );
-
-    this._cachedDialPrimaryLabel = label;
-    return label;
   }
 
   private _resolveDialElement(): TeaTimerDial | undefined {
