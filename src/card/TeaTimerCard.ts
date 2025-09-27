@@ -54,9 +54,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   @state()
   private _displayDurationSeconds?: number;
 
-  @query("[data-role=\"dial-primary\"]")
-  private _dialPrimaryLabel?: HTMLSpanElement;
-
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
 
@@ -67,6 +64,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _previousTimerState?: TimerViewState;
 
   private _dialTooltipTimer?: number;
+
+  private _cachedDialPrimaryLabel?: HTMLElement;
 
   constructor() {
     super();
@@ -395,9 +394,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
-    const primaryLabel = this._getPrimaryDialLabel(state, displaySeconds);
-    if (this._dialPrimaryLabel) {
-      this._dialPrimaryLabel.textContent = primaryLabel;
+    const primaryLabelElement = this._resolveDialPrimaryLabel();
+    if (primaryLabelElement) {
+      primaryLabelElement.textContent = this._getPrimaryDialLabel(state, displaySeconds);
     }
 
     if (displaySeconds === undefined) {
@@ -408,6 +407,41 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     if (dialElement) {
       dialElement.valueText = formatDurationSeconds(displaySeconds);
     }
+  }
+
+  private _resolveDialPrimaryLabel(): HTMLElement | undefined {
+    const cached = this._cachedDialPrimaryLabel;
+    if (cached?.isConnected) {
+      return cached;
+    }
+
+    const dialElement = this._dialElement;
+    if (!dialElement) {
+      this._cachedDialPrimaryLabel = undefined;
+      return undefined;
+    }
+
+    const labelFromRenderRoot = this.renderRoot?.querySelector<HTMLElement>("[data-role=\"dial-primary\"]");
+    if (labelFromRenderRoot?.isConnected) {
+      this._cachedDialPrimaryLabel = labelFromRenderRoot;
+      return labelFromRenderRoot;
+    }
+
+    const lightDomLabel = dialElement.querySelector<HTMLElement>("[slot=\"primary\"][data-role=\"dial-primary\"]");
+    if (lightDomLabel?.isConnected) {
+      this._cachedDialPrimaryLabel = lightDomLabel;
+      return lightDomLabel;
+    }
+
+    const primarySlot = dialElement.shadowRoot?.querySelector<HTMLSlotElement>("slot[name=\"primary\"]");
+    const assignedElements = primarySlot?.assignedElements({ flatten: true }) ?? [];
+    const label = assignedElements.find(
+      (element): element is HTMLElement =>
+        element instanceof HTMLElement && element.dataset.role === "dial-primary",
+    );
+
+    this._cachedDialPrimaryLabel = label;
+    return label;
   }
 }
 

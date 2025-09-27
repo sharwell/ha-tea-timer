@@ -70,14 +70,23 @@ describe("TeaTimerCard", () => {
     setTimerState(card, idleState);
 
     const internals = card as unknown as {
-      _dialPrimaryLabel?: HTMLElement;
-      _dialElement?: HTMLElement & { valueText: string };
+      _cachedDialPrimaryLabel?: HTMLElement;
+      _dialElement?: {
+        valueText: string;
+        querySelector: (selector: string) => HTMLElement | null;
+        shadowRoot: null;
+      };
     };
 
     const primaryLabel = document.createElement("span");
-    const dialElement = document.createElement("tea-timer-dial") as HTMLElement & { valueText: string };
+    Object.defineProperty(primaryLabel, "isConnected", { get: () => true });
+    const dialElement = {
+      valueText: "",
+      querySelector: () => primaryLabel,
+      shadowRoot: null,
+    };
 
-    internals._dialPrimaryLabel = primaryLabel;
+    internals._cachedDialPrimaryLabel = undefined;
     internals._dialElement = dialElement;
 
     triggerDialInput(card, 210);
