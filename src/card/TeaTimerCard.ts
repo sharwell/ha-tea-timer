@@ -12,7 +12,7 @@ import { STRINGS } from "../strings";
 import type { HomeAssistant, LovelaceCard } from "../types/home-assistant";
 import { TimerStateController } from "../state/TimerStateController";
 import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
-import { durationToAngleRadians, formatDurationSeconds } from "../model/duration";
+import { formatDurationSeconds } from "../model/duration";
 import "../dial/TeaTimerDial";
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
@@ -142,7 +142,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const bounds = dial?.bounds ?? { min: 0, max: 0, step: 1 };
     const displaySeconds =
       this._displayDurationSeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
-    const dialAngle = durationToAngleRadians(displaySeconds, bounds);
     const dialValueText = formatDurationSeconds(displaySeconds);
     const primary = this._getPrimaryDialLabel(state, displaySeconds);
     const secondary = this._getSecondaryDialLabel(state);
@@ -154,7 +153,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           .value=${displaySeconds}
           .bounds=${bounds}
           .interactive=${dial?.isInteractive ?? false}
-          .angleRadians=${dialAngle}
           .status=${status}
           .ariaLabel=${dial?.aria.label ?? STRINGS.dialLabel}
           .valueText=${dialValueText}

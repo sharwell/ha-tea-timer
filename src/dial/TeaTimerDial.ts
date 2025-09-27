@@ -123,9 +123,6 @@ export class TeaTimerDial extends LitElement {
   @property({ type: Boolean, reflect: true })
   public interactive = false;
 
-  @property({ type: Number })
-  public angleRadians = 0;
-
   @property({ type: String })
   public status: TimerStatus = "idle";
 
@@ -140,10 +137,6 @@ export class TeaTimerDial extends LitElement {
   private readonly gestureTracker = new DialGestureTracker(0);
 
   private normalizedValue = 0;
-
-  private pendingValue?: number;
-
-  private frameHandle = 0;
 
   private readonly pointerMoveHandler = (event: PointerEvent) => this.handlePointerMove(event);
 
@@ -160,12 +153,17 @@ export class TeaTimerDial extends LitElement {
   }
 
   protected render() {
-    const baseAngle = this.pointerActive ? this.normalizedValue * TAU : this.angleRadians;
+    const pointerValue = normalizeDurationSeconds(
+      this.normalizedToValue(this.normalizedValue),
+      this.bounds,
+    );
+    const displayValue = this.pointerActive ? pointerValue : this.value;
+    const normalized = this.pointerActive
+      ? this.normalizedValue
+      : this.valueToNormalized(displayValue);
+    const baseAngle = normalized * TAU;
     const angleDegrees = (baseAngle * 180) / Math.PI;
     const ariaReadonly = this.interactive ? "false" : "true";
-    const displayValue = this.pointerActive
-      ? normalizeDurationSeconds(this.normalizedToValue(this.normalizedValue), this.bounds)
-      : this.value;
 
     return html`
       <div
@@ -257,10 +255,11 @@ export class TeaTimerDial extends LitElement {
     this.setPointerActive(false);
     this.gestureTracker.setNormalized(this.normalizedValue);
 
-    if (this.pendingValue === undefined) {
-      const finalValue = normalizeDurationSeconds(this.normalizedToValue(this.normalizedValue), this.bounds);
-      this.dispatchInput(finalValue);
-    }
+    const finalValue = normalizeDurationSeconds(
+      this.normalizedToValue(this.normalizedValue),
+      this.bounds,
+    );
+    this.dispatchInput(finalValue);
 
     this.dispatchEvent(
       new CustomEvent("dial-change-end", {
@@ -301,7 +300,7 @@ export class TeaTimerDial extends LitElement {
     }
 
     const nextValue = normalizeDurationSeconds(this.value + delta, this.bounds);
-    this.normalizedValue = this.valueToNormalized(nextValue);
+    this.setNormalizedValue(this.valueToNormalized(nextValue));
     this.gestureTracker.synchronize(this.normalizedValue);
     this.dispatchInput(nextValue);
   }
@@ -317,24 +316,7 @@ export class TeaTimerDial extends LitElement {
 
   private emitValueFromNormalized(normalized: number): void {
     const value = normalizeDurationSeconds(this.normalizedToValue(normalized), this.bounds);
-    if (this.pendingValue === value) {
-      return;
-    }
-
-    this.pendingValue = value;
-
-    if (this.frameHandle === 0) {
-      this.frameHandle = requestAnimationFrame(() => {
-        this.frameHandle = 0;
-        if (this.pendingValue === undefined) {
-          return;
-        }
-
-        const next = this.pendingValue;
-        this.pendingValue = undefined;
-        this.dispatchInput(next);
-      });
-    }
+    this.dispatchInput(value);
   }
 
   private dispatchInput(value: number): void {
@@ -406,13 +388,6 @@ export class TeaTimerDial extends LitElement {
     this.requestUpdate();
   }
 
-  disconnectedCallback(): void {
-    super.disconnectedCallback();
-    if (this.frameHandle !== 0) {
-      cancelAnimationFrame(this.frameHandle);
-      this.frameHandle = 0;
-    }
-  }
 }
 
 declare global {

@@ -1,10 +1,5 @@
 import { TeaTimerConfig, TeaTimerPresetDefinition } from "../model/config";
-import {
-  DurationBounds,
-  durationToAngleRadians,
-  formatDurationSeconds,
-  normalizeDurationSeconds,
-} from "../model/duration";
+import { DurationBounds, formatDurationSeconds, normalizeDurationSeconds } from "../model/duration";
 import { STRINGS } from "../strings";
 import type { TimerStatus, TimerViewState } from "../state/TimerStateMachine";
 
@@ -17,7 +12,6 @@ export interface TeaTimerPresetViewModel {
 export interface TeaTimerDialViewModel {
   selectedDurationSeconds: number;
   bounds: DurationBounds;
-  visual: { angleRadians: number };
   isInteractive: boolean;
   aria: {
     label: string;
@@ -79,13 +73,11 @@ function createDialViewModel(
   selectedDurationSeconds: number,
   status: TimerStatus,
 ): TeaTimerDialViewModel {
-  const angleRadians = durationToAngleRadians(selectedDurationSeconds, bounds);
   const isInteractive = status === "idle";
 
   return {
     selectedDurationSeconds,
     bounds: { ...bounds },
-    visual: { angleRadians },
     isInteractive,
     aria: {
       label: STRINGS.dialLabel,

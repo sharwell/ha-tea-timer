@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createTeaTimerViewModel, updateDialSelection } from "./TeaTimerViewModel";
 import { TeaTimerConfig } from "../model/config";
 import type { TimerViewState } from "../state/TimerStateMachine";
-import { durationToAngleRadians } from "../model/duration";
 
 const config: TeaTimerConfig = {
   type: "custom:tea-timer-card",
@@ -32,9 +31,6 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.presets[0].durationLabel).toBe("2:00");
     expect(viewModel.dial.selectedDurationSeconds).toBe(180);
     expect(viewModel.dial.bounds).toEqual(config.dialBounds);
-    expect(viewModel.dial.visual.angleRadians).toBeCloseTo(
-      durationToAngleRadians(180, config.dialBounds),
-    );
   });
 
   it("falls back to defaults when title missing", () => {
