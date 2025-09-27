@@ -1,4 +1,5 @@
 import { html, LitElement, nothing } from "lit";
+import { createRef, ref } from "lit/directives/ref.js";
 import { property, query, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
@@ -76,6 +77,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _awaitingDialElementSync = false;
   private _errorTimer?: number;
   private _confirmRestartDuration?: number;
+
+  private readonly _primaryLabelRef = createRef<HTMLSpanElement>();
 
   constructor() {
     super();
@@ -171,7 +174,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const displaySeconds =
       this._displayDurationSeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
     const dialValueText = formatDurationSeconds(displaySeconds);
-    const primary = this._getPrimaryDialLabel(state, displaySeconds);
     const secondary = this._getSecondaryDialLabel(state);
     const estimation = this._getEstimationNotice(state);
 
@@ -187,7 +189,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           @dial-input=${this._onDialInput}
           @dial-blocked=${this._onDialBlocked}
         >
-          <span slot="primary" data-role="dial-primary">${primary}</span>
+          <span
+            slot="primary"
+            data-role="dial-primary"
+            ${ref(this._primaryLabelRef)}
+          ></span>
           <span slot="secondary">${secondary}</span>
         </tea-timer-dial>
         ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
@@ -624,7 +630,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    const value = event.detail.value;
+    const bounds =
+      this._viewModel.dial?.bounds ??
+      this._config?.dialBounds ??
+      { min: 0, max: 0, step: 1 };
+    const value = normalizeDurationSeconds(event.detail.value, bounds);
     const state = this._timerState ?? this._timerStateController.state;
 
     this._setDisplayDurationSeconds(value, state);
@@ -684,31 +694,46 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._setDisplayDurationSeconds(next, state);
   }
 
+  protected updated(changed: Map<string, unknown>) {
+    super.updated(changed);
+    const state = this._timerState ?? this._timerStateController.state;
+    this._applyDialDisplay(state, this._displayDurationSeconds);
+  }
+
   private _setDisplayDurationSeconds(
     next: number | undefined,
     state: TimerViewState = this._timerState ?? this._timerStateController.state,
   ) {
     if (this._displayDurationSeconds === next) {
       if (state) {
-        this._applyDialDisplay(next);
+        this._applyDialDisplay(state, next);
       }
       return;
     }
 
     this._displayDurationSeconds = next;
     if (state) {
-      this._applyDialDisplay(next);
+      this._applyDialDisplay(state, next);
     }
   }
 
-  private _applyDialDisplay(displaySeconds?: number) {
-    if (displaySeconds === undefined) {
+  private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
+    const resolvedSeconds = displaySeconds ?? this._displayDurationSeconds;
+    const label = this._primaryLabelRef.value;
+    if (label) {
+      const text = this._getPrimaryDialLabel(state, resolvedSeconds);
+      if (label.textContent !== text) {
+        label.textContent = text;
+      }
+    }
+
+    if (resolvedSeconds === undefined) {
       return;
     }
 
     const dialElement = this._resolveDialElement();
     if (dialElement) {
-      dialElement.valueText = formatDurationSeconds(displaySeconds);
+      dialElement.valueText = formatDurationSeconds(resolvedSeconds);
       return;
     }
 
@@ -719,7 +744,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._awaitingDialElementSync = true;
     void this.updateComplete.then(() => {
       this._awaitingDialElementSync = false;
-      this._applyDialDisplay(this._displayDurationSeconds);
+      const nextState = this._timerState ?? this._timerStateController.state;
+      if (nextState) {
+        this._applyDialDisplay(nextState, this._displayDurationSeconds);
+      }
     });
   }
 
