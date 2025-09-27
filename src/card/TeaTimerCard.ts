@@ -66,6 +66,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _dialTooltipTimer?: number;
 
   private _cachedDialPrimaryLabel?: HTMLElement;
+  private _awaitingDialElementSync = false;
 
   constructor() {
     super();
@@ -403,10 +404,22 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    const dialElement = this._dialElement;
+    const dialElement = this._resolveDialElement();
     if (dialElement) {
       dialElement.valueText = formatDurationSeconds(displaySeconds);
+      return;
     }
+
+    if (this._awaitingDialElementSync) {
+      return;
+    }
+
+    this._awaitingDialElementSync = true;
+    void this.updateComplete.then(() => {
+      this._awaitingDialElementSync = false;
+      const nextState = this._timerState ?? this._timerStateController.state;
+      this._applyDialDisplay(nextState, this._displayDurationSeconds);
+    });
   }
 
   private _resolveDialPrimaryLabel(): HTMLElement | undefined {
@@ -415,16 +428,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return cached;
     }
 
-    const dialElement = this._dialElement;
-    if (!dialElement) {
-      this._cachedDialPrimaryLabel = undefined;
-      return undefined;
-    }
-
-    const labelFromRenderRoot = this.renderRoot?.querySelector<HTMLElement>("[data-role=\"dial-primary\"]");
+    const labelFromRenderRoot = this.renderRoot?.querySelector<HTMLElement>(
+      'tea-timer-dial [slot="primary"][data-role="dial-primary"]',
+    );
     if (labelFromRenderRoot?.isConnected) {
       this._cachedDialPrimaryLabel = labelFromRenderRoot;
       return labelFromRenderRoot;
+    }
+
+    const dialElement = this._resolveDialElement();
+    if (!dialElement) {
+      this._cachedDialPrimaryLabel = undefined;
+      return undefined;
     }
 
     const lightDomLabel = dialElement.querySelector<HTMLElement>("[slot=\"primary\"][data-role=\"dial-primary\"]");
@@ -442,6 +457,26 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     this._cachedDialPrimaryLabel = label;
     return label;
+  }
+
+  private _resolveDialElement(): TeaTimerDial | undefined {
+    const dialElement = this._dialElement;
+    if (dialElement) {
+      const node = dialElement as unknown as Partial<Node>;
+      if (!("isConnected" in node) || node.isConnected) {
+        return dialElement;
+      }
+    }
+
+    const queried = this.renderRoot?.querySelector<TeaTimerDial>("tea-timer-dial");
+    if (queried) {
+      const node = queried as unknown as Partial<Node>;
+      if (!("isConnected" in node) || node.isConnected) {
+        return queried;
+      }
+    }
+
+    return undefined;
   }
 }
 
