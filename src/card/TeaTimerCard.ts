@@ -1,5 +1,5 @@
 import { html, LitElement, nothing } from "lit";
-import { property, state } from "lit/decorators.js";
+import { property, query, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
 import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
@@ -14,6 +14,7 @@ import { TimerStateController } from "../state/TimerStateController";
 import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
 import { formatDurationSeconds } from "../model/duration";
 import "../dial/TeaTimerDial";
+import type { TeaTimerDial } from "../dial/TeaTimerDial";
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
@@ -52,6 +53,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   @state()
   private _displayDurationSeconds?: number;
+
+  @query("[data-role=\"dial-primary\"]")
+  private _dialPrimaryLabel?: HTMLSpanElement;
+
+  @query("tea-timer-dial")
+  private _dialElement?: TeaTimerDial;
 
   private _lastAnnouncedStatus?: TimerStatus;
 
@@ -159,7 +166,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           @dial-input=${this._onDialInput}
           @dial-blocked=${this._onDialBlocked}
         >
-          <span slot="primary">${primary}</span>
+          <span slot="primary" data-role="dial-primary">${primary}</span>
           <span slot="secondary">${secondary}</span>
         </tea-timer-dial>
         ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
@@ -311,8 +318,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    this._setDisplayDurationSeconds(event.detail.value);
-    this._viewModel = updateDialSelection(this._viewModel, event.detail.value);
+    const value = event.detail.value;
+    const state = this._timerState ?? this._timerStateController.state;
+
+    this._setDisplayDurationSeconds(value, state);
+    this._viewModel = updateDialSelection(this._viewModel, value);
   };
 
   private readonly _onDialBlocked = (event: Event) => {
@@ -364,15 +374,40 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         break;
     }
 
-    this._setDisplayDurationSeconds(next);
+    this._setDisplayDurationSeconds(next, state);
   }
 
-  private _setDisplayDurationSeconds(next: number | undefined) {
+  private _setDisplayDurationSeconds(
+    next: number | undefined,
+    state: TimerViewState = this._timerState ?? this._timerStateController.state,
+  ) {
     if (this._displayDurationSeconds === next) {
+      if (state) {
+        this._applyDialDisplay(state, next);
+      }
       return;
     }
 
     this._displayDurationSeconds = next;
+    if (state) {
+      this._applyDialDisplay(state, next);
+    }
+  }
+
+  private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
+    const primaryLabel = this._getPrimaryDialLabel(state, displaySeconds);
+    if (this._dialPrimaryLabel) {
+      this._dialPrimaryLabel.textContent = primaryLabel;
+    }
+
+    if (displaySeconds === undefined) {
+      return;
+    }
+
+    const dialElement = this._dialElement;
+    if (dialElement) {
+      dialElement.valueText = formatDurationSeconds(displaySeconds);
+    }
   }
 }
 
