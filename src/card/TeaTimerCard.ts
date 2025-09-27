@@ -690,18 +690,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   ) {
     if (this._displayDurationSeconds === next) {
       if (state) {
-        this._applyDialDisplay(state, next);
+        this._applyDialDisplay(next);
       }
       return;
     }
 
     this._displayDurationSeconds = next;
     if (state) {
-      this._applyDialDisplay(state, next);
+      this._applyDialDisplay(next);
     }
   }
 
-  private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
+  private _applyDialDisplay(displaySeconds?: number) {
     if (displaySeconds === undefined) {
       return;
     }
@@ -719,8 +719,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._awaitingDialElementSync = true;
     void this.updateComplete.then(() => {
       this._awaitingDialElementSync = false;
-      const nextState = this._timerState ?? this._timerStateController.state;
-      this._applyDialDisplay(nextState, this._displayDurationSeconds);
+      this._applyDialDisplay(this._displayDurationSeconds);
     });
   }
 
