@@ -81,6 +81,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _awaitingDialElementSync = false;
   private _errorTimer?: number;
   private _confirmRestartDuration?: number;
+  private _lastPointerPresetId?: number;
+  private _lastKeyboardPresetId?: number;
 
   private readonly _primaryLabelRef = createRef<HTMLSpanElement>();
 
@@ -260,7 +262,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
               class=${classNames}
               role="radio"
               aria-checked=${ariaChecked}
-              @click=${(event: Event) => this._onPresetClick(event, preset.id)}
+              @pointerdown=${(event: PointerEvent) =>
+                this._onPresetPointerDown(event, preset.id)}
+              @keydown=${(event: KeyboardEvent) => this._onPresetKeyDown(event, preset.id)}
+              @click=${(event: MouseEvent) => this._onPresetClick(event, preset.id)}
             >
               <span class="preset-label">${preset.label}</span>
               <span class="preset-duration">${preset.durationLabel}</span>
@@ -274,8 +279,84 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _onPresetClick(event: Event, presetId: number) {
+  private _onPresetClick(event: MouseEvent, presetId: number) {
     event.stopPropagation();
+    if (event.detail > 0 && this._lastPointerPresetId === presetId) {
+      event.preventDefault();
+      this._lastPointerPresetId = undefined;
+      return;
+    }
+
+    if (event.detail === 0 && this._lastKeyboardPresetId === presetId) {
+      event.preventDefault();
+      this._lastKeyboardPresetId = undefined;
+      return;
+    }
+
+    this._lastPointerPresetId = undefined;
+    this._lastKeyboardPresetId = undefined;
+    if (!this._viewModel) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+
+    if (state.status === "running") {
+      if (this._viewModel.ui.queuedPresetId === presetId) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      if (
+        this._viewModel.ui.selectedPresetId === presetId &&
+        this._viewModel.ui.queuedPresetId === undefined
+      ) {
+        this._viewModel = clearQueuedPreset(this._viewModel);
+        return;
+      }
+
+      this._viewModel = queuePresetSelection(this._viewModel, presetId);
+      return;
+    }
+
+    this._viewModel = applyPresetSelection(this._viewModel, presetId);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+  }
+
+  private _onPresetPointerDown(event: PointerEvent, presetId: number) {
+    if (event.button !== undefined && event.button !== 0 && event.pointerType !== "touch") {
+      return;
+    }
+
+    if (event.isPrimary === false) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const target = event.currentTarget as HTMLButtonElement | null;
+    target?.focus();
+
+    this._lastPointerPresetId = presetId;
+    this._lastKeyboardPresetId = undefined;
+    this._activatePreset(presetId);
+  }
+
+  private _onPresetKeyDown(event: KeyboardEvent, presetId: number) {
+    if (event.key !== " " && event.key !== "Spacebar" && event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    this._lastPointerPresetId = undefined;
+    this._lastKeyboardPresetId = presetId;
+    this._activatePreset(presetId);
+  }
+
+  private _activatePreset(presetId: number) {
     if (!this._viewModel) {
       return;
     }
@@ -832,6 +913,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const dialElement = this._resolveDialElement();
     if (dialElement) {
+      if (dialElement.value !== resolvedSeconds) {
+        dialElement.value = resolvedSeconds;
+      }
       dialElement.valueText = formatDurationSeconds(resolvedSeconds);
       return;
     }

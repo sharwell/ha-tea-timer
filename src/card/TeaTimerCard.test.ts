@@ -46,11 +46,35 @@ describe("TeaTimerCard", () => {
     handler._onDialInput(new CustomEvent("dial-input", { detail: { value } }));
   }
 
-  function selectPreset(card: TeaTimerCard, presetId: number) {
+  function pointerSelectPreset(card: TeaTimerCard, presetId: number) {
     const handler = card as unknown as {
-      _onPresetClick(event: Event, presetId: number): void;
+      _onPresetPointerDown(event: PointerEvent, presetId: number): void;
     };
-    handler._onPresetClick(new Event("click"), presetId);
+    const target = document.createElement("button");
+    target.focus = vi.fn();
+    const event = {
+      button: 0,
+      pointerType: "mouse",
+      isPrimary: true,
+      currentTarget: target,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as PointerEvent;
+    handler._onPresetPointerDown(event, presetId);
+  }
+
+  function keyboardActivatePreset(card: TeaTimerCard, presetId: number, key: " " | "Enter") {
+    const handler = card as unknown as {
+      _onPresetKeyDown(event: KeyboardEvent, presetId: number): void;
+    };
+    handler._onPresetKeyDown(
+      {
+        key,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as KeyboardEvent,
+      presetId,
+    );
   }
 
   function invokePrimaryAction(card: TeaTimerCard) {
@@ -348,6 +372,83 @@ describe("TeaTimerCard", () => {
     expect(internals._viewModel?.pendingDurationSeconds).toBe(240);
   });
 
+  it("highlights presets and syncs the dial on pointer activation", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 120,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, idleState);
+
+    const internals = card as unknown as {
+      _viewModel?: { ui: { selectedPresetId?: unknown } };
+      _displayDurationSeconds?: number;
+      _dialElement?: { value: number; valueText: string; shadowRoot: null };
+    };
+
+    const dialElement = { value: 0, valueText: "", shadowRoot: null };
+    internals._dialElement = dialElement;
+
+    pointerSelectPreset(card, 1);
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
+    expect(internals._displayDurationSeconds).toBe(240);
+    expect(dialElement.value).toBe(240);
+    expect(dialElement.valueText).toBe(formatDurationSeconds(240));
+  });
+
+  it("activates presets via keyboard without delay", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 120,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, idleState);
+
+    const internals = card as unknown as {
+      _viewModel?: { ui: { selectedPresetId?: unknown } };
+      _displayDurationSeconds?: number;
+      _dialElement?: { value: number; valueText: string; shadowRoot: null };
+    };
+
+    const dialElement = { value: 0, valueText: "", shadowRoot: null };
+    internals._dialElement = dialElement;
+
+    keyboardActivatePreset(card, 1, "Enter");
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
+    expect(internals._displayDurationSeconds).toBe(240);
+    expect(dialElement.value).toBe(240);
+
+    keyboardActivatePreset(card, 0, " ");
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
+    expect(internals._displayDurationSeconds).toBe(120);
+    expect(dialElement.value).toBe(120);
+  });
+
   it("queues presets while running and surfaces next message", () => {
     const card = createCard();
     card.setConfig({
@@ -366,7 +467,7 @@ describe("TeaTimerCard", () => {
     };
     setTimerState(card, runningState);
 
-    selectPreset(card, 0);
+    pointerSelectPreset(card, 0);
 
     const internals = card as unknown as {
       _viewModel?: { ui: { queuedPresetId?: unknown }; pendingDurationSeconds: number };
@@ -400,7 +501,7 @@ describe("TeaTimerCard", () => {
     };
     setTimerState(card, runningState);
 
-    selectPreset(card, 0);
+    pointerSelectPreset(card, 0);
 
     invokePrimaryAction(card);
 
@@ -431,7 +532,7 @@ describe("TeaTimerCard", () => {
       remainingSeconds: 60,
     };
     setTimerState(card, runningState);
-    selectPreset(card, 0);
+    pointerSelectPreset(card, 0);
 
     const idleState: TimerViewState = {
       status: "idle",
@@ -474,6 +575,96 @@ describe("TeaTimerCard", () => {
     render(presetsTemplate as TemplateResult, container);
     const customLabel = container.querySelector(".preset-custom");
     expect(customLabel?.textContent).toBe(STRINGS.presetsCustomLabel);
+  });
+
+  it("highlights the preset when the dial snaps to a preset duration", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 120,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, idleState);
+
+    triggerDialInput(card, 240);
+
+    const internals = card as unknown as { _viewModel?: { ui: { selectedPresetId?: unknown } } };
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
+  });
+
+  it("keeps the latest preset after rapid pointer selections", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+        { label: "Oolong", durationSeconds: 300 },
+      ],
+    });
+
+    const idleState: TimerViewState = {
+      status: "idle",
+      durationSeconds: 120,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, idleState);
+
+    pointerSelectPreset(card, 0);
+    pointerSelectPreset(card, 1);
+    pointerSelectPreset(card, 2);
+
+    const internals = card as unknown as {
+      _viewModel?: { ui: { selectedPresetId?: unknown } };
+      _displayDurationSeconds?: number;
+    };
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(2);
+    expect(internals._displayDurationSeconds).toBe(300);
+  });
+
+  it("does not desync the dial when queuing presets while running", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 200,
+    };
+
+    setTimerState(card, runningState);
+
+    const internals = card as unknown as {
+      _displayDurationSeconds?: number;
+      _viewModel?: { ui: { queuedPresetId?: unknown } };
+    };
+
+    const beforeDisplay = internals._displayDurationSeconds;
+
+    pointerSelectPreset(card, 0);
+
+    expect(internals._viewModel?.ui.queuedPresetId).toBe(0);
+    expect(internals._displayDurationSeconds).toBe(beforeDisplay);
   });
 
   it("renders a helpful message when presets are missing", () => {
