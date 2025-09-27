@@ -85,7 +85,7 @@ describe("TeaTimerCard", () => {
     expect(after).toBe(150);
   });
 
-  it("updates the dial label immediately when idle input occurs", () => {
+  it("updates the dial value text immediately when idle input occurs", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
@@ -98,28 +98,21 @@ describe("TeaTimerCard", () => {
     setTimerState(card, idleState);
 
     const internals = card as unknown as {
-      _cachedDialPrimaryLabel?: HTMLElement;
       _dialElement?: {
         valueText: string;
-        querySelector: (selector: string) => HTMLElement | null;
         shadowRoot: null;
       };
     };
 
-    const primaryLabel = document.createElement("span");
-    Object.defineProperty(primaryLabel, "isConnected", { get: () => true });
     const dialElement = {
       valueText: "",
-      querySelector: () => primaryLabel,
       shadowRoot: null,
     };
 
-    internals._cachedDialPrimaryLabel = undefined;
     internals._dialElement = dialElement;
 
     triggerDialInput(card, 210);
 
-    expect(primaryLabel.textContent).toBe(formatDurationSeconds(210));
     expect(dialElement.valueText).toBe(formatDurationSeconds(210));
   });
 
