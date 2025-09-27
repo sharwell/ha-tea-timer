@@ -138,6 +138,8 @@ export class TeaTimerDial extends LitElement {
 
   private normalizedValue = 0;
 
+  private skipTrackerSync = false;
+
   private readonly pointerMoveHandler = (event: PointerEvent) => this.handlePointerMove(event);
 
   private readonly pointerEndHandler = (event: PointerEvent) => this.handlePointerEnd(event);
@@ -153,14 +155,9 @@ export class TeaTimerDial extends LitElement {
   }
 
   protected render() {
-    const pointerValue = normalizeDurationSeconds(
-      this.normalizedToValue(this.normalizedValue),
-      this.bounds,
-    );
-    const displayValue = this.pointerActive ? pointerValue : this.value;
     const normalized = this.pointerActive
       ? this.normalizedValue
-      : this.valueToNormalized(displayValue);
+      : this.valueToNormalized(this.value);
     const baseAngle = normalized * TAU;
     const angleDegrees = (baseAngle * 180) / Math.PI;
     const ariaReadonly = this.interactive ? "false" : "true";
@@ -176,7 +173,7 @@ export class TeaTimerDial extends LitElement {
         aria-readonly=${ariaReadonly}
         aria-valuemin=${this.bounds.min}
         aria-valuemax=${this.bounds.max}
-        aria-valuenow=${Math.round(displayValue)}
+        aria-valuenow=${Math.round(this.value)}
         aria-valuetext=${this.valueText || nothing}
         @pointerdown=${this.rootPointerDownHandler}
         @keydown=${this.rootKeyDownHandler}
@@ -300,8 +297,12 @@ export class TeaTimerDial extends LitElement {
     }
 
     const nextValue = normalizeDurationSeconds(this.value + delta, this.bounds);
-    this.setNormalizedValue(this.valueToNormalized(nextValue));
-    this.gestureTracker.synchronize(this.normalizedValue);
+    if (nextValue === this.value) {
+      return;
+    }
+
+    this.value = nextValue;
+    this.syncNormalizedFromValue();
     this.dispatchInput(nextValue);
   }
 
@@ -316,6 +317,12 @@ export class TeaTimerDial extends LitElement {
 
   private emitValueFromNormalized(normalized: number): void {
     const value = normalizeDurationSeconds(this.normalizedToValue(normalized), this.bounds);
+    if (value === this.value) {
+      return;
+    }
+
+    this.skipTrackerSync = true;
+    this.value = value;
     this.dispatchInput(value);
   }
 
@@ -364,10 +371,14 @@ export class TeaTimerDial extends LitElement {
     this.setNormalizedValue(normalized);
 
     if (this.pointerActive) {
-      this.gestureTracker.synchronize(normalized);
+      if (!this.skipTrackerSync) {
+        this.gestureTracker.synchronize(normalized);
+      }
     } else {
       this.gestureTracker.setNormalized(normalized);
     }
+
+    this.skipTrackerSync = false;
   }
 
   private setPointerActive(active: boolean): void {

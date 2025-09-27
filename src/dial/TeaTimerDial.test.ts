@@ -27,6 +27,23 @@ describe("TeaTimerDial", () => {
     expect(valueEvent?.detail.value).toBe(65);
   });
 
+  it("accumulates repeated keyboard taps without waiting for host updates", () => {
+    const dial = document.createElement("tea-timer-dial");
+    dial.bounds = { min: 15, max: 120, step: 5 };
+    dial.value = 60;
+    dial.interactive = true;
+
+    const handleKeyDown =
+      TeaTimerDial.prototype as unknown as {
+        handleKeyDown(this: TeaTimerDial, event: KeyboardEvent): void;
+      };
+
+    handleKeyDown.handleKeyDown.call(dial, new KeyboardEvent("keydown", { key: "ArrowUp" }));
+    handleKeyDown.handleKeyDown.call(dial, new KeyboardEvent("keydown", { key: "ArrowUp" }));
+
+    expect(dial.value).toBe(70);
+  });
+
   it("blocks interaction when not interactive", () => {
     const dial = document.createElement("tea-timer-dial");
     dial.bounds = { min: 15, max: 120, step: 5 };
