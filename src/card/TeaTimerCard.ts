@@ -807,8 +807,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     this._handleAriaAnnouncement(state);
     this._previousTimerState = state;
-    this._updateRunningTickState(state);
     this._syncDisplayDuration(state);
+    this._updateRunningTickState(state);
   }
 
   private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
@@ -988,7 +988,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const syncTs = this._lastServerSyncMs;
 
     if (baseline === undefined) {
-      const fallback = this._viewModel?.dial.selectedDurationSeconds;
+      // Seed from the most reliable available source when Home Assistant omits
+      // `remaining` while the timer is running.
+      const fallback =
+        state.durationSeconds ??
+        this._viewModel?.dial.selectedDurationSeconds ??
+        this._displayDurationSeconds;
       if (fallback === undefined) {
         return undefined;
       }
