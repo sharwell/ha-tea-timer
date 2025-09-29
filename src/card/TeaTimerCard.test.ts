@@ -237,6 +237,34 @@ describe("TeaTimerCard", () => {
     }
   });
 
+  it("starts ticking immediately when the first running state omits remaining", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 240,
+      };
+
+      setTimerState(card, runningState);
+
+      expect(getDisplayDuration(card)).toBe(240);
+
+      vi.advanceTimersByTime(1000);
+      expect(getDisplayDuration(card)).toBe(239);
+
+      vi.advanceTimersByTime(1000);
+      expect(getDisplayDuration(card)).toBe(238);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   it("resynchronizes the running display when the server sends updates", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
