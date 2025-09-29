@@ -961,6 +961,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     if (
       display !== undefined &&
       display > 0 &&
+      (this._serverRemainingSeconds === undefined || this._lastServerSyncMs === undefined)
+    ) {
+      this._serverRemainingSeconds = Math.floor(display);
+      this._lastServerSyncMs = Date.now();
+    }
+
+    if (
+      display !== undefined &&
+      display > 0 &&
       this._serverRemainingSeconds !== undefined &&
       this._lastServerSyncMs !== undefined
     ) {
