@@ -13,6 +13,7 @@ export class TeaTimerDial extends LitElement {
     :host {
       display: inline-flex;
       justify-content: center;
+      color: var(--primary-text-color, #1f2933);
     }
 
     .dial-root {
@@ -29,7 +30,7 @@ export class TeaTimerDial extends LitElement {
       gap: 4px;
       touch-action: none;
       outline: none;
-      background: var(--ha-card-background, #fff);
+      background: var(--mdc-theme-surface, var(--ha-card-background, #fff));
       transition: border-color 120ms ease, background 120ms ease;
     }
 
@@ -77,6 +78,7 @@ export class TeaTimerDial extends LitElement {
       pointer-events: none;
       transform: rotate(0deg);
       transition: transform 80ms ease-out;
+      color: var(--dial-handle-color, var(--primary-color, #1f2933));
     }
 
     .dial-root[data-pointer="true"] .dial-handle {
@@ -90,8 +92,12 @@ export class TeaTimerDial extends LitElement {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: var(--primary-color, #1f2933);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      background: currentColor;
+      border: 2px solid var(
+        --dial-handle-ring-color,
+        var(--mdc-theme-surface, var(--ha-card-background, #fff))
+      );
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
 
     .dial-content {
