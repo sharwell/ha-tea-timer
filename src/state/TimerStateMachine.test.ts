@@ -94,6 +94,78 @@ describe("TimerStateMachine", () => {
     expect(machine.state.finishedUntilTs).toBeUndefined();
   });
 
+  it("stays idle when no finished event is received", () => {
+    const start = Date.now();
+    const machine = new TimerStateMachine({
+      finishedOverlayMs: 5000,
+      now: () => start,
+    });
+
+    const runningEntity = createEntity({
+      state: "active",
+      duration: "0:00:10",
+      remaining: "0:00:04",
+      lastChangedOffsetMs: 6000,
+    });
+
+    machine.updateFromEntity(runningEntity, start);
+    expect(machine.state.status).toBe("running");
+
+    const idleEntity = createEntity({
+      state: "idle",
+      duration: "0:00:10",
+      remaining: "0:00:10",
+    });
+
+    machine.updateFromEntity(idleEntity, start + 2000);
+    expect(machine.state.status).toBe("idle");
+    expect(machine.state.finishedUntilTs).toBeUndefined();
+  });
+
+  it("handles extremely short timers without flicker", () => {
+    const start = Date.now();
+    let clock = start;
+    const machine = new TimerStateMachine({
+      finishedOverlayMs: 5000,
+      now: () => clock,
+    });
+
+    const runningEntity = createEntity({
+      state: "active",
+      duration: "0:00:02",
+      remaining: "0:00:01",
+      lastChangedOffsetMs: 1000,
+    });
+
+    machine.updateFromEntity(runningEntity, clock);
+    expect(machine.state.status).toBe("running");
+
+    machine.markFinished(clock);
+    expect(machine.state.status).toBe("finished");
+
+    const stillActive = createEntity({
+      state: "active",
+      duration: "0:00:02",
+      remaining: undefined,
+      lastChangedOffsetMs: 2000,
+    });
+
+    machine.updateFromEntity(stillActive, clock + 10);
+    expect(machine.state.status).toBe("finished");
+
+    const idleEntity = createEntity({
+      state: "idle",
+      duration: "0:00:02",
+    });
+
+    machine.updateFromEntity(idleEntity, clock + 20);
+    expect(machine.state.status).toBe("finished");
+
+    clock += 6000;
+    machine.handleTimeAdvance(clock);
+    expect(machine.state.status).toBe("idle");
+  });
+
   it("detects large drift when estimating remaining", () => {
     const start = Date.now();
     const machine = new TimerStateMachine({ finishedOverlayMs: 5000, now: () => start });

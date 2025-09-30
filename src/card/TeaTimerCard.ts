@@ -146,13 +146,24 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ${this._renderPresets()}
         <div class="sr-only" aria-live="polite">${this._ariaAnnouncement}</div>
         <p class="note">${STRINGS.draftNote}</p>
-        <a class="help" href=${STRINGS.gettingStartedUrl} target="_blank" rel="noreferrer">
-          ${STRINGS.gettingStartedLabel}
-        </a>
+        ${this._renderSupportLinks()}
         ${this._renderPendingOverlay()}
         ${this._confirmRestartVisible ? this._renderRestartConfirm() : nothing}
         ${this._renderToast()}
       </section>
+    `;
+  }
+
+  private _renderSupportLinks() {
+    return html`
+      <div class="links">
+        <a class="help" href=${STRINGS.gettingStartedUrl} target="_blank" rel="noreferrer">
+          ${STRINGS.gettingStartedLabel}
+        </a>
+        <a class="help" href=${STRINGS.finishAutomationUrl} target="_blank" rel="noreferrer">
+          ${STRINGS.finishAutomationLabel}
+        </a>
+      </div>
     `;
   }
 

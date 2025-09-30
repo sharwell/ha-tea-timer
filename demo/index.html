@@ -36,6 +36,27 @@
       .controls button:active {
         transform: translateY(1px);
       }
+
+      .automation {
+        margin-top: 24px;
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .automation h2 {
+        margin: 0 0 8px;
+        font-size: 1.1rem;
+      }
+
+      .automation ol {
+        margin: 12px 0 0;
+        padding-left: 24px;
+        display: grid;
+        gap: 8px;
+        font-variant-numeric: tabular-nums;
+      }
     </style>
   </head>
   <body>
@@ -50,6 +71,15 @@
       <button type="button" id="btn-estimate">Set running (estimated)</button>
       <button type="button" id="btn-finish">Emit finished event</button>
       <button type="button" id="btn-unavailable">Mark unavailable</button>
+    </section>
+    <section class="automation" aria-label="Demo automation log">
+      <h2>Automation listener</h2>
+      <p>
+        This demo automation listens for <code>timer.finished</code> on
+        <code>timer.kitchen_tea</code> and logs the finish time. The entries below include the
+        approximate delay until the card overlay reports "Done".
+      </p>
+      <ol id="automation-log" reversed></ol>
     </section>
     <script type="module">
       class DemoConnection {
@@ -133,6 +163,7 @@
 
         return {
           hass,
+          connection,
           setIdle() {
             emitState(createEntity(entityId, "idle", durationSeconds, durationSeconds));
           },
@@ -190,6 +221,53 @@
         card.setConfig(configs[index]);
         card.hass = environment.hass;
       });
+
+      const automationLog = document.getElementById("automation-log");
+
+      function logAutomationEvent(data) {
+        if (!automationLog) {
+          return;
+        }
+
+        const eventTime = performance.now();
+        const entry = document.createElement("li");
+        entry.innerHTML = `
+          <strong>${new Date().toLocaleTimeString()}</strong>
+          — timer.finished fired for <code>${data.entity_id}</code>
+        `;
+        automationLog.prepend(entry);
+
+        cards.forEach((card, index) => {
+          card.updateComplete.then(() => {
+            const status = card.shadowRoot?.querySelector(".status-pill");
+            if (!status) {
+              return;
+            }
+
+            const delayMs = Math.round(performance.now() - eventTime);
+            const statusText = status.textContent ?? "";
+            const item = document.createElement("div");
+            item.textContent = `Card ${index + 1}: ${statusText.trim()} after ~${delayMs} ms`;
+            entry.appendChild(item);
+          });
+        });
+
+        while (automationLog.childElementCount > 6) {
+          automationLog.lastElementChild?.remove();
+        }
+      }
+
+      environment.connection
+        .subscribeMessage((event) => {
+          if (event?.event_type !== "timer.finished") {
+            return;
+          }
+
+          if (event.data?.entity_id === "timer.kitchen_tea") {
+            logAutomationEvent(event.data);
+          }
+        }, { type: "subscribe_events", event_type: "timer.finished" })
+        .catch(() => {});
 
       document.getElementById("btn-idle").addEventListener("click", () => environment.setIdle());
       document.getElementById("btn-run").addEventListener("click", () => environment.setRunning(150));

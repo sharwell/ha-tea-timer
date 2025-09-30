@@ -149,6 +149,13 @@ export const cardStyles = css`
     margin: 0;
   }
 
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
   .help {
     font-size: 0.85rem;
   }
