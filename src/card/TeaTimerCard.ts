@@ -87,6 +87,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private readonly _primaryLabelRef = createRef<HTMLSpanElement>();
 
   private _runningTickTimer?: number;
+  private _nextRunningTickDueMs?: number;
 
   private _serverRemainingSeconds?: number;
 
@@ -967,12 +968,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._lastServerSyncMs = Date.now();
     }
 
-    if (
-      display !== undefined &&
-      display > 0 &&
-      this._serverRemainingSeconds !== undefined &&
-      this._lastServerSyncMs !== undefined
-    ) {
+    if (display !== undefined && display > 0) {
       this._scheduleRunningTick();
     } else {
       this._cancelRunningTick();
@@ -1015,10 +1011,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _scheduleRunningTick(): void {
-    this._cancelRunningTick();
-
     const state = this._timerState ?? this._timerStateController.state;
     if (!state || state.status !== "running") {
+      this._cancelRunningTick();
       return;
     }
 
@@ -1027,16 +1022,31 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._serverRemainingSeconds <= 0 ||
       this._lastServerSyncMs === undefined
     ) {
+      this._cancelRunningTick();
       return;
     }
 
     const now = Date.now();
     const elapsedMs = Math.max(0, now - this._lastServerSyncMs);
     const remainder = elapsedMs % 1000;
-    const delay = remainder === 0 ? 1000 : 1000 - remainder;
+    const baseDelay = remainder === 0 ? 1000 : 1000 - remainder;
+    const delay = Math.max(16, baseDelay);
+    const dueMs = now + delay;
+
+    if (
+      this._runningTickTimer !== undefined &&
+      this._nextRunningTickDueMs !== undefined &&
+      this._nextRunningTickDueMs <= dueMs + 4
+    ) {
+      return;
+    }
+
+    this._cancelRunningTick();
+    this._nextRunningTickDueMs = dueMs;
 
     this._runningTickTimer = window.setTimeout(() => {
       this._runningTickTimer = undefined;
+      this._nextRunningTickDueMs = undefined;
       const nextState = this._timerState ?? this._timerStateController.state;
       if (!nextState || nextState.status !== "running") {
         return;
@@ -1045,7 +1055,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (display !== undefined && display > 0) {
         this._scheduleRunningTick();
       }
-    }, Math.max(16, delay));
+    }, delay);
   }
 
   private _cancelRunningTick(): void {
@@ -1053,6 +1063,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       clearTimeout(this._runningTickTimer);
       this._runningTickTimer = undefined;
     }
+    this._nextRunningTickDueMs = undefined;
   }
 
   private _resolveDialElement(): TeaTimerDial | undefined {

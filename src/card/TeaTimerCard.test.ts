@@ -265,6 +265,37 @@ describe("TeaTimerCard", () => {
     }
   });
 
+  it("continues ticking when running updates arrive more than once per second", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 180,
+      };
+
+      setTimerState(card, runningState);
+
+      expect(getDisplayDuration(card)).toBe(180);
+
+      for (let i = 0; i < 10; i++) {
+        vi.advanceTimersByTime(50);
+        setTimerState(card, runningState);
+      }
+
+      vi.advanceTimersByTime(1000);
+
+      expect(getDisplayDuration(card)).toBe(179);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   it("hydrates the display before seeding running ticks", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
