@@ -158,4 +158,29 @@ describe("preset helpers", () => {
     expect(applied.pendingDurationSeconds).toBe(240);
     expect(applied.ui.isCustomDuration).toBe(false);
   });
+
+  it("preserves preset identity when durations are duplicated", () => {
+    const duplicatedConfig: TeaTimerConfig = {
+      ...config,
+      presets: [
+        { label: "Coffee", durationSeconds: 240 },
+        { label: "Black Tea", durationSeconds: 240 },
+      ],
+    };
+    const state: TimerViewState = { status: "idle", durationSeconds: 240, remainingSeconds: 240 };
+
+    const base = createTeaTimerViewModel(duplicatedConfig, state);
+    const selected = applyPresetSelection(base, 1);
+    expect(selected.ui.selectedPresetId).toBe(1);
+
+    const afterDial = updateDialSelection(selected, 240);
+    expect(afterDial.ui.selectedPresetId).toBe(1);
+
+    const recomputed = createTeaTimerViewModel(duplicatedConfig, state, {
+      previousState: state,
+      previousViewModel: afterDial,
+    });
+    expect(recomputed.ui.selectedPresetId).toBe(1);
+    expect(recomputed.ui.isCustomDuration).toBe(false);
+  });
 });

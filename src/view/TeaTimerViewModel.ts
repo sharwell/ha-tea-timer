@@ -126,7 +126,15 @@ function createPresetViewModels(
 function findPresetId(
   presets: TeaTimerPresetViewModel[],
   durationSeconds: number,
+  preferredId?: number,
 ): number | undefined {
+  if (typeof preferredId === "number") {
+    const preferred = presets.find((preset) => preset.id === preferredId);
+    if (preferred && preferred.durationSeconds === durationSeconds) {
+      return preferredId;
+    }
+  }
+
   return presets.find((preset) => preset.durationSeconds === durationSeconds)?.id;
 }
 
@@ -158,9 +166,15 @@ export function updateDialSelection(
     viewModel.ui.pendingAction,
   );
   const hasPresets = viewModel.ui.presets.length > 0;
-  const match = hasPresets ? findPresetId(viewModel.ui.presets, normalized) : undefined;
-  const selectedPresetId =
-    match !== undefined ? match : hasPresets ? CUSTOM_PRESET_ID : undefined;
+  let selectedPresetId: TeaTimerPresetId | undefined;
+  if (hasPresets) {
+    const previousSelected =
+      typeof viewModel.ui.selectedPresetId === "number" ? viewModel.ui.selectedPresetId : undefined;
+    const match = findPresetId(viewModel.ui.presets, normalized, previousSelected);
+    selectedPresetId = match !== undefined ? match : CUSTOM_PRESET_ID;
+  } else {
+    selectedPresetId = undefined;
+  }
 
   return {
     ...viewModel,
@@ -171,7 +185,7 @@ export function updateDialSelection(
       ...viewModel.ui,
       selectedPresetId,
       queuedPresetId: undefined,
-      isCustomDuration: hasPresets && match === undefined,
+      isCustomDuration: hasPresets && selectedPresetId === CUSTOM_PRESET_ID,
     },
   };
 }
@@ -217,7 +231,11 @@ export function createTeaTimerViewModel(
     }
   }
 
-  const dialMatch = hasPresets ? findPresetId(presets, dial.selectedDurationSeconds) : undefined;
+  const previousSelectedId =
+    typeof previousUi?.selectedPresetId === "number" ? previousUi.selectedPresetId : undefined;
+  const dialMatch = hasPresets
+    ? findPresetId(presets, dial.selectedDurationSeconds, previousSelectedId)
+    : undefined;
   if (dialMatch !== undefined) {
     selectedPresetId = dialMatch;
     isCustomDuration = false;

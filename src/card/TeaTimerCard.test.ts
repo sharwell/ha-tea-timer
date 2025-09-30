@@ -371,7 +371,7 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("hydrates the display before seeding running ticks", () => {
+  it("seeds running ticks before hydrating the display", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
@@ -395,7 +395,7 @@ describe("TeaTimerCard", () => {
       const expectedState = toControllerState(card, runningState);
       expect(syncSpy).toHaveBeenCalledWith(expectedState);
       expect(updateSpy).toHaveBeenCalledWith(expectedState);
-      expect(syncSpy.mock.invocationCallOrder[0]).toBeLessThan(updateSpy.mock.invocationCallOrder[0]);
+      expect(updateSpy.mock.invocationCallOrder[0]).toBeLessThan(syncSpy.mock.invocationCallOrder[0]);
     } finally {
       syncSpy.mockRestore();
       updateSpy.mockRestore();

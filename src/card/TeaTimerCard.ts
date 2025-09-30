@@ -129,12 +129,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._timerStateController.setFinishedOverlayMs(
       this._config?.finishedAutoIdleMs ?? 5000,
     );
-    const state = this._timerStateController.state;
+    const state = this._timerState ?? this._timerStateController.state;
     if (this._config) {
       this._viewModel = createTeaTimerViewModel(this._config, state);
     } else {
       this._viewModel = undefined;
     }
+    this._updateRunningTickState(state);
     this._syncDisplayDuration(state);
     this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
@@ -1262,8 +1263,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     this._handleAnnouncements(state, previousState, previousViewModel);
     this._previousTimerState = state;
-    this._syncDisplayDuration(state);
     this._updateRunningTickState(state);
+    this._syncDisplayDuration(state);
   }
 
   private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
