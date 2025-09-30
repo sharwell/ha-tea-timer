@@ -86,6 +86,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private readonly _primaryLabelRef = createRef<HTMLSpanElement>();
 
+  private _runningTickTimer?: number;
+  private _nextRunningTickDueMs?: number;
+
+  private _serverRemainingSeconds?: number;
+
+  private _lastServerSyncMs?: number;
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
@@ -671,18 +678,21 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status === "running") {
-      if (state.remainingSeconds !== undefined) {
-        return formatDurationSeconds(state.remainingSeconds);
-      }
-      if (displaySeconds !== undefined) {
-        return formatDurationSeconds(displaySeconds);
+      const seconds =
+        displaySeconds ??
+        this._displayDurationSeconds ??
+        state.remainingSeconds ??
+        state.durationSeconds;
+      if (seconds !== undefined) {
+        return formatDurationSeconds(seconds);
       }
       return STRINGS.timeUnknown;
     }
 
     if (state.status === "idle") {
-      if (displaySeconds !== undefined) {
-        return formatDurationSeconds(displaySeconds);
+      const seconds = displaySeconds ?? this._displayDurationSeconds ?? state.durationSeconds;
+      if (seconds !== undefined) {
+        return formatDurationSeconds(seconds);
       }
       return STRINGS.timeUnknown;
     }
@@ -802,6 +812,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._handleAriaAnnouncement(state);
     this._previousTimerState = state;
     this._syncDisplayDuration(state);
+    this._updateRunningTickState(state);
   }
 
   private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
@@ -842,6 +853,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     this._clearDialTooltipTimer();
     this._clearErrorTimer();
+    this._cancelRunningTick();
   }
 
   private _syncDisplayDuration(state: TimerViewState) {
@@ -858,8 +870,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     switch (state.status) {
       case "running":
-        next = state.remainingSeconds ?? viewModel.dial.selectedDurationSeconds;
-        break;
+        this._applyRunningDisplay(state);
+        return;
       case "finished":
         next = state.remainingSeconds ?? state.durationSeconds ?? viewModel.dial.selectedDurationSeconds;
         break;
@@ -933,6 +945,134 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._applyDialDisplay(nextState, this._displayDurationSeconds);
       }
     });
+  }
+
+  private _updateRunningTickState(state: TimerViewState): void {
+    if (state.status !== "running") {
+      this._cancelRunningTick();
+      this._serverRemainingSeconds = undefined;
+      this._lastServerSyncMs = undefined;
+      return;
+    }
+
+    if (state.remainingSeconds !== undefined) {
+      const candidate = Math.max(0, Math.floor(state.remainingSeconds));
+      const hasBaseline = this._serverRemainingSeconds !== undefined;
+      const looksLikeDurationEcho =
+        hasBaseline &&
+        state.durationSeconds !== undefined &&
+        candidate === state.durationSeconds &&
+        candidate === this._serverRemainingSeconds;
+
+      if (!looksLikeDurationEcho) {
+        this._serverRemainingSeconds = candidate;
+        this._lastServerSyncMs = Date.now();
+      }
+    }
+
+    const display = this._applyRunningDisplay(state);
+
+    if (
+      display !== undefined &&
+      display > 0 &&
+      (this._serverRemainingSeconds === undefined || this._lastServerSyncMs === undefined)
+    ) {
+      this._serverRemainingSeconds = Math.max(0, Math.floor(display));
+      this._lastServerSyncMs = Date.now();
+    }
+
+    if (display !== undefined && display > 0) {
+      this._scheduleRunningTick();
+    } else {
+      this._cancelRunningTick();
+    }
+  }
+
+  private _applyRunningDisplay(state: TimerViewState): number | undefined {
+    if (state.status !== "running") {
+      return undefined;
+    }
+
+    const baseline = this._serverRemainingSeconds;
+    const syncTs = this._lastServerSyncMs;
+
+    if (baseline === undefined || syncTs === undefined) {
+      // Seed from the most reliable available source when Home Assistant omits
+      // `remaining` while the timer is running.
+      const fallback =
+        state.durationSeconds ??
+        this._viewModel?.dial.selectedDurationSeconds ??
+        this._viewModel?.pendingDurationSeconds ??
+        this._displayDurationSeconds;
+      if (fallback === undefined) {
+        return undefined;
+      }
+      const clamped = Math.max(0, Math.floor(fallback));
+      this._setDisplayDurationSeconds(clamped, state);
+      return clamped;
+    }
+
+    const elapsedMs = Math.max(0, Date.now() - syncTs);
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+    const displaySeconds = Math.max(0, Math.floor(baseline) - elapsedSeconds);
+    this._setDisplayDurationSeconds(displaySeconds, state);
+    return displaySeconds;
+  }
+
+  private _scheduleRunningTick(): void {
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || state.status !== "running") {
+      this._cancelRunningTick();
+      return;
+    }
+
+    if (
+      this._serverRemainingSeconds === undefined ||
+      this._serverRemainingSeconds <= 0 ||
+      this._lastServerSyncMs === undefined
+    ) {
+      this._cancelRunningTick();
+      return;
+    }
+
+    const now = Date.now();
+    const elapsedMs = Math.max(0, now - this._lastServerSyncMs);
+    const remainder = elapsedMs % 1000;
+    const baseDelay = remainder === 0 ? 1000 : 1000 - remainder;
+    const delay = Math.max(16, baseDelay);
+    const dueMs = now + delay;
+
+    if (
+      this._runningTickTimer !== undefined &&
+      this._nextRunningTickDueMs !== undefined &&
+      this._nextRunningTickDueMs <= dueMs + 4
+    ) {
+      return;
+    }
+
+    this._cancelRunningTick();
+    this._nextRunningTickDueMs = dueMs;
+
+    this._runningTickTimer = window.setTimeout(() => {
+      this._runningTickTimer = undefined;
+      this._nextRunningTickDueMs = undefined;
+      const nextState = this._timerState ?? this._timerStateController.state;
+      if (!nextState || nextState.status !== "running") {
+        return;
+      }
+      const display = this._applyRunningDisplay(nextState);
+      if (display !== undefined && display > 0) {
+        this._scheduleRunningTick();
+      }
+    }, delay);
+  }
+
+  private _cancelRunningTick(): void {
+    if (this._runningTickTimer !== undefined) {
+      clearTimeout(this._runningTickTimer);
+      this._runningTickTimer = undefined;
+    }
+    this._nextRunningTickDueMs = undefined;
   }
 
   private _resolveDialElement(): TeaTimerDial | undefined {

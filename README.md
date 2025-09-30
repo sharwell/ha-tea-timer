@@ -41,7 +41,7 @@ npm ci
   - `state_changed` keeps the card synchronized with the entity’s state.
   - `timer.finished` triggers a five-second overlay before settling back to Idle.
 - When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
-- The card never interpolates or counts down client-side; Home Assistant remains the source of truth for countdown values.
+- Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy.
 - Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration, and running taps issue `timer.cancel` followed by `timer.start` to guarantee a clean restart event stream. The UI shows a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant reports the updated state.
 
 ### Dial duration configuration

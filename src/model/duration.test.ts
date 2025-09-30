@@ -15,6 +15,19 @@ describe("duration helpers", () => {
     expect(formatDurationSeconds(3665)).toBe("1:01:05");
   });
 
+  it("formats durations below an hour using minutes and seconds", () => {
+    expect(formatDurationSeconds(3599)).toBe("59:59");
+    expect(formatDurationSeconds(61)).toBe("1:01");
+  });
+
+  it("transitions to hour format at the one-hour boundary", () => {
+    expect(formatDurationSeconds(3600)).toBe("1:00:00");
+  });
+
+  it("floors fractional seconds when formatting", () => {
+    expect(formatDurationSeconds(89.9)).toBe("1:29");
+  });
+
   it("rounds to nearest step", () => {
     expect(roundDurationSeconds(178, bounds.step)).toBe(180);
     expect(roundDurationSeconds(182, bounds.step)).toBe(180);
