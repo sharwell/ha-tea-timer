@@ -296,6 +296,42 @@ describe("TeaTimerCard", () => {
     }
   });
 
+  it("ignores duration echo updates while running", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 180,
+      };
+
+      setTimerState(card, runningState);
+
+      vi.advanceTimersByTime(1000);
+      expect(getDisplayDuration(card)).toBe(179);
+
+      const echoState: TimerViewState = {
+        status: "running",
+        durationSeconds: 180,
+        remainingSeconds: 180,
+      };
+
+      setTimerState(card, echoState);
+
+      expect(getDisplayDuration(card)).toBe(179);
+
+      vi.advanceTimersByTime(1000);
+      expect(getDisplayDuration(card)).toBe(178);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   it("hydrates the display before seeding running ticks", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });

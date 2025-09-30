@@ -953,8 +953,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.remainingSeconds !== undefined) {
-      this._serverRemainingSeconds = Math.max(0, Math.floor(state.remainingSeconds));
-      this._lastServerSyncMs = Date.now();
+      const candidate = Math.max(0, Math.floor(state.remainingSeconds));
+      const hasBaseline = this._serverRemainingSeconds !== undefined;
+      const looksLikeDurationEcho =
+        hasBaseline &&
+        state.durationSeconds !== undefined &&
+        candidate === state.durationSeconds &&
+        candidate === this._serverRemainingSeconds;
+
+      if (!looksLikeDurationEcho) {
+        this._serverRemainingSeconds = candidate;
+        this._lastServerSyncMs = Date.now();
+      }
     }
 
     const display = this._applyRunningDisplay(state);
@@ -980,10 +990,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return undefined;
     }
 
-    const baseline = this._serverRemainingSeconds ?? state.remainingSeconds;
+    const baseline = this._serverRemainingSeconds;
     const syncTs = this._lastServerSyncMs;
 
-    if (baseline === undefined) {
+    if (baseline === undefined || syncTs === undefined) {
       // Seed from the most reliable available source when Home Assistant omits
       // `remaining` while the timer is running.
       const fallback =
@@ -999,12 +1009,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return clamped;
     }
 
-    let elapsedSeconds = 0;
-    if (syncTs !== undefined) {
-      const elapsedMs = Math.max(0, Date.now() - syncTs);
-      elapsedSeconds = Math.floor(elapsedMs / 1000);
-    }
-
+    const elapsedMs = Math.max(0, Date.now() - syncTs);
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
     const displaySeconds = Math.max(0, Math.floor(baseline) - elapsedSeconds);
     this._setDisplayDurationSeconds(displaySeconds, state);
     return displaySeconds;
