@@ -115,7 +115,7 @@ function normalizeEntity(entity: HassEntity | undefined, now: number): TimerView
 }
 
 export class TimerStateMachine {
-  private readonly finishedOverlayMs: number;
+  private finishedOverlayMs: number;
 
   private readonly now: () => number;
 
@@ -128,6 +128,14 @@ export class TimerStateMachine {
   constructor(options: TimerStateMachineOptions) {
     this.finishedOverlayMs = Math.max(0, options.finishedOverlayMs);
     this.now = options.now ?? (() => Date.now());
+  }
+
+  public setFinishedOverlayMs(value: number): void {
+    if (!Number.isFinite(value)) {
+      return;
+    }
+
+    this.finishedOverlayMs = Math.max(0, value);
   }
 
   public get state(): TimerViewState {

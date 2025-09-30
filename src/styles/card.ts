@@ -96,6 +96,16 @@ export const cardStyles = css`
     color: var(--primary-text-color, #1f2933);
   }
 
+  .status-pill.status-disconnected {
+    background: rgba(250, 204, 21, 0.2);
+    color: var(--warning-color, #a86a13);
+  }
+
+  .status-pill.status-error {
+    background: rgba(191, 26, 47, 0.16);
+    color: #8a1c1c;
+  }
+
   .status-pill.status-unavailable {
     background: rgba(128, 128, 128, 0.14);
   }
@@ -141,6 +151,11 @@ export const cardStyles = css`
     transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
     min-height: 44px;
     justify-content: center;
+  }
+
+  .preset-chip[disabled] {
+    opacity: 0.5;
+    cursor: default;
   }
 
   .preset-chip:focus-visible {
@@ -203,6 +218,11 @@ export const cardStyles = css`
   }
 
   .primary-action[aria-disabled="true"] {
+    opacity: 0.7;
+    cursor: default;
+  }
+
+  .primary-action[disabled] {
     opacity: 0.7;
     cursor: default;
   }
@@ -357,6 +377,28 @@ export const cardStyles = css`
   .confirm-secondary {
     background: var(--chip-background-color, var(--mdc-chip-background-color));
     color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
+  }
+
+  .state-banner {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .state-banner-info {
+    background: rgba(0, 122, 255, 0.12);
+    color: var(--primary-text-color, #1f2933);
+  }
+
+  .state-banner-warn {
+    background: rgba(250, 204, 21, 0.18);
+    color: var(--warning-color, #a86a13);
+  }
+
+  .state-banner-error {
+    background: rgba(191, 26, 47, 0.12);
+    color: #8a1c1c;
   }
 
   .toast {

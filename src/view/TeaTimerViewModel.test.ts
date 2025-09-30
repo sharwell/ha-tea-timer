@@ -22,6 +22,7 @@ const config: TeaTimerConfig = {
   cardInstanceId: "test",
   dialBounds: { min: 15, max: 1200, step: 5 },
   confirmRestart: false,
+  finishedAutoIdleMs: 5000,
 };
 
 describe("createTeaTimerViewModel", () => {

@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { TeaTimerCard } from "./TeaTimerCard";
-import type { TimerViewState } from "../state/TimerStateMachine";
+import type { TimerViewState as MachineTimerViewState } from "../state/TimerStateMachine";
+import type { TimerViewState as ControllerTimerViewState, TimerUiState } from "../state/TimerStateController";
+type TimerViewState = MachineTimerViewState;
 import { formatDurationSeconds } from "../model/duration";
 import type { DurationBounds } from "../model/duration";
 import { STRINGS } from "../strings";
@@ -34,11 +36,48 @@ describe("TeaTimerCard", () => {
     return element;
   }
 
-  function setTimerState(card: TeaTimerCard, state: TimerViewState) {
-    const internals = TeaTimerCard.prototype as unknown as {
-      _handleTimerStateChanged(this: TeaTimerCard, next: TimerViewState): void;
+  function deriveUiState(status: MachineTimerViewState["status"]): TimerUiState {
+    switch (status) {
+      case "running":
+        return "Running";
+      case "idle":
+        return "Idle";
+      case "finished":
+        return { kind: "FinishedTransient", untilTs: Date.now() + 5000 };
+      default:
+        return { kind: "Error", reason: "EntityUnavailable" };
+    }
+  }
+
+  function toControllerState(
+    card: TeaTimerCard,
+    state: MachineTimerViewState,
+    overrides: Partial<ControllerTimerViewState> = {},
+  ): ControllerTimerViewState {
+    const entity = overrides.entityId ?? (card as unknown as { _config?: { entity?: string } })._config?.entity;
+
+    return {
+      ...state,
+      ...overrides,
+      connectionStatus: overrides.connectionStatus ?? "connected",
+      uiState: overrides.uiState ?? deriveUiState((overrides.status ?? state.status) as MachineTimerViewState["status"]),
+      inFlightAction: overrides.inFlightAction,
+      serverRemainingSecAtT0: overrides.serverRemainingSecAtT0,
+      clientMonotonicT0: overrides.clientMonotonicT0,
+      actionGeneration: overrides.actionGeneration ?? 0,
+      entityId: entity,
     };
-    internals._handleTimerStateChanged.call(card, state);
+  }
+
+  function setTimerState(
+    card: TeaTimerCard,
+    state: MachineTimerViewState,
+    overrides: Partial<ControllerTimerViewState> = {},
+  ) {
+    const internals = TeaTimerCard.prototype as unknown as {
+      _handleTimerStateChanged(this: TeaTimerCard, next: ControllerTimerViewState): void;
+    };
+    internals._handleTimerStateChanged.call(card, toControllerState(card, state, overrides));
   }
 
   function getDisplayDuration(card: TeaTimerCard): number | undefined {
@@ -108,7 +147,7 @@ describe("TeaTimerCard", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const idleState: TimerViewState = {
+    const idleState: MachineTimerViewState = {
       status: "idle",
       durationSeconds: 120,
       remainingSeconds: 120,
@@ -129,7 +168,7 @@ describe("TeaTimerCard", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const idleState: TimerViewState = {
+    const idleState: MachineTimerViewState = {
       status: "idle",
       durationSeconds: 180,
       remainingSeconds: 180,
@@ -160,7 +199,7 @@ describe("TeaTimerCard", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const runningState: TimerViewState = {
+    const runningState: MachineTimerViewState = {
       status: "running",
       durationSeconds: 300,
       remainingSeconds: 180,
@@ -180,7 +219,7 @@ describe("TeaTimerCard", () => {
       const card = createCard();
       card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-      const runningState: TimerViewState = {
+      const runningState: MachineTimerViewState = {
         status: "running",
         durationSeconds: 600,
         remainingSeconds: 125,
@@ -336,9 +375,12 @@ describe("TeaTimerCard", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const syncSpy = vi.spyOn(card as unknown as { _syncDisplayDuration(state: TimerViewState): void }, "_syncDisplayDuration");
+    const syncSpy = vi.spyOn(
+      card as unknown as { _syncDisplayDuration(state: ControllerTimerViewState): void },
+      "_syncDisplayDuration",
+    );
     const updateSpy = vi.spyOn(
-      card as unknown as { _updateRunningTickState(state: TimerViewState): void },
+      card as unknown as { _updateRunningTickState(state: ControllerTimerViewState): void },
       "_updateRunningTickState",
     );
 
@@ -350,8 +392,9 @@ describe("TeaTimerCard", () => {
 
       setTimerState(card, runningState);
 
-      expect(syncSpy).toHaveBeenCalledWith(runningState);
-      expect(updateSpy).toHaveBeenCalledWith(runningState);
+      const expectedState = toControllerState(card, runningState);
+      expect(syncSpy).toHaveBeenCalledWith(expectedState);
+      expect(updateSpy).toHaveBeenCalledWith(expectedState);
       expect(syncSpy.mock.invocationCallOrder[0]).toBeLessThan(updateSpy.mock.invocationCallOrder[0]);
     } finally {
       syncSpy.mockRestore();

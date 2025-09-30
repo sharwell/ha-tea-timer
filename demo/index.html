@@ -71,6 +71,9 @@
       <button type="button" id="btn-estimate">Set running (estimated)</button>
       <button type="button" id="btn-finish">Emit finished event</button>
       <button type="button" id="btn-unavailable">Mark unavailable</button>
+      <button type="button" id="btn-disconnect">Disconnect</button>
+      <button type="button" id="btn-reconnect">Reconnect</button>
+      <button type="button" id="btn-fail-service">Fail next service call</button>
     </section>
     <section class="automation" aria-label="Demo automation log">
       <h2>Automation listener</h2>
@@ -82,9 +85,57 @@
       <ol id="automation-log" reversed></ol>
     </section>
     <script type="module">
+      const READY_STATES = { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 };
+
+      class DemoSocket {
+        constructor() {
+          this.readyState = READY_STATES.OPEN;
+          this._listeners = new Map();
+        }
+
+        addEventListener(type, handler) {
+          const listeners = this._listeners.get(type) ?? new Set();
+          listeners.add(handler);
+          this._listeners.set(type, listeners);
+        }
+
+        removeEventListener(type, handler) {
+          this._listeners.get(type)?.delete(handler);
+        }
+
+        _emit(type) {
+          const listeners = Array.from(this._listeners.get(type) ?? []);
+          listeners.forEach((listener) => {
+            try {
+              listener({});
+            } catch (error) {
+              console.error(error);
+            }
+          });
+        }
+
+        close() {
+          if (this.readyState === READY_STATES.CLOSED) {
+            return;
+          }
+          this.readyState = READY_STATES.CLOSED;
+          this._emit("close");
+        }
+
+        open() {
+          this.readyState = READY_STATES.OPEN;
+          this._emit("open");
+        }
+
+        error() {
+          this._emit("error");
+        }
+      }
+
       class DemoConnection {
         constructor() {
           this._listeners = new Map();
+          this.socket = new DemoSocket();
         }
 
         async subscribeMessage(callback, message) {
@@ -138,17 +189,18 @@
         };
       }
 
-      function createDemoEnvironment(entityId, durationSeconds = 240) {
+      function cloneEntity(entity) {
+        return JSON.parse(JSON.stringify(entity));
+      }
+
+      function createDemoEnvironment(entityId, initialDurationSeconds = 240) {
+        const environment = {};
         const connection = new DemoConnection();
         const states = {};
+        let durationSeconds = initialDurationSeconds;
         let current = createEntity(entityId, "idle", durationSeconds, durationSeconds);
+        let shouldFailCall = false;
         states[entityId] = current;
-
-        const hass = {
-          locale: { language: "en" },
-          states,
-          connection,
-        };
 
         function emitState(newState) {
           const oldState = current;
@@ -161,9 +213,37 @@
           });
         }
 
-        return {
-          hass,
+        Object.assign(environment, {
           connection,
+          hass: {
+            locale: { language: "en" },
+            states,
+            connection,
+            async callService(domain, service, data) {
+              if (shouldFailCall) {
+                shouldFailCall = false;
+                throw new Error("demo service failure");
+              }
+
+              if (domain !== "timer") {
+                return undefined;
+              }
+
+              if (service === "start") {
+                const runDuration = Math.max(1, Number(data?.duration ?? durationSeconds));
+                durationSeconds = runDuration;
+                environment.setRunning(runDuration);
+                return undefined;
+              }
+
+              if (service === "cancel") {
+                environment.setIdle();
+                return undefined;
+              }
+
+              return undefined;
+            },
+          },
           setIdle() {
             emitState(createEntity(entityId, "idle", durationSeconds, durationSeconds));
           },
@@ -192,10 +272,22 @@
               entity_id: entityId,
             });
             setTimeout(() => {
-              this.setIdle();
+              environment.setIdle();
             }, 400);
           },
-        };
+          disconnect() {
+            connection.socket.close();
+          },
+          reconnect() {
+            connection.socket.open();
+            emitState(cloneEntity(current));
+          },
+          failNextServiceCall() {
+            shouldFailCall = true;
+          },
+        });
+
+        return environment;
       }
 
       const cards = Array.from(document.querySelectorAll("tea-timer-card"));
@@ -274,6 +366,9 @@
       document.getElementById("btn-estimate").addEventListener("click", () => environment.setRunning(120, false));
       document.getElementById("btn-finish").addEventListener("click", () => environment.emitFinished());
       document.getElementById("btn-unavailable").addEventListener("click", () => environment.setUnavailable());
+      document.getElementById("btn-disconnect").addEventListener("click", () => environment.disconnect());
+      document.getElementById("btn-reconnect").addEventListener("click", () => environment.reconnect());
+      document.getElementById("btn-fail-service").addEventListener("click", () => environment.failNextServiceCall());
     </script>
   </body>
 </html>

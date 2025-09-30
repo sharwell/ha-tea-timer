@@ -192,4 +192,21 @@ describe("TimerStateMachine", () => {
     machine.clear();
     expect(machine.state.status).toBe("unavailable");
   });
+
+  it("applies updated finished overlay duration", () => {
+    const start = Date.now();
+    const clock = start;
+    const machine = new TimerStateMachine({ finishedOverlayMs: 5000, now: () => clock });
+
+    const entity = createEntity({
+      state: "idle",
+      duration: "0:00:10",
+    });
+
+    machine.updateFromEntity(entity, clock);
+    machine.setFinishedOverlayMs(1000);
+    machine.markFinished(clock);
+
+    expect(machine.state.finishedUntilTs).toBe(start + 1000);
+  });
 });

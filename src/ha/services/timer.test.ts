@@ -19,7 +19,7 @@ describe("timer services", () => {
     });
   });
 
-  it("cancels then restarts the timer", async () => {
+  it("restarts the timer with a single start call", async () => {
     const callService = vi.fn().mockResolvedValue(undefined);
     const hass: HomeAssistant = {
       locale: { language: "en" },
@@ -29,10 +29,8 @@ describe("timer services", () => {
 
     await restartTimer(hass, "timer.kitchen", 90);
 
-    expect(callService).toHaveBeenNthCalledWith(1, "timer", "cancel", {
-      entity_id: "timer.kitchen",
-    });
-    expect(callService).toHaveBeenNthCalledWith(2, "timer", "start", {
+    expect(callService).toHaveBeenCalledTimes(1);
+    expect(callService).toHaveBeenCalledWith("timer", "start", {
       entity_id: "timer.kitchen",
       duration: 90,
     });

@@ -15,12 +15,19 @@ export interface StringTable {
   statusRunning: string;
   statusFinished: string;
   statusUnavailable: string;
+  statusDisconnected: string;
+  statusReconnecting: string;
+  statusError: string;
   timerFinished: string;
   timerUnavailable: string;
   timeUnknown: string;
   remainingEstimateNotice: string;
   dialLabel: string;
   dialBlockedTooltip: string;
+  disconnectedMessage: string;
+  disconnectedReconnectingMessage: string;
+  entityUnavailableBanner: (entityId: string) => string;
+  serviceFailureMessage: string;
   durationSpeech: {
     hour: (value: number) => string;
     minute: (value: number) => string;
@@ -91,12 +98,24 @@ export const STRINGS: StringTable = {
   statusRunning: "Running",
   statusFinished: "Finished",
   statusUnavailable: "Entity unavailable",
+  statusDisconnected: "Disconnected",
+  statusReconnecting: "Reconnecting",
+  statusError: "Error",
   timerFinished: "Done",
   timerUnavailable: "Unavailable",
   timeUnknown: "--:--",
   remainingEstimateNotice: "Time remaining is estimated (waiting for Home Assistant update).",
   dialLabel: "Brew duration",
   dialBlockedTooltip: "Timer is running—cannot change duration.",
+  disconnectedMessage:
+    "Disconnected from Home Assistant. Controls are paused until the link returns.",
+  disconnectedReconnectingMessage: "Connection lost—trying to reconnect to Home Assistant…",
+  entityUnavailableBanner: (entityId: string) =>
+    "Timer entity " +
+    entityId +
+    " is unavailable. Open Home Assistant to re-enable it.",
+  serviceFailureMessage:
+    "Couldn't complete the timer action. Check your Home Assistant connection and try again.",
   durationSpeech: {
     hour: (value: number) => `${value} hour${value === 1 ? "" : "s"}`,
     minute: (value: number) => `${value} minute${value === 1 ? "" : "s"}`,

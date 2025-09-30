@@ -41,8 +41,9 @@ npm ci
   - `state_changed` keeps the card synchronized with the entity’s state.
   - `timer.finished` triggers a five-second overlay before settling back to Idle.
 - When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
-- Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy.
-- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration, and running taps issue `timer.cancel` followed by `timer.start` to guarantee a clean restart event stream. The UI shows a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant reports the updated state.
+- Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy. The countdown pauses while disconnected and resumes after a successful resync.
+- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration. Running taps restart the timer by calling `timer.start` again with the desired duration (no client-side cancel). The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state.
+- The connection status is monitored in real time. If the Home Assistant WebSocket disconnects the card freezes the countdown, surfaces a “Disconnected” banner, and disables interactions until the link is restored and a fresh state snapshot is fetched.
 
 ### Dial duration configuration
 
@@ -65,6 +66,7 @@ npm ci
 ### Troubleshooting
 
 - **Entity unavailable**: Verify the `entity` option matches an existing Home Assistant timer (e.g., `timer.tea_timer_kitchen`). The card will display the configured entity id to help diagnose typos.
+- **Disconnected banner**: If you see “Disconnected from Home Assistant,” check that your browser still has a WebSocket path to the server. The card freezes the countdown and disables the dial until it reconnects and replays the latest entity state.
 - **No live updates**: Ensure the Home Assistant WebSocket connection is available. The card falls back to the latest `hass` object update but real-time updates rely on the connection being online.
 - **Estimated remaining time**: If Home Assistant does not provide `remaining`, the card estimates the value. When the estimate drifts more than ~2 seconds, a note appears until Home Assistant reports an authoritative value.
 
@@ -102,6 +104,7 @@ To experiment locally, run `npm run dev` and open the playground at http://local
    maxDurationSeconds: 900
    stepSeconds: 10
    confirmRestart: true # optional—require confirmation before restarting a running timer
+   finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
    ```
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
@@ -182,7 +185,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    9.3. `presets` (array of `{label, duration}`; at least 3, up to 8).
    9.4. `default_preset` (optional index or label).
    9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
-   9.6. `finished_auto_idle_ms` (default 5000).
+  9.6. `finishedAutoIdleMs` (default 5000).
    9.7. `confirmRestart` (default false).
 
 10. **Accessibility & Internationalization**
