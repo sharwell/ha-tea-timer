@@ -98,9 +98,16 @@ To experiment locally, run `npm run dev` and open the playground at http://local
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
 
+### Automate on finish
+
+- The card listens for Home Assistant’s `timer.finished` event to surface the five-second “Done” overlay. You can attach your own automations to the same event to play sounds, flash lights, or send notifications.
+- See [Automate on `timer.finished`](docs/automations/finished.md) for a QA automation example, manual test scenarios, and guidance on handling edge cases like multi-device sync or timers that finish while Home Assistant is offline.
+- Home Assistant does **not replay** missed finishes after a restart. If a timer would have expired while Home Assistant was offline, no `timer.finished` event is emitted on startup.
+
 ### Documentation
 
 - [Getting Started Guide](docs/getting-started.md)
+- [Automate on `timer.finished`](docs/automations/finished.md)
 
 Below is a crisp, implementation‑ready specification for a **Tea Timer Card** as an independent Home Assistant extension (custom Lovelace card + optional helper). It’s organized into **MVD** (minimum viable deliverable) and **Post‑MVD**. Every item is numbered for easy re‑ordering. After the spec, you’ll find a set of **concrete unit milestones**.
 

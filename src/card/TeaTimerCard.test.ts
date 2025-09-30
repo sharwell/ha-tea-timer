@@ -1017,6 +1017,20 @@ describe("TeaTimerCard", () => {
     expect(emptyState?.textContent).toBe(STRINGS.presetsMissing);
   });
 
+  it("renders support links for setup and automations", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    setTimerState(card, { status: "idle" });
+
+    const linksTemplate = (card as unknown as { _renderSupportLinks(): TemplateResult })._renderSupportLinks();
+    const container = document.createElement("div");
+    render(linksTemplate, container);
+    const links = Array.from(container.querySelectorAll<HTMLAnchorElement>(".links .help"));
+    expect(links.length).toBe(2);
+    const labels = links.map((link) => link.textContent?.trim());
+    expect(labels).toEqual([STRINGS.gettingStartedLabel, STRINGS.finishAutomationLabel]);
+  });
+
   it("clears the pending action when Home Assistant reports running", async () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
