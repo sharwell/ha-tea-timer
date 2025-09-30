@@ -265,6 +265,33 @@ describe("TeaTimerCard", () => {
     }
   });
 
+  it("hydrates the display before seeding running ticks", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+    const syncSpy = vi.spyOn(card as unknown as { _syncDisplayDuration(state: TimerViewState): void }, "_syncDisplayDuration");
+    const updateSpy = vi.spyOn(
+      card as unknown as { _updateRunningTickState(state: TimerViewState): void },
+      "_updateRunningTickState",
+    );
+
+    try {
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 150,
+      };
+
+      setTimerState(card, runningState);
+
+      expect(syncSpy).toHaveBeenCalledWith(runningState);
+      expect(updateSpy).toHaveBeenCalledWith(runningState);
+      expect(syncSpy.mock.invocationCallOrder[0]).toBeLessThan(updateSpy.mock.invocationCallOrder[0]);
+    } finally {
+      syncSpy.mockRestore();
+      updateSpy.mockRestore();
+    }
+  });
+
   it("resynchronizes the running display when the server sends updates", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));

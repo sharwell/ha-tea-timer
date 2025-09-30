@@ -963,7 +963,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       display > 0 &&
       (this._serverRemainingSeconds === undefined || this._lastServerSyncMs === undefined)
     ) {
-      this._serverRemainingSeconds = Math.floor(display);
+      this._serverRemainingSeconds = Math.max(0, Math.floor(display));
       this._lastServerSyncMs = Date.now();
     }
 
@@ -993,6 +993,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       const fallback =
         state.durationSeconds ??
         this._viewModel?.dial.selectedDurationSeconds ??
+        this._viewModel?.pendingDurationSeconds ??
         this._displayDurationSeconds;
       if (fallback === undefined) {
         return undefined;
