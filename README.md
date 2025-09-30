@@ -52,7 +52,15 @@ npm ci
   - `maxDurationSeconds` (default `1200` seconds / 20 minutes)
   - `stepSeconds` (default `5` seconds)
 - Values are clamped within the configured range and rounded to the nearest step. Crossing the 12‑o’clock boundary is smoothed so the value continues naturally.
-- Accessibility: the dial exposes `role="slider"` with `aria-valuemin`, `aria-valuemax`, and `aria-valuenow`. Keyboard controls mirror the pointer interactions (`←`/`↓` decrease by `stepSeconds`, `→`/`↑` increase by `stepSeconds`, `PageDown`/`PageUp` adjust by 30 seconds).
+- Accessibility: the dial exposes `role="slider"` with `aria-valuemin`, `aria-valuemax`, and `aria-valuenow`. Keyboard controls mirror the pointer interactions (`←`/`↓` decrease by `stepSeconds`, `→`/`↑` increase by `stepSeconds`, `PageDown`/`PageUp` adjust by 30 seconds). Right and Left follow the current text direction so RTL locales nudge in the expected direction.
+
+### Accessibility
+
+- Preset chips and the primary Start/Restart button sit in the tab order (chips left-to-right followed by the main action). Each control exposes an accessible name that includes the preset label and its formatted duration.
+- The timer status is announced through a polite live region. Start, restart, finish, and remaining-time updates are throttled (30s ≥2:00, 10s ≥1:00, 5s ≥0:20, 1s <0:10) to avoid overwhelming assistive tech.
+- Queuing a new preset while the timer runs surfaces a single “Next preset selected …” announcement; clearing the queue suppresses stale messages.
+- Entity-unavailable errors surface via `role="alert"` without stealing focus. Toasts for other errors remain polite live regions.
+- Reduced-motion preferences disable dial and spinner animations, and forced-colors/high-contrast modes fall back to system colors for primary controls.
 
 ### Troubleshooting
 

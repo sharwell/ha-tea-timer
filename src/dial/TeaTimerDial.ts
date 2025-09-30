@@ -112,6 +112,13 @@ export class TeaTimerDial extends LitElement {
       font-size: 0.95rem;
       color: var(--secondary-text-color, #52606d);
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dial-root,
+      .dial-handle {
+        transition: none !important;
+      }
+    }
   `;
 
   @property({ type: Number })
@@ -270,12 +277,18 @@ export class TeaTimerDial extends LitElement {
     const { key } = event;
     let delta = 0;
 
+    const isRtl = this.getEffectiveDirection() === "rtl";
+
     switch (key) {
       case "ArrowLeft":
+        delta = isRtl ? this.bounds.step : -this.bounds.step;
+        break;
+      case "ArrowRight":
+        delta = isRtl ? -this.bounds.step : this.bounds.step;
+        break;
       case "ArrowDown":
         delta = -this.bounds.step;
         break;
-      case "ArrowRight":
       case "ArrowUp":
         delta = this.bounds.step;
         break;
@@ -334,6 +347,16 @@ export class TeaTimerDial extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  private getEffectiveDirection(): "ltr" | "rtl" {
+    const dirAttr = (this as HTMLElement).dir;
+    if (dirAttr === "rtl" || dirAttr === "ltr") {
+      return dirAttr;
+    }
+
+    const computed = getComputedStyle(this).direction;
+    return computed === "rtl" ? "rtl" : "ltr";
   }
 
   private getRawNormalized(event: PointerEvent, element: HTMLElement): number {

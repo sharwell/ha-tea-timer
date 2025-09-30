@@ -40,10 +40,7 @@ export function durationToAngleRadians(value: number, bounds: DurationBounds): n
 }
 
 export function formatDurationSeconds(durationSeconds: number): string {
-  const totalSeconds = Math.max(0, Math.floor(durationSeconds));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const { hours, minutes, seconds } = splitDurationSeconds(durationSeconds);
 
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
@@ -52,4 +49,45 @@ export function formatDurationSeconds(durationSeconds: number): string {
   }
 
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export interface DurationSpeechStrings {
+  hour: (value: number) => string;
+  minute: (value: number) => string;
+  second: (value: number) => string;
+  list: (parts: string[]) => string;
+}
+
+export function splitDurationSeconds(durationSeconds: number): {
+  hours: number;
+  minutes: number;
+  seconds: number;
+} {
+  const totalSeconds = Math.max(0, Math.floor(durationSeconds));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { hours, minutes, seconds };
+}
+
+export function formatDurationSpeech(
+  durationSeconds: number,
+  strings: DurationSpeechStrings,
+): string {
+  const { hours, minutes, seconds } = splitDurationSeconds(durationSeconds);
+  const parts: string[] = [];
+
+  if (hours > 0) {
+    parts.push(strings.hour(hours));
+  }
+
+  if (minutes > 0) {
+    parts.push(strings.minute(minutes));
+  }
+
+  if (seconds > 0 || parts.length === 0) {
+    parts.push(strings.second(seconds));
+  }
+
+  return strings.list(parts);
 }
