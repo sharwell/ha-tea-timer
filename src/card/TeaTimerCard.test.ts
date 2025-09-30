@@ -437,6 +437,26 @@ describe("TeaTimerCard", () => {
     expect(internals._getPrimaryDialLabel(finishedState, 0)).toBe(STRINGS.timerFinished);
   });
 
+  it("prefers the running display over server remaining when formatting the primary label", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 180,
+      remainingSeconds: 180,
+    };
+
+    const internals = card as unknown as {
+      _getPrimaryDialLabel(state: TimerViewState, displaySeconds?: number): string;
+      _displayDurationSeconds?: number;
+    };
+
+    internals._displayDurationSeconds = 179;
+
+    expect(internals._getPrimaryDialLabel(runningState, 179)).toBe(formatDurationSeconds(179));
+  });
+
   it("starts the timer when tapping the card from idle", async () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });

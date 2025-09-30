@@ -678,18 +678,21 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status === "running") {
-      if (state.remainingSeconds !== undefined) {
-        return formatDurationSeconds(state.remainingSeconds);
-      }
-      if (displaySeconds !== undefined) {
-        return formatDurationSeconds(displaySeconds);
+      const seconds =
+        displaySeconds ??
+        this._displayDurationSeconds ??
+        state.remainingSeconds ??
+        state.durationSeconds;
+      if (seconds !== undefined) {
+        return formatDurationSeconds(seconds);
       }
       return STRINGS.timeUnknown;
     }
 
     if (state.status === "idle") {
-      if (displaySeconds !== undefined) {
-        return formatDurationSeconds(displaySeconds);
+      const seconds = displaySeconds ?? this._displayDurationSeconds ?? state.durationSeconds;
+      if (seconds !== undefined) {
+        return formatDurationSeconds(seconds);
       }
       return STRINGS.timeUnknown;
     }
