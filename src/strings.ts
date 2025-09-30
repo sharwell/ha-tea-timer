@@ -21,12 +21,22 @@ export interface StringTable {
   remainingEstimateNotice: string;
   dialLabel: string;
   dialBlockedTooltip: string;
+  durationSpeech: {
+    hour: (value: number) => string;
+    minute: (value: number) => string;
+    second: (value: number) => string;
+    list: (parts: string[]) => string;
+  };
   ariaIdle: string;
   ariaRunning: string;
   ariaFinished: string;
   ariaUnavailable: string;
-  ariaStarting: (durationLabel: string) => string;
-  ariaRestarting: (durationLabel: string) => string;
+  ariaStarting: (durationSpeech: string) => string;
+  ariaRestarting: (durationSpeech: string) => string;
+  ariaFinishedWithDuration: (durationSpeech: string) => string;
+  ariaRemaining: (durationSpeech: string) => string;
+  ariaQueuedPreset: (label: string, durationSpeech: string) => string;
+  ariaQueuedCustom: (durationSpeech: string) => string;
   pendingStartLabel: string;
   pendingRestartLabel: string;
   toastStartFailed: string;
@@ -35,6 +45,18 @@ export interface StringTable {
   restartConfirmMessage: (durationLabel: string) => string;
   restartConfirmConfirm: string;
   restartConfirmCancel: string;
+  primaryActionStart: string;
+  primaryActionRestart: string;
+  primaryActionStartLabel: (
+    durationSpeech: string,
+    presetLabel?: string,
+    queued?: boolean,
+  ) => string;
+  primaryActionRestartLabel: (
+    durationSpeech: string,
+    presetLabel?: string,
+    queued?: boolean,
+  ) => string;
   entityUnavailableWithId: (entityId: string) => string;
   validation: {
     notAnObject: string;
@@ -75,12 +97,35 @@ export const STRINGS: StringTable = {
   remainingEstimateNotice: "Time remaining is estimated (waiting for Home Assistant update).",
   dialLabel: "Brew duration",
   dialBlockedTooltip: "Timer is running—cannot change duration.",
+  durationSpeech: {
+    hour: (value: number) => `${value} hour${value === 1 ? "" : "s"}`,
+    minute: (value: number) => `${value} minute${value === 1 ? "" : "s"}`,
+    second: (value: number) => `${value} second${value === 1 ? "" : "s"}`,
+    list: (parts: string[]) => {
+      if (parts.length <= 1) {
+        return parts.join("");
+      }
+
+      if (parts.length === 2) {
+        return `${parts[0]} and ${parts[1]}`;
+      }
+
+      return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+    },
+  },
   ariaIdle: "Timer idle.",
   ariaRunning: "Timer running.",
   ariaFinished: "Timer finished.",
   ariaUnavailable: "Timer unavailable.",
-  ariaStarting: (durationLabel: string) => "Starting timer for " + durationLabel + ".",
-  ariaRestarting: (durationLabel: string) => "Restarting timer for " + durationLabel + ".",
+  ariaStarting: (durationSpeech: string) => `Timer started for ${durationSpeech}.`,
+  ariaRestarting: (durationSpeech: string) => `Timer restarted for ${durationSpeech}.`,
+  ariaFinishedWithDuration: (durationSpeech: string) =>
+    `Timer finished with ${durationSpeech} elapsed.`,
+  ariaRemaining: (durationSpeech: string) => `${durationSpeech} remaining.`,
+  ariaQueuedPreset: (label: string, durationSpeech: string) =>
+    `Next preset selected: ${label} for ${durationSpeech}.`,
+  ariaQueuedCustom: (durationSpeech: string) =>
+    `Next preset selected: custom duration for ${durationSpeech}.`,
   pendingStartLabel: "Starting…",
   pendingRestartLabel: "Restarting…",
   toastStartFailed: "Couldn't start the timer. Please try again.",
@@ -89,6 +134,28 @@ export const STRINGS: StringTable = {
   restartConfirmMessage: (durationLabel: string) => "Restart the timer for " + durationLabel + "?",
   restartConfirmConfirm: "Restart",
   restartConfirmCancel: "Cancel",
+  primaryActionStart: "Start",
+  primaryActionRestart: "Restart",
+  primaryActionStartLabel: (durationSpeech: string, presetLabel?: string, queued?: boolean) => {
+    if (presetLabel) {
+      return queued
+        ? `Start next preset ${presetLabel} for ${durationSpeech}`
+        : `Start ${presetLabel} for ${durationSpeech}`;
+    }
+    return `Start timer for ${durationSpeech}`;
+  },
+  primaryActionRestartLabel: (
+    durationSpeech: string,
+    presetLabel?: string,
+    queued?: boolean,
+  ) => {
+    if (presetLabel) {
+      return queued
+        ? `Restart with next preset ${presetLabel} for ${durationSpeech}`
+        : `Restart ${presetLabel} for ${durationSpeech}`;
+    }
+    return `Restart timer for ${durationSpeech}`;
+  },
   entityUnavailableWithId: (entityId: string) => `Entity unavailable (${entityId}).`,
   validation: {
     notAnObject: "Card configuration must be an object.",

@@ -10,6 +10,8 @@ import {
   clearPendingAction,
   clearQueuedPreset,
   createTeaTimerViewModel,
+  CUSTOM_PRESET_ID,
+  getPresetById,
   PendingTimerAction,
   queuePresetSelection,
   setPendingAction,
@@ -21,10 +23,15 @@ import { STRINGS } from "../strings";
 import type { HomeAssistant, LovelaceCard } from "../types/home-assistant";
 import { TimerStateController } from "../state/TimerStateController";
 import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
-import { formatDurationSeconds, normalizeDurationSeconds } from "../model/duration";
+import {
+  formatDurationSeconds,
+  formatDurationSpeech,
+  normalizeDurationSeconds,
+} from "../model/duration";
 import "../dial/TeaTimerDial";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
 import { restartTimer, startTimer } from "../ha/services/timer";
+import { TimerAnnouncer } from "./TimerAnnouncer";
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
@@ -70,9 +77,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
 
-  private _lastAnnouncedStatus?: TimerStatus;
-
   private readonly _timerStateController: TimerStateController;
+
+  private readonly _announcer = new TimerAnnouncer(STRINGS);
+
+  private _announcementToggle = false;
 
   private _previousTimerState?: TimerViewState;
 
@@ -131,6 +140,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   protected render() {
     const pendingAction = this._viewModel?.ui.pendingAction ?? "none";
+    const state = this._timerState ?? this._timerStateController.state;
     return html`
       ${this._renderErrors()}
       <section
@@ -142,9 +152,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ${this._renderHeader()}
         ${this._renderSubtitle()}
         ${this._renderStatusPill()}
-        ${this._renderDial()}
-        ${this._renderPresets()}
-        <div class="sr-only" aria-live="polite">${this._ariaAnnouncement}</div>
+        <div class="interaction">
+          ${this._renderPresets()}
+          ${this._renderDial()}
+        </div>
+        ${state ? this._renderPrimaryAction(state) : nothing}
+        <div class="sr-only" role="status" aria-live="polite">${this._ariaAnnouncement}</div>
         <p class="note">${STRINGS.draftNote}</p>
         ${this._renderSupportLinks()}
         ${this._renderPendingOverlay()}
@@ -165,6 +178,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         </a>
       </div>
     `;
+  }
+
+  private _announce(message: string | undefined): void {
+    if (!message) {
+      return;
+    }
+
+    this._announcementToggle = !this._announcementToggle;
+    const suffix = this._announcementToggle ? "" : "\u200B";
+    this._ariaAnnouncement = `${message}${suffix}`;
   }
 
   private _renderErrors() {
@@ -262,7 +285,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const isCustom = this._viewModel.ui.isCustomDuration;
 
     return html`
-      <div class="presets" role="radiogroup" aria-label=${STRINGS.presetsGroupLabel}>
+      <div class="presets" role="group" aria-label=${STRINGS.presetsGroupLabel}>
         ${this._viewModel.ui.presets.map((preset) => {
           const isSelected = !isCustom && selectedId === preset.id;
           const isQueued = queuedId === preset.id;
@@ -273,13 +296,17 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           ]
             .filter((name) => name)
             .join(" ");
-          const ariaChecked = isSelected ? "true" : "false";
+          const ariaPressed = isSelected ? "true" : "false";
+          const ariaLabel = `${preset.label} ${preset.durationLabel}`;
           return html`
             <button
               type="button"
               class=${classNames}
-              role="radio"
-              aria-checked=${ariaChecked}
+              role="button"
+              aria-pressed=${ariaPressed}
+              aria-label=${ariaLabel}
+              data-selected=${isSelected ? "true" : "false"}
+              data-queued=${isQueued ? "true" : "false"}
               @pointerdown=${(event: PointerEvent) =>
                 this._onPresetPointerDown(event, preset.id)}
               @keydown=${(event: KeyboardEvent) => this._onPresetKeyDown(event, preset.id)}
@@ -295,6 +322,124 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ? html`<span class="preset-custom" role="note">${STRINGS.presetsCustomLabel}</span>`
         : nothing}
     `;
+  }
+
+  private _renderPrimaryAction(state: TimerViewState) {
+    const info = this._getPrimaryActionInfo(state);
+    const ariaDisabled = this._viewModel?.ui.pendingAction !== "none" ? "true" : "false";
+
+    return html`
+      <button
+        type="button"
+        class="primary-action"
+        data-action=${info.action}
+        data-queued=${info.queued ? "true" : "false"}
+        aria-label=${info.ariaLabel}
+        aria-disabled=${ariaDisabled}
+        @click=${this._onPrimaryButtonClick}
+      >
+        <span class="primary-action-label">${info.label}</span>
+        <span class="primary-action-duration">${info.durationLabel}</span>
+      </button>
+    `;
+  }
+
+  private _getPrimaryActionInfo(state: TimerViewState) {
+    const action = state.status === "running" ? "restart" : "start";
+    const durationSeconds = this._getActionDuration();
+    const durationLabel = formatDurationSeconds(durationSeconds);
+    const durationSpeech = formatDurationSpeech(durationSeconds, STRINGS.durationSpeech);
+    const label = action === "start" ? STRINGS.primaryActionStart : STRINGS.primaryActionRestart;
+
+    if (!this._viewModel) {
+      const ariaLabel =
+        action === "start"
+          ? STRINGS.primaryActionStartLabel(durationSpeech)
+          : STRINGS.primaryActionRestartLabel(durationSpeech);
+      return {
+        action,
+        ariaLabel,
+        durationLabel,
+        durationSpeech,
+        durationSeconds,
+        label,
+        queued: false,
+        presetId: undefined as number | typeof CUSTOM_PRESET_ID | undefined,
+        isCustom: false,
+        presetLabel: undefined as string | undefined,
+      };
+    }
+
+    let presetLabel: string | undefined;
+    let presetId: number | typeof CUSTOM_PRESET_ID | undefined = undefined;
+    let isCustom = false;
+    let queued = false;
+
+    const queuedId = this._viewModel.ui.queuedPresetId;
+    if (state.status === "running") {
+      if (typeof queuedId === "number") {
+        const queuedPreset = getPresetById(this._viewModel, queuedId);
+        if (queuedPreset) {
+          presetLabel = queuedPreset.label;
+          presetId = queuedPreset.id;
+          queued = true;
+        }
+      } else if (queuedId === CUSTOM_PRESET_ID) {
+        presetId = CUSTOM_PRESET_ID;
+        queued = true;
+        isCustom = true;
+      }
+    }
+
+    if (!presetLabel) {
+      const selectedId = this._viewModel.ui.selectedPresetId;
+      if (typeof selectedId === "number") {
+        const preset = getPresetById(this._viewModel, selectedId);
+        if (preset) {
+          presetLabel = preset.label;
+          presetId = preset.id;
+        }
+      } else if (selectedId === CUSTOM_PRESET_ID || this._viewModel.ui.isCustomDuration) {
+        presetId = CUSTOM_PRESET_ID;
+        isCustom = true;
+      }
+    }
+
+    const ariaLabel =
+      action === "start"
+        ? STRINGS.primaryActionStartLabel(durationSpeech, presetLabel, queued)
+        : STRINGS.primaryActionRestartLabel(durationSpeech, presetLabel, queued);
+
+    return {
+      action,
+      ariaLabel,
+      durationLabel,
+      durationSpeech,
+      durationSeconds,
+      label,
+      queued,
+      presetId,
+      isCustom,
+      presetLabel,
+    };
+  }
+
+  private _resolveRunDurationSeconds(state: TimerViewState): number {
+    const candidates = [
+      state.durationSeconds,
+      state.remainingSeconds,
+      this._displayDurationSeconds,
+      this._viewModel?.pendingDurationSeconds,
+      this._viewModel?.selectedDurationSeconds,
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate !== undefined) {
+        return Math.max(0, Math.floor(candidate));
+      }
+    }
+
+    return this._getActionDuration();
   }
 
   private _onPresetClick(event: MouseEvent, presetId: number) {
@@ -322,6 +467,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     if (state.status === "running") {
       if (this._viewModel.ui.queuedPresetId === presetId) {
         this._viewModel = clearQueuedPreset(this._viewModel);
+        this._announceQueuedPresetUpdate();
         return;
       }
 
@@ -330,10 +476,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._viewModel.ui.queuedPresetId === undefined
       ) {
         this._viewModel = clearQueuedPreset(this._viewModel);
+        this._announceQueuedPresetUpdate();
         return;
       }
 
       this._viewModel = queuePresetSelection(this._viewModel, presetId);
+      this._announceQueuedPresetUpdate();
       return;
     }
 
@@ -384,6 +532,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     if (state.status === "running") {
       if (this._viewModel.ui.queuedPresetId === presetId) {
         this._viewModel = clearQueuedPreset(this._viewModel);
+        this._announceQueuedPresetUpdate();
         return;
       }
 
@@ -392,10 +541,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._viewModel.ui.queuedPresetId === undefined
       ) {
         this._viewModel = clearQueuedPreset(this._viewModel);
+        this._announceQueuedPresetUpdate();
         return;
       }
 
       this._viewModel = queuePresetSelection(this._viewModel, presetId);
+      this._announceQueuedPresetUpdate();
       return;
     }
 
@@ -410,6 +561,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     if (this._viewModel.ui.queuedPresetId !== undefined) {
       this._viewModel = applyQueuedPreset(this._viewModel);
+      this._announceQueuedPresetUpdate();
     }
   }
 
@@ -461,9 +613,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
-    const tone = error.code === "entity-unavailable" ? "info" : "error";
+    const isUnavailable = error.code === "entity-unavailable";
+    const tone = isUnavailable ? "info" : "error";
+    const role = isUnavailable ? "alert" : "status";
+    const ariaLive = isUnavailable ? "assertive" : "polite";
     return html`
-      <div class="toast toast-${tone}" role="status" aria-live="polite">
+      <div class="toast toast-${tone}" role=${role} aria-live=${ariaLive}>
         ${error.message}
       </div>
     `;
@@ -474,6 +629,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const label = this._getStatusLabel(state.status);
     return html`<span class="status-pill status-${state.status}" aria-hidden="true">${label}</span>`;
   }
+
+  private readonly _onPrimaryButtonClick = (event: Event) => {
+    event.stopPropagation();
+    this._handlePrimaryAction();
+  };
 
   private readonly _onCardClick = (event: MouseEvent) => {
     if (event.defaultPrevented || this._confirmRestartVisible) {
@@ -616,12 +776,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _announceAction(action: PendingTimerAction, durationSeconds: number): void {
-    const durationLabel = formatDurationSeconds(durationSeconds);
-    if (action === "start") {
-      this._ariaAnnouncement = STRINGS.ariaStarting(durationLabel);
-    } else if (action === "restart") {
-      this._ariaAnnouncement = STRINGS.ariaRestarting(durationLabel);
+    if (action === "none") {
+      return;
     }
+
+    this._announcer.beginRun(durationSeconds);
+    const message = this._announcer.announceAction({ action, durationSeconds });
+    this._announce(message);
   }
 
   private _showEntityUnavailableToast(): void {
@@ -753,26 +914,92 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return STRINGS.remainingEstimateNotice;
   }
 
-  private _handleAriaAnnouncement(state: TimerViewState) {
-    if (state.status === this._lastAnnouncedStatus) {
+  private _handleAnnouncements(
+    state: TimerViewState,
+    previousState: TimerViewState | undefined,
+    previousViewModel: TeaTimerViewModel | undefined,
+  ) {
+    if (!this._viewModel) {
+      this._announcer.reset();
       return;
     }
 
-    this._lastAnnouncedStatus = state.status;
+    const statusChanged = state.status !== previousState?.status;
 
-    switch (state.status) {
-      case "running":
-        this._ariaAnnouncement = STRINGS.ariaRunning;
-        break;
-      case "finished":
-        this._ariaAnnouncement = STRINGS.ariaFinished;
-        break;
-      case "idle":
-        this._ariaAnnouncement = STRINGS.ariaIdle;
-        break;
-      default:
-        this._ariaAnnouncement = STRINGS.ariaUnavailable;
-        break;
+    if (statusChanged) {
+      switch (state.status) {
+        case "running": {
+          const previousAction = previousViewModel?.ui.pendingAction ?? "none";
+          const durationSeconds = this._resolveRunDurationSeconds(state);
+          this._announcer.beginRun(durationSeconds);
+          if (previousAction !== "start" && previousAction !== "restart") {
+            const message = this._announcer.announceAction({
+              action: "start",
+              durationSeconds,
+            });
+            this._announce(message);
+          }
+          break;
+        }
+        case "finished": {
+          const durationSeconds = this._resolveRunDurationSeconds(state);
+          const message = this._announcer.announceFinished(durationSeconds);
+          this._announcer.endRun();
+          this._announce(message);
+          break;
+        }
+        case "idle": {
+          this._announcer.endRun();
+          this._announce(STRINGS.ariaIdle);
+          break;
+        }
+        case "unavailable":
+        default: {
+          this._announcer.endRun();
+          this._announce(STRINGS.ariaUnavailable);
+          break;
+        }
+      }
+    }
+
+    if (state.status === "running") {
+      const queuedId = this._viewModel.ui.queuedPresetId;
+      const announcement = this._announcer.announceQueuedPreset({
+        id: typeof queuedId === "number" ? queuedId : queuedId === CUSTOM_PRESET_ID ? "custom" : undefined,
+        label:
+          typeof queuedId === "number"
+            ? getPresetById(this._viewModel, queuedId)?.label
+            : undefined,
+        durationSeconds: this._viewModel.pendingDurationSeconds,
+        isCustom: queuedId === CUSTOM_PRESET_ID || this._viewModel.ui.isCustomDuration,
+      });
+      if (announcement) {
+        this._announce(announcement);
+      }
+    } else if (previousViewModel?.ui.queuedPresetId !== undefined) {
+      this._announcer.announceQueuedPreset({ id: undefined, durationSeconds: 0, isCustom: false });
+    }
+  }
+
+  private _announceQueuedPresetUpdate(): void {
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || state.status !== "running" || !this._viewModel) {
+      return;
+    }
+
+    const queuedId = this._viewModel.ui.queuedPresetId;
+    const announcement = this._announcer.announceQueuedPreset({
+      id: typeof queuedId === "number" ? queuedId : queuedId === CUSTOM_PRESET_ID ? "custom" : undefined,
+      label:
+        typeof queuedId === "number"
+          ? getPresetById(this._viewModel, queuedId)?.label
+          : undefined,
+      durationSeconds: this._viewModel.pendingDurationSeconds,
+      isCustom: queuedId === CUSTOM_PRESET_ID,
+    });
+
+    if (announcement) {
+      this._announce(announcement);
     }
   }
 
@@ -820,7 +1047,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       }
     }
 
-    this._handleAriaAnnouncement(state);
+    this._handleAnnouncements(state, previousState, previousViewModel);
     this._previousTimerState = state;
     this._syncDisplayDuration(state);
     this._updateRunningTickState(state);
@@ -865,6 +1092,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._clearDialTooltipTimer();
     this._clearErrorTimer();
     this._cancelRunningTick();
+    this._announcer.reset();
   }
 
   private _syncDisplayDuration(state: TimerViewState) {
@@ -1020,6 +1248,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       }
       const clamped = Math.max(0, Math.floor(fallback));
       this._setDisplayDurationSeconds(clamped, state);
+      const announcement = this._announcer.announceRunning(clamped);
+      if (announcement) {
+        this._announce(announcement);
+      }
       return clamped;
     }
 
@@ -1027,6 +1259,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const elapsedSeconds = Math.floor(elapsedMs / 1000);
     const displaySeconds = Math.max(0, Math.floor(baseline) - elapsedSeconds);
     this._setDisplayDurationSeconds(displaySeconds, state);
+    const announcement = this._announcer.announceRunning(displaySeconds);
+    if (announcement) {
+      this._announce(announcement);
+    }
     return displaySeconds;
   }
 

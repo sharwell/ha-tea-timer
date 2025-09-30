@@ -1,8 +1,27 @@
 import { css } from "lit";
 
 export const cardStyles = css`
+  :host {
+    color-scheme: light dark;
+    color: var(--primary-text-color, #1f2933);
+    --mdc-theme-primary: var(--primary-color, #1f2933);
+    --mdc-theme-on-primary: var(
+      --text-on-primary-color,
+      var(--text-primary-color, #ffffff)
+    );
+    --mdc-theme-surface: var(
+      --ha-card-background,
+      var(--card-background-color, #ffffff)
+    );
+    --mdc-theme-on-surface: var(--primary-text-color, #1f2933);
+    --mdc-chip-background-color: var(--mdc-theme-surface);
+    --mdc-chip-label-ink-color: var(--mdc-theme-on-surface);
+  }
+
+  ha-card,
   .card {
-    background: var(--ha-card-background, #fff);
+    background: var(--mdc-theme-surface);
+    color: inherit;
     border-radius: var(--ha-card-border-radius, 12px);
     border: 1px solid var(--ha-card-border-color, rgba(0, 0, 0, 0.12));
     padding: 16px;
@@ -81,6 +100,20 @@ export const cardStyles = css`
     background: rgba(128, 128, 128, 0.14);
   }
 
+  .interaction {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .interaction .presets {
+    order: 1;
+  }
+
+  .interaction .dial-wrapper {
+    order: 0;
+  }
+
   .estimation {
     font-size: 0.8rem;
     color: var(--warning-color, #a86a13);
@@ -98,25 +131,28 @@ export const cardStyles = css`
     border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
     border-radius: 16px;
     padding: 6px 12px;
-    background: var(--chip-background-color, rgba(0, 0, 0, 0.04));
-    color: inherit;
+    background: var(--chip-background-color, var(--mdc-chip-background-color));
+    color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
     font-size: 0.85rem;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     cursor: pointer;
     transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    min-height: 44px;
+    justify-content: center;
   }
 
   .preset-chip:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.4);
+    outline: 3px solid var(--focus-ring-color, rgba(0, 122, 255, 0.6));
+    outline-offset: 2px;
+    box-shadow: none;
   }
 
   .preset-chip.preset-selected {
-    background: rgba(0, 122, 255, 0.12);
-    border-color: rgba(0, 122, 255, 0.3);
-    color: var(--primary-text-color, #1f2933);
+    background: var(--primary-color, #1f2933);
+    border-color: var(--primary-color, #1f2933);
+    color: var(--text-on-primary-color, var(--mdc-theme-on-primary));
   }
 
   .preset-chip.preset-queued {
@@ -136,6 +172,45 @@ export const cardStyles = css`
     margin-top: 4px;
     font-size: 0.8rem;
     color: var(--secondary-text-color, #52606d);
+  }
+
+  .primary-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid var(--primary-color, #1f2933);
+    background: var(--primary-color, #1f2933);
+    color: var(--text-on-primary-color, var(--mdc-theme-on-primary));
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    min-height: 48px;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .primary-action:hover {
+    filter: brightness(1.05);
+  }
+
+  .primary-action:focus-visible {
+    outline: 3px solid var(--focus-ring-color, rgba(0, 122, 255, 0.6));
+    outline-offset: 3px;
+  }
+
+  .primary-action[aria-disabled="true"] {
+    opacity: 0.7;
+    cursor: default;
+  }
+
+  .primary-action-duration {
+    font-size: 0.85rem;
+    font-weight: 500;
+    opacity: 0.9;
   }
 
   .empty-state {
@@ -203,6 +278,34 @@ export const cardStyles = css`
     }
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .spinner {
+      animation-duration: 1ms;
+      animation-iteration-count: 1;
+    }
+
+    .preset-chip,
+    .primary-action,
+    .dial-wrapper,
+    .status-pill {
+      transition: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .primary-action {
+      border-color: ButtonText;
+      background: ButtonFace;
+      color: ButtonText;
+    }
+
+    .preset-chip {
+      border-color: ButtonText;
+      background: ButtonFace;
+      color: ButtonText;
+    }
+  }
+
   .confirm-overlay {
     position: absolute;
     inset: 0;
@@ -215,7 +318,7 @@ export const cardStyles = css`
   }
 
   .confirm-surface {
-    background: var(--ha-card-background, #fff);
+    background: var(--mdc-theme-surface);
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
@@ -248,12 +351,12 @@ export const cardStyles = css`
 
   .confirm-primary {
     background: var(--primary-color, #1f2933);
-    color: #fff;
+    color: var(--text-on-primary-color, var(--mdc-theme-on-primary));
   }
 
   .confirm-secondary {
-    background: rgba(0, 0, 0, 0.08);
-    color: var(--primary-text-color, #1f2933);
+    background: var(--chip-background-color, var(--mdc-chip-background-color));
+    color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
   }
 
   .toast {
