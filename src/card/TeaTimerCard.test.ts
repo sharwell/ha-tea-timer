@@ -21,6 +21,20 @@ type MockedFn = ReturnType<typeof vi.fn>;
 
 const startTimerMock = startTimer as unknown as MockedFn;
 
+if (typeof window !== "undefined") {
+  if (!window.requestAnimationFrame) {
+    window.requestAnimationFrame = (callback: FrameRequestCallback): number =>
+      window.setTimeout(() => callback(performance.now()), 16);
+  }
+  if (!window.cancelAnimationFrame) {
+    window.cancelAnimationFrame = (handle: number): void => {
+      clearTimeout(handle);
+    };
+  }
+  (window as unknown as { litDisableWarning?: Record<string, boolean> }).litDisableWarning ??= {};
+  (window as unknown as { litDisableWarning: Record<string, boolean> }).litDisableWarning.DEV_MODE = true;
+}
+
 describe("TeaTimerCard", () => {
   const tagName = "tea-timer-card";
 
@@ -191,6 +205,14 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     triggerDialInput(card, 210);
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     expect(dialElement.valueText).toBe(formatDurationSeconds(210));
   });
@@ -735,6 +757,14 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     pointerSelectPreset(card, 1);
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
     expect(internals._displayDurationSeconds).toBe(240);
@@ -780,6 +810,14 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     pointerSelectPreset(card, 1);
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     const span = dialBounds.max - dialBounds.min;
     const clamped = Math.min(dialBounds.max, Math.max(dialBounds.min, 240));
@@ -818,12 +856,22 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     keyboardActivatePreset(card, 1, "Enter");
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
     expect(internals._displayDurationSeconds).toBe(240);
     expect(dialElement.value).toBe(240);
 
     keyboardActivatePreset(card, 0, " ");
+    const updatedState = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(updatedState, apply._displayDurationSeconds);
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
     expect(internals._displayDurationSeconds).toBe(120);

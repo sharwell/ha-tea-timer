@@ -92,7 +92,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _dialTooltipTimer?: number;
 
-  private _awaitingDialElementSync = false;
   private _errorTimer?: number;
   private _confirmRestartDuration?: number;
   private _lastPointerPresetId?: number;
@@ -106,6 +105,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _serverRemainingSeconds?: number;
 
   private _lastServerSyncMs?: number;
+
+  private _applyDialRaf?: number;
+  private _dialResizeObserver?: ResizeObserver;
+  private _lastDialSignature?: string;
+  private _lastDialElement?: TeaTimerDial;
 
   constructor() {
     super();
@@ -176,6 +180,19 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ${this._renderToast()}
       </section>
     `;
+  }
+
+  protected override firstUpdated(): void {
+    const dialWrapper = this.renderRoot?.querySelector<HTMLElement>(".dial-wrapper");
+    if (dialWrapper && "ResizeObserver" in window) {
+      this._dialResizeObserver = new ResizeObserver(() => {
+        this._lastDialSignature = undefined;
+        this._scheduleApplyDialDisplay("resize");
+      });
+      this._dialResizeObserver.observe(dialWrapper);
+    }
+
+    this._scheduleApplyDialDisplay("first-updated");
   }
 
   private _renderSupportLinks() {
@@ -504,7 +521,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._viewModel = applyPresetSelection(this._viewModel, presetId);
-    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds);
   }
 
   private _onPresetPointerDown(event: PointerEvent, presetId: number) {
@@ -583,7 +600,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._viewModel = applyPresetSelection(this._viewModel, presetId);
-    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds);
   }
 
   private _applyQueuedPresetSelection() {
@@ -1265,6 +1282,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._previousTimerState = state;
     this._updateRunningTickState(state);
     this._syncDisplayDuration(state);
+    this._scheduleApplyDialDisplay("state-change");
   }
 
   private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
@@ -1284,8 +1302,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    this._setDisplayDurationSeconds(value, state);
+    this._setDisplayDurationSeconds(value);
     this._viewModel = updateDialSelection(this._viewModel, value);
+    this._scheduleApplyDialDisplay("dial-input");
   };
 
   private readonly _onDialBlocked = (event: Event) => {
@@ -1311,6 +1330,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._clearErrorTimer();
     this._cancelRunningTick();
     this._announcer.reset();
+    if (this._applyDialRaf !== undefined) {
+      cancelAnimationFrame(this._applyDialRaf);
+      this._applyDialRaf = undefined;
+    }
+    this._dialResizeObserver?.disconnect();
+    this._dialResizeObserver = undefined;
+    this._lastDialSignature = undefined;
+    this._lastDialElement = undefined;
   }
 
   private _syncDisplayDuration(state: TimerViewState) {
@@ -1343,30 +1370,38 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         break;
     }
 
-    this._setDisplayDurationSeconds(next, state);
+    this._setDisplayDurationSeconds(next);
   }
 
   protected updated(changed: Map<string, unknown>) {
     super.updated(changed);
-    const state = this._timerState ?? this._timerStateController.state;
-    this._applyDialDisplay(state, this._displayDurationSeconds);
+    this._scheduleApplyDialDisplay("updated");
   }
 
-  private _setDisplayDurationSeconds(
-    next: number | undefined,
-    state: TimerViewState = this._timerState ?? this._timerStateController.state,
-  ) {
-    if (this._displayDurationSeconds === next) {
-      if (state) {
-        this._applyDialDisplay(state, next);
+  private _scheduleApplyDialDisplay(_reason: string): void {
+    if (this._applyDialRaf !== undefined) {
+      return;
+    }
+
+    this._applyDialRaf = window.requestAnimationFrame(() => {
+      this._applyDialRaf = undefined;
+      const state = this._timerState ?? this._timerStateController.state;
+      if (!state) {
+        return;
       }
+      this._applyDialDisplay(state, this._displayDurationSeconds);
+    });
+  }
+
+  private _setDisplayDurationSeconds(next: number | undefined) {
+    if (this._displayDurationSeconds === next) {
+      this._scheduleApplyDialDisplay("display-unchanged");
       return;
     }
 
     this._displayDurationSeconds = next;
-    if (state) {
-      this._applyDialDisplay(state, next);
-    }
+    this._lastDialSignature = undefined;
+    this._scheduleApplyDialDisplay("display-changed");
   }
 
   private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
@@ -1385,6 +1420,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const dialElement = this._resolveDialElement();
     if (dialElement) {
+      if (dialElement !== this._lastDialElement) {
+        this._lastDialElement = dialElement;
+        this._lastDialSignature = undefined;
+      }
+
+      const signature = `${resolvedSeconds}|${state.status}|${dialElement.clientWidth}x${dialElement.clientHeight}`;
+      if (this._lastDialSignature === signature) {
+        return;
+      }
+      this._lastDialSignature = signature;
       if (dialElement.value !== resolvedSeconds) {
         dialElement.value = resolvedSeconds;
       }
@@ -1393,18 +1438,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    if (this._awaitingDialElementSync) {
-      return;
-    }
-
-    this._awaitingDialElementSync = true;
-    void this.updateComplete.then(() => {
-      this._awaitingDialElementSync = false;
-      const nextState = this._timerState ?? this._timerStateController.state;
-      if (nextState) {
-        this._applyDialDisplay(nextState, this._displayDurationSeconds);
-      }
-    });
+    this._lastDialElement = undefined;
+    this._scheduleApplyDialDisplay("await-dial");
   }
 
   private _updateRunningTickState(state: TimerViewState): void {
@@ -1473,7 +1508,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return undefined;
       }
       const clamped = Math.max(0, Math.floor(fallback));
-      this._setDisplayDurationSeconds(clamped, state);
+      this._setDisplayDurationSeconds(clamped);
       const announcement = this._announcer.announceRunning(clamped);
       if (announcement) {
         this._announce(announcement);
@@ -1484,7 +1519,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const elapsedMs = Math.max(0, Date.now() - syncTs);
     const elapsedSeconds = Math.floor(elapsedMs / 1000);
     const displaySeconds = Math.max(0, Math.floor(baseline) - elapsedSeconds);
-    this._setDisplayDurationSeconds(displaySeconds, state);
+    this._setDisplayDurationSeconds(displaySeconds);
     const announcement = this._announcer.announceRunning(displaySeconds);
     if (announcement) {
       this._announce(announcement);
