@@ -106,7 +106,7 @@ export class TimerStateController implements ReactiveController {
 
   private currentState: TimerViewState;
 
-  private readonly clockSkew = new ClockSkewEstimator();
+  private readonly clockSkew: ClockSkewEstimator;
 
   private clockSkewEstimatorEnabled: boolean;
 
@@ -114,11 +114,14 @@ export class TimerStateController implements ReactiveController {
     this.host = host;
     this.options = options ?? {};
     const finishedOverlayMs = this.options.finishedOverlayMs ?? 5000;
+    const monotonicNow = this.options.monotonicNow ?? (() =>
+      (typeof performance !== "undefined" ? performance.now() : Date.now()));
     this.stateMachine = new TimerStateMachine({
       finishedOverlayMs,
       now: this.options.now,
     });
-    this.monotonicNow = this.options.monotonicNow ?? (() => (typeof performance !== "undefined" ? performance.now() : Date.now()));
+    this.monotonicNow = monotonicNow;
+    this.clockSkew = new ClockSkewEstimator(monotonicNow);
 
     this.clockSkewEstimatorEnabled =
       this.options.clockSkewEstimatorEnabled !== undefined ? this.options.clockSkewEstimatorEnabled : true;
