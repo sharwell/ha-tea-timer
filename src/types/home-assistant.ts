@@ -13,6 +13,7 @@ export interface HassEntityAttributes {
   friendly_name?: string;
   duration?: string | number;
   remaining?: string | number;
+  finishes_at?: string;
   [key: string]: unknown;
 }
 
@@ -38,6 +39,8 @@ export interface HassTimerFinishedEvent {
 export interface HassEventMessage<T> {
   event_type: string;
   data: T;
+  time_fired?: string;
+  origin?: string;
 }
 
 export type HassUnsubscribe = () => void | Promise<void>;

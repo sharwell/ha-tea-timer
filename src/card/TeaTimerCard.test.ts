@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { TeaTimerCard } from "./TeaTimerCard";
-import type { TimerViewState } from "../state/TimerStateMachine";
+import type { TimerViewState as MachineTimerViewState } from "../state/TimerStateMachine";
+import {
+  TimerStateController,
+  type TimerViewState as ControllerTimerViewState,
+  type TimerUiState,
+} from "../state/TimerStateController";
+type TimerViewState = MachineTimerViewState;
 import { formatDurationSeconds } from "../model/duration";
 import type { DurationBounds } from "../model/duration";
 import { STRINGS } from "../strings";
@@ -19,6 +25,20 @@ type MockedFn = ReturnType<typeof vi.fn>;
 
 const startTimerMock = startTimer as unknown as MockedFn;
 
+if (typeof window !== "undefined") {
+  if (!window.requestAnimationFrame) {
+    window.requestAnimationFrame = (callback: FrameRequestCallback): number =>
+      window.setTimeout(() => callback(performance.now()), 16);
+  }
+  if (!window.cancelAnimationFrame) {
+    window.cancelAnimationFrame = (handle: number): void => {
+      clearTimeout(handle);
+    };
+  }
+  (window as unknown as { litDisableWarning?: Record<string, boolean> }).litDisableWarning ??= {};
+  (window as unknown as { litDisableWarning: Record<string, boolean> }).litDisableWarning.DEV_MODE = true;
+}
+
 describe("TeaTimerCard", () => {
   const tagName = "tea-timer-card";
 
@@ -34,11 +54,48 @@ describe("TeaTimerCard", () => {
     return element;
   }
 
-  function setTimerState(card: TeaTimerCard, state: TimerViewState) {
-    const internals = TeaTimerCard.prototype as unknown as {
-      _handleTimerStateChanged(this: TeaTimerCard, next: TimerViewState): void;
+  function deriveUiState(status: MachineTimerViewState["status"]): TimerUiState {
+    switch (status) {
+      case "running":
+        return "Running";
+      case "idle":
+        return "Idle";
+      case "finished":
+        return { kind: "FinishedTransient", untilTs: Date.now() + 5000 };
+      default:
+        return { kind: "Error", reason: "EntityUnavailable" };
+    }
+  }
+
+  function toControllerState(
+    card: TeaTimerCard,
+    state: MachineTimerViewState,
+    overrides: Partial<ControllerTimerViewState> = {},
+  ): ControllerTimerViewState {
+    const entity = overrides.entityId ?? (card as unknown as { _config?: { entity?: string } })._config?.entity;
+
+    return {
+      ...state,
+      ...overrides,
+      connectionStatus: overrides.connectionStatus ?? "connected",
+      uiState: overrides.uiState ?? deriveUiState((overrides.status ?? state.status) as MachineTimerViewState["status"]),
+      inFlightAction: overrides.inFlightAction,
+      serverRemainingSecAtT0: overrides.serverRemainingSecAtT0,
+      clientMonotonicT0: overrides.clientMonotonicT0,
+      actionGeneration: overrides.actionGeneration ?? 0,
+      entityId: entity,
     };
-    internals._handleTimerStateChanged.call(card, state);
+  }
+
+  function setTimerState(
+    card: TeaTimerCard,
+    state: MachineTimerViewState,
+    overrides: Partial<ControllerTimerViewState> = {},
+  ) {
+    const internals = TeaTimerCard.prototype as unknown as {
+      _handleTimerStateChanged(this: TeaTimerCard, next: ControllerTimerViewState): void;
+    };
+    internals._handleTimerStateChanged.call(card, toControllerState(card, state, overrides));
   }
 
   function getDisplayDuration(card: TeaTimerCard): number | undefined {
@@ -104,11 +161,26 @@ describe("TeaTimerCard", () => {
     document.querySelectorAll(tagName).forEach((el) => el.remove());
   });
 
+  it("can disable the clock skew estimator via config", () => {
+    const spy = vi.spyOn(TimerStateController.prototype, "setClockSkewEstimatorEnabled");
+    const card = createCard();
+
+    spy.mockClear();
+    card.setConfig({ entity: "timer.test", presets: [], disableClockSkewEstimator: true });
+    expect(spy).toHaveBeenCalledWith(false);
+
+    spy.mockClear();
+    card.setConfig({ entity: "timer.test", presets: [] });
+    expect(spy).toHaveBeenCalledWith(true);
+
+    spy.mockRestore();
+  });
+
   it("tracks the displayed duration immediately after dial input", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const idleState: TimerViewState = {
+    const idleState: MachineTimerViewState = {
       status: "idle",
       durationSeconds: 120,
       remainingSeconds: 120,
@@ -129,7 +201,7 @@ describe("TeaTimerCard", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const idleState: TimerViewState = {
+    const idleState: MachineTimerViewState = {
       status: "idle",
       durationSeconds: 180,
       remainingSeconds: 180,
@@ -152,6 +224,14 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     triggerDialInput(card, 210);
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     expect(dialElement.valueText).toBe(formatDurationSeconds(210));
   });
@@ -160,7 +240,7 @@ describe("TeaTimerCard", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const runningState: TimerViewState = {
+    const runningState: MachineTimerViewState = {
       status: "running",
       durationSeconds: 300,
       remainingSeconds: 180,
@@ -180,7 +260,7 @@ describe("TeaTimerCard", () => {
       const card = createCard();
       card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-      const runningState: TimerViewState = {
+      const runningState: MachineTimerViewState = {
         status: "running",
         durationSeconds: 600,
         remainingSeconds: 125,
@@ -332,13 +412,16 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("hydrates the display before seeding running ticks", () => {
+  it("seeds running ticks before hydrating the display", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
 
-    const syncSpy = vi.spyOn(card as unknown as { _syncDisplayDuration(state: TimerViewState): void }, "_syncDisplayDuration");
+    const syncSpy = vi.spyOn(
+      card as unknown as { _syncDisplayDuration(state: ControllerTimerViewState): void },
+      "_syncDisplayDuration",
+    );
     const updateSpy = vi.spyOn(
-      card as unknown as { _updateRunningTickState(state: TimerViewState): void },
+      card as unknown as { _updateRunningTickState(state: ControllerTimerViewState): void },
       "_updateRunningTickState",
     );
 
@@ -350,9 +433,10 @@ describe("TeaTimerCard", () => {
 
       setTimerState(card, runningState);
 
-      expect(syncSpy).toHaveBeenCalledWith(runningState);
-      expect(updateSpy).toHaveBeenCalledWith(runningState);
-      expect(syncSpy.mock.invocationCallOrder[0]).toBeLessThan(updateSpy.mock.invocationCallOrder[0]);
+      const expectedState = toControllerState(card, runningState);
+      expect(syncSpy).toHaveBeenCalledWith(expectedState);
+      expect(updateSpy).toHaveBeenCalledWith(expectedState);
+      expect(updateSpy.mock.invocationCallOrder[0]).toBeLessThan(syncSpy.mock.invocationCallOrder[0]);
     } finally {
       syncSpy.mockRestore();
       updateSpy.mockRestore();
@@ -692,11 +776,33 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     pointerSelectPreset(card, 1);
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
     expect(internals._displayDurationSeconds).toBe(240);
     expect(dialElement.value).toBe(240);
     expect(dialElement.valueText).toBe(formatDurationSeconds(240));
+
+    const finishedState: TimerViewState = {
+      status: "finished",
+      durationSeconds: 240,
+      remainingSeconds: 0,
+    };
+
+    setTimerState(card, finishedState);
+
+    const finished = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(finished, apply._displayDurationSeconds);
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
+    expect(dialElement.value).toBe(240);
   });
 
   it("rotates the dial handle to match preset selection", () => {
@@ -737,6 +843,14 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     pointerSelectPreset(card, 1);
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     const span = dialBounds.max - dialBounds.min;
     const clamped = Math.min(dialBounds.max, Math.max(dialBounds.min, 240));
@@ -775,12 +889,22 @@ describe("TeaTimerCard", () => {
     internals._dialElement = dialElement;
 
     keyboardActivatePreset(card, 1, "Enter");
+    const apply = card as unknown as {
+      _applyDialDisplay(state: TimerViewState, displaySeconds?: number): void;
+      _timerState?: TimerViewState;
+      _timerStateController: { state: TimerViewState };
+      _displayDurationSeconds?: number;
+    };
+    const state = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(state, apply._displayDurationSeconds);
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
     expect(internals._displayDurationSeconds).toBe(240);
     expect(dialElement.value).toBe(240);
 
     keyboardActivatePreset(card, 0, " ");
+    const updatedState = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(updatedState, apply._displayDurationSeconds);
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
     expect(internals._displayDurationSeconds).toBe(120);

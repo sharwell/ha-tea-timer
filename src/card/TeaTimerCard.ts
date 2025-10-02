@@ -21,8 +21,11 @@ import {
 } from "../view/TeaTimerViewModel";
 import { STRINGS } from "../strings";
 import type { HomeAssistant, LovelaceCard } from "../types/home-assistant";
-import { TimerStateController } from "../state/TimerStateController";
-import type { TimerViewState, TimerStatus } from "../state/TimerStateMachine";
+import {
+  TimerStateController,
+  type TimerViewState,
+  type TimerUiState,
+} from "../state/TimerStateController";
 import {
   formatDurationSeconds,
   formatDurationSpeech,
@@ -32,6 +35,8 @@ import "../dial/TeaTimerDial";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
 import { restartTimer, startTimer } from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
+
+type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
@@ -87,7 +92,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _dialTooltipTimer?: number;
 
-  private _awaitingDialElementSync = false;
   private _errorTimer?: number;
   private _confirmRestartDuration?: number;
   private _lastPointerPresetId?: number;
@@ -101,6 +105,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _serverRemainingSeconds?: number;
 
   private _lastServerSyncMs?: number;
+
+  private _applyDialRaf?: number;
+  private _dialResizeObserver?: ResizeObserver;
+  private _lastDialSignature?: string;
+  private _lastDialElement?: TeaTimerDial;
 
   constructor() {
     super();
@@ -121,12 +130,19 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._confirmRestartVisible = false;
     this._confirmRestartDuration = undefined;
     this._clearErrorTimer();
-    const state = this._timerStateController.state;
+    this._timerStateController.setClockSkewEstimatorEnabled(
+      this._config?.clockSkewEstimatorEnabled ?? true,
+    );
+    this._timerStateController.setFinishedOverlayMs(
+      this._config?.finishedAutoIdleMs ?? 5000,
+    );
+    const state = this._timerState ?? this._timerStateController.state;
     if (this._config) {
       this._viewModel = createTeaTimerViewModel(this._config, state);
     } else {
       this._viewModel = undefined;
     }
+    this._updateRunningTickState(state);
     this._syncDisplayDuration(state);
     this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
@@ -141,30 +157,45 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   protected render() {
     const pendingAction = this._viewModel?.ui.pendingAction ?? "none";
     const state = this._timerState ?? this._timerStateController.state;
+    const hasPending = pendingAction !== "none" || !!state?.inFlightAction;
     return html`
       ${this._renderErrors()}
       <section
         class="card"
         data-instance-id=${this._config?.cardInstanceId ?? "unconfigured"}
-        aria-busy=${pendingAction !== "none" ? "true" : "false"}
+        aria-busy=${hasPending ? "true" : "false"}
         @click=${this._onCardClick}
       >
         ${this._renderHeader()}
         ${this._renderSubtitle()}
-        ${this._renderStatusPill()}
+        ${state ? this._renderStatusPill(state) : nothing}
+        ${state ? this._renderStateBanner(state) : nothing}
         <div class="interaction">
-          ${this._renderPresets()}
-          ${this._renderDial()}
+          ${state ? this._renderPresets(state) : this._renderPresets(undefined)}
+          ${state ? this._renderDial(state) : this._renderDial(undefined)}
         </div>
         ${state ? this._renderPrimaryAction(state) : nothing}
         <div class="sr-only" role="status" aria-live="polite">${this._ariaAnnouncement}</div>
         <p class="note">${STRINGS.draftNote}</p>
         ${this._renderSupportLinks()}
-        ${this._renderPendingOverlay()}
+        ${this._renderPendingOverlay(state)}
         ${this._confirmRestartVisible ? this._renderRestartConfirm() : nothing}
         ${this._renderToast()}
       </section>
     `;
+  }
+
+  protected override firstUpdated(): void {
+    const dialWrapper = this.renderRoot?.querySelector<HTMLElement>(".dial-wrapper");
+    if (dialWrapper && "ResizeObserver" in window) {
+      this._dialResizeObserver = new ResizeObserver(() => {
+        this._lastDialSignature = undefined;
+        this._scheduleApplyDialDisplay("resize");
+      });
+      this._dialResizeObserver.observe(dialWrapper);
+    }
+
+    this._scheduleApplyDialDisplay("first-updated");
   }
 
   private _renderSupportLinks() {
@@ -233,23 +264,24 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return html`<p class="subtitle" role="note">${label}</p>`;
   }
 
-  private _renderDial() {
-    const state = this._timerState ?? this._timerStateController.state;
-    const status = state.status;
+  private _renderDial(state?: TimerViewState) {
+    const resolvedState = state ?? this._timerState ?? this._timerStateController.state;
+    const status = resolvedState.status;
     const dial = this._viewModel?.dial;
     const bounds = dial?.bounds ?? { min: 0, max: 0, step: 1 };
     const displaySeconds =
       this._displayDurationSeconds ?? dial?.selectedDurationSeconds ?? bounds.min;
     const dialValueText = formatDurationSeconds(displaySeconds);
-    const secondary = this._getSecondaryDialLabel(state);
-    const estimation = this._getEstimationNotice(state);
+    const secondary = this._getSecondaryDialLabel(resolvedState);
+    const estimation = this._getEstimationNotice(resolvedState);
+    const interactive = (dial?.isInteractive ?? false) && this._canInteract(resolvedState);
 
     return html`
       <div class="dial-wrapper">
         <tea-timer-dial
           .value=${displaySeconds}
           .bounds=${bounds}
-          .interactive=${dial?.isInteractive ?? false}
+          .interactive=${interactive}
           .status=${status}
           .ariaLabel=${dial?.aria.label ?? STRINGS.dialLabel}
           .valueText=${dialValueText}
@@ -271,7 +303,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _renderPresets() {
+  private _renderPresets(state?: TimerViewState) {
     if (!this._viewModel) {
       return html`<div class="empty-state">${STRINGS.emptyState}</div>`;
     }
@@ -280,6 +312,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return html`<div class="empty-state">${STRINGS.presetsMissing}</div>`;
     }
 
+    const canInteract = state ? this._canInteract(state) : false;
+    const presetsDisabled = !canInteract || this._viewModel.ui.pendingAction !== "none";
     const selectedId = this._viewModel.ui.selectedPresetId;
     const queuedId = this._viewModel.ui.queuedPresetId;
     const isCustom = this._viewModel.ui.isCustomDuration;
@@ -304,6 +338,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
               class=${classNames}
               role="button"
               aria-pressed=${ariaPressed}
+              aria-disabled=${presetsDisabled ? "true" : "false"}
+              ?disabled=${presetsDisabled}
               aria-label=${ariaLabel}
               data-selected=${isSelected ? "true" : "false"}
               data-queued=${isQueued ? "true" : "false"}
@@ -326,7 +362,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _renderPrimaryAction(state: TimerViewState) {
     const info = this._getPrimaryActionInfo(state);
-    const ariaDisabled = this._viewModel?.ui.pendingAction !== "none" ? "true" : "false";
+    const disabled = this._isActionDisabled(state);
+    const ariaDisabled = disabled ? "true" : "false";
 
     return html`
       <button
@@ -336,6 +373,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         data-queued=${info.queued ? "true" : "false"}
         aria-label=${info.ariaLabel}
         aria-disabled=${ariaDisabled}
+        ?disabled=${disabled}
         @click=${this._onPrimaryButtonClick}
       >
         <span class="primary-action-label">${info.label}</span>
@@ -486,7 +524,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._viewModel = applyPresetSelection(this._viewModel, presetId);
-    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds);
   }
 
   private _onPresetPointerDown(event: PointerEvent, presetId: number) {
@@ -495,6 +533,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (event.isPrimary === false) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!this._canInteract(state) || this._viewModel?.ui.pendingAction !== "none") {
       return;
     }
 
@@ -514,6 +557,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!this._canInteract(state) || this._viewModel?.ui.pendingAction !== "none") {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
 
@@ -528,6 +576,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     const state = this._timerState ?? this._timerStateController.state;
+
+    if (!this._canInteract(state)) {
+      return;
+    }
 
     if (state.status === "running") {
       if (this._viewModel.ui.queuedPresetId === presetId) {
@@ -551,7 +603,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._viewModel = applyPresetSelection(this._viewModel, presetId);
-    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds, state);
+    this._setDisplayDurationSeconds(this._viewModel.selectedDurationSeconds);
   }
 
   private _applyQueuedPresetSelection() {
@@ -565,13 +617,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _renderPendingOverlay() {
-    const action = this._viewModel?.ui.pendingAction ?? "none";
-    if (action === "none") {
+  private _renderPendingOverlay(state?: TimerViewState) {
+    const pendingAction = this._viewModel?.ui.pendingAction ?? "none";
+    const overlayAction = pendingAction !== "none" ? pendingAction : state?.inFlightAction?.kind ?? "none";
+    if (overlayAction === "none") {
       return nothing;
     }
 
-    const label = action === "start" ? STRINGS.pendingStartLabel : STRINGS.pendingRestartLabel;
+    const label = overlayAction === "start" ? STRINGS.pendingStartLabel : STRINGS.pendingRestartLabel;
     return html`
       <div class="action-overlay" role="status" aria-live="polite">
         <span class="spinner" aria-hidden="true"></span>
@@ -624,10 +677,63 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _renderStatusPill() {
-    const state = this._timerState ?? this._timerStateController.state;
-    const label = this._getStatusLabel(state.status);
-    return html`<span class="status-pill status-${state.status}" aria-hidden="true">${label}</span>`;
+  private _renderStatusPill(state: TimerViewState) {
+    const label = this._getStatusLabel(state);
+    const className = this._getStatusClass(state);
+    return html`<span class=${className} aria-hidden="true">${label}</span>`;
+  }
+
+  private _renderStateBanner(state: TimerViewState) {
+    const banner = this._getUiStateBanner(state);
+    if (!banner) {
+      return nothing;
+    }
+
+    const { message, tone, live, role } = banner;
+    return html`
+      <div class="state-banner state-banner-${tone}" role=${role} aria-live=${live}>
+        ${message}
+      </div>
+    `;
+  }
+
+  private _getUiStateBanner(
+    state: TimerViewState,
+  ): { message: string; tone: "info" | "warn" | "error"; live: "polite" | "assertive"; role: "status" | "alert" } | null {
+    const uiState = state.uiState;
+    if (this._isUiError(uiState, "Disconnected")) {
+      const message =
+        state.connectionStatus === "reconnecting"
+          ? STRINGS.disconnectedReconnectingMessage
+          : STRINGS.disconnectedMessage;
+      return { message, tone: "warn", live: "polite", role: "status" };
+    }
+
+    if (this._isUiError(uiState, "EntityUnavailable")) {
+      const entity = state.entityId ?? this._config?.entity;
+      if (!entity) {
+        return {
+          message: STRINGS.missingEntity,
+          tone: "error",
+          live: "assertive",
+          role: "alert",
+        };
+      }
+
+      return {
+        message: STRINGS.entityUnavailableBanner(entity),
+        tone: "error",
+        live: "assertive",
+        role: "alert",
+      };
+    }
+
+    if (this._isUiError(uiState, "ServiceFailure")) {
+      const message = uiState.detail ?? STRINGS.serviceFailureMessage;
+      return { message, tone: "error", live: "polite", role: "status" };
+    }
+
+    return null;
   }
 
   private readonly _onPrimaryButtonClick = (event: Event) => {
@@ -686,9 +792,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     const state = this._timerState ?? this._timerStateController.state;
+    if (!state) {
+      return;
+    }
 
-    if (state.status === "unavailable") {
-      this._showEntityUnavailableToast();
+    if (!this._canInteract(state)) {
+      if (this._isUiError(state.uiState, "EntityUnavailable")) {
+        this._showEntityUnavailableToast();
+      }
       return;
     }
 
@@ -730,14 +841,20 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    const registered = this._timerStateController.registerLocalAction("start");
+    if (!registered) {
+      return;
+    }
+
     this._viewModel = setViewModelError(this._viewModel, undefined);
     this._clearErrorTimer();
-    this._viewModel = setPendingAction(this._viewModel, "start", Date.now());
+    this._viewModel = setPendingAction(this._viewModel, "start", registered.ts);
     this._announceAction("start", durationSeconds);
 
     try {
       await startTimer(this._hass, this._config.entity, durationSeconds);
     } catch {
+      this._timerStateController.reportActionFailure(registered.gen, STRINGS.toastStartFailed);
       this._viewModel = clearPendingAction(this._viewModel);
       this._viewModel = setViewModelError(this._viewModel, {
         message: STRINGS.toastStartFailed,
@@ -760,12 +877,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._confirmRestartDuration = undefined;
     this._viewModel = setViewModelError(this._viewModel, undefined);
     this._clearErrorTimer();
-    this._viewModel = setPendingAction(this._viewModel, "restart", Date.now());
+    const registered = this._timerStateController.registerLocalAction("restart");
+    if (!registered) {
+      return;
+    }
+
+    this._viewModel = setPendingAction(this._viewModel, "restart", registered.ts);
     this._announceAction("restart", durationSeconds);
 
     try {
       await restartTimer(this._hass, this._config.entity, durationSeconds);
     } catch {
+      this._timerStateController.reportActionFailure(registered.gen, STRINGS.toastRestartFailed);
       this._viewModel = clearPendingAction(this._viewModel);
       this._viewModel = setViewModelError(this._viewModel, {
         message: STRINGS.toastRestartFailed,
@@ -873,24 +996,52 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _getSecondaryDialLabel(state: TimerViewState): string {
-    if (state.status === "finished") {
-      return this._getStatusLabel("finished");
+    const uiState = state.uiState;
+    if (this._isUiError(uiState, "EntityUnavailable")) {
+      const entity = state.entityId ?? this._config?.entity;
+      return entity ? STRINGS.entityUnavailableWithId(entity) : STRINGS.statusUnavailable;
     }
 
-    if (state.status === "running") {
-      return this._getStatusLabel("running");
+    if (this._isUiError(uiState, "Disconnected")) {
+      return state.connectionStatus === "reconnecting"
+        ? STRINGS.statusReconnecting
+        : STRINGS.statusDisconnected;
     }
 
-    if (state.status === "idle") {
-      return this._getStatusLabel("idle");
+    if (this._isUiError(uiState, "ServiceFailure")) {
+      return STRINGS.statusError;
     }
 
-    const entity = this._config?.entity;
-    return entity ? STRINGS.entityUnavailableWithId(entity) : this._getStatusLabel("unavailable");
+    return this._getStatusLabel(state);
   }
 
-  private _getStatusLabel(status: TimerStatus): string {
-    switch (status) {
+  private _getStatusLabel(state: TimerViewState): string {
+    const uiState = state.uiState;
+    if (uiState === "Idle") {
+      return STRINGS.statusIdle;
+    }
+    if (uiState === "Running") {
+      return STRINGS.statusRunning;
+    }
+    if (typeof uiState === "object") {
+      if (uiState.kind === "FinishedTransient") {
+        return STRINGS.statusFinished;
+      }
+      switch (uiState.reason) {
+        case "Disconnected":
+          return state.connectionStatus === "reconnecting"
+            ? STRINGS.statusReconnecting
+            : STRINGS.statusDisconnected;
+        case "EntityUnavailable":
+          return STRINGS.statusUnavailable;
+        case "ServiceFailure":
+          return STRINGS.statusError;
+        default:
+          break;
+      }
+    }
+
+    switch (state.status) {
       case "idle":
         return STRINGS.statusIdle;
       case "running":
@@ -900,6 +1051,88 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       default:
         return STRINGS.statusUnavailable;
     }
+  }
+
+  private _getStatusClass(state: TimerViewState): string {
+    const uiState = state.uiState;
+    if (uiState === "Running") {
+      return "status-pill status-running";
+    }
+    if (uiState === "Idle") {
+      return "status-pill status-idle";
+    }
+    if (typeof uiState === "object") {
+      if (uiState.kind === "FinishedTransient") {
+        return "status-pill status-finished";
+      }
+      if (uiState.reason === "Disconnected") {
+        return "status-pill status-disconnected";
+      }
+      if (uiState.reason === "EntityUnavailable") {
+        return "status-pill status-unavailable";
+      }
+      if (uiState.reason === "ServiceFailure") {
+        return "status-pill status-error";
+      }
+    }
+
+    switch (state.status) {
+      case "running":
+        return "status-pill status-running";
+      case "finished":
+        return "status-pill status-finished";
+      case "idle":
+        return "status-pill status-idle";
+      default:
+        return "status-pill status-unavailable";
+    }
+  }
+
+  private _isUiError(
+    uiState: TimerUiState,
+    reason?: TimerUiErrorReason,
+  ): uiState is Extract<TimerUiState, { kind: "Error" }> {
+    if (typeof uiState !== "object" || uiState.kind !== "Error") {
+      return false;
+    }
+
+    if (!reason) {
+      return true;
+    }
+
+    return uiState.reason === reason;
+  }
+
+  private _canInteract(state: TimerViewState | undefined): boolean {
+    if (!state) {
+      return false;
+    }
+
+    if (state.connectionStatus !== "connected") {
+      return false;
+    }
+
+    if (this._isUiError(state.uiState, "EntityUnavailable")) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private _isActionDisabled(state: TimerViewState): boolean {
+    if (!this._viewModel) {
+      return true;
+    }
+
+    if (this._viewModel.ui.pendingAction !== "none") {
+      return true;
+    }
+
+    if (!this._canInteract(state)) {
+      return true;
+    }
+
+    return false;
   }
 
   private _getEstimationNotice(state: TimerViewState): string | null {
@@ -1019,17 +1252,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (this._viewModel) {
-      const pending = previousViewModel?.ui.pendingAction ?? "none";
-      if (pending !== "none") {
-        if (
-          state.status === "running" ||
-          state.status === "unavailable" ||
-          state.status === "finished"
-        ) {
-          this._viewModel = clearPendingAction(this._viewModel);
-        } else if (state.status === "idle" && previousState?.status === "running") {
-          this._viewModel = clearPendingAction(this._viewModel);
+      const inFlight = state.inFlightAction?.kind ?? "none";
+      const currentPending = this._viewModel.ui.pendingAction ?? "none";
+      if (inFlight !== "none") {
+        if (currentPending !== inFlight) {
+          this._viewModel = setPendingAction(
+            this._viewModel,
+            inFlight,
+            state.inFlightAction?.ts ?? Date.now(),
+          );
         }
+      } else if (currentPending !== "none") {
+        this._viewModel = clearPendingAction(this._viewModel);
       }
 
       if (previousViewModel?.ui.error) {
@@ -1049,8 +1283,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     this._handleAnnouncements(state, previousState, previousViewModel);
     this._previousTimerState = state;
-    this._syncDisplayDuration(state);
     this._updateRunningTickState(state);
+    this._syncDisplayDuration(state);
+    this._scheduleApplyDialDisplay("state-change");
   }
 
   private readonly _onDialInput = (event: CustomEvent<{ value: number }>) => {
@@ -1066,8 +1301,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const value = normalizeDurationSeconds(event.detail.value, bounds);
     const state = this._timerState ?? this._timerStateController.state;
 
-    this._setDisplayDurationSeconds(value, state);
+    if (!this._canInteract(state) || this._viewModel.ui.pendingAction !== "none") {
+      return;
+    }
+
+    this._setDisplayDurationSeconds(value);
     this._viewModel = updateDialSelection(this._viewModel, value);
+    this._scheduleApplyDialDisplay("dial-input");
   };
 
   private readonly _onDialBlocked = (event: Event) => {
@@ -1093,6 +1333,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._clearErrorTimer();
     this._cancelRunningTick();
     this._announcer.reset();
+    if (this._applyDialRaf !== undefined) {
+      cancelAnimationFrame(this._applyDialRaf);
+      this._applyDialRaf = undefined;
+    }
+    this._dialResizeObserver?.disconnect();
+    this._dialResizeObserver = undefined;
+    this._lastDialSignature = undefined;
+    this._lastDialElement = undefined;
   }
 
   private _syncDisplayDuration(state: TimerViewState) {
@@ -1109,11 +1357,19 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     switch (state.status) {
       case "running":
+        if (state.connectionStatus !== "connected") {
+          return;
+        }
         this._applyRunningDisplay(state);
         return;
-      case "finished":
-        next = state.remainingSeconds ?? state.durationSeconds ?? viewModel.dial.selectedDurationSeconds;
+      case "finished": {
+        const selected =
+          viewModel.selectedDurationSeconds ??
+          viewModel.dial.selectedDurationSeconds ??
+          this._displayDurationSeconds;
+        next = selected ?? state.remainingSeconds ?? state.durationSeconds;
         break;
+      }
       case "idle":
         next = viewModel.dial.selectedDurationSeconds;
         break;
@@ -1122,30 +1378,38 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         break;
     }
 
-    this._setDisplayDurationSeconds(next, state);
+    this._setDisplayDurationSeconds(next);
   }
 
   protected updated(changed: Map<string, unknown>) {
     super.updated(changed);
-    const state = this._timerState ?? this._timerStateController.state;
-    this._applyDialDisplay(state, this._displayDurationSeconds);
+    this._scheduleApplyDialDisplay("updated");
   }
 
-  private _setDisplayDurationSeconds(
-    next: number | undefined,
-    state: TimerViewState = this._timerState ?? this._timerStateController.state,
-  ) {
-    if (this._displayDurationSeconds === next) {
-      if (state) {
-        this._applyDialDisplay(state, next);
+  private _scheduleApplyDialDisplay(_reason: string): void {
+    if (this._applyDialRaf !== undefined) {
+      return;
+    }
+
+    this._applyDialRaf = window.requestAnimationFrame(() => {
+      this._applyDialRaf = undefined;
+      const state = this._timerState ?? this._timerStateController.state;
+      if (!state) {
+        return;
       }
+      this._applyDialDisplay(state, this._displayDurationSeconds);
+    });
+  }
+
+  private _setDisplayDurationSeconds(next: number | undefined) {
+    if (this._displayDurationSeconds === next) {
+      this._scheduleApplyDialDisplay("display-unchanged");
       return;
     }
 
     this._displayDurationSeconds = next;
-    if (state) {
-      this._applyDialDisplay(state, next);
-    }
+    this._lastDialSignature = undefined;
+    this._scheduleApplyDialDisplay("display-changed");
   }
 
   private _applyDialDisplay(state: TimerViewState, displaySeconds?: number) {
@@ -1164,6 +1428,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const dialElement = this._resolveDialElement();
     if (dialElement) {
+      if (dialElement !== this._lastDialElement) {
+        this._lastDialElement = dialElement;
+        this._lastDialSignature = undefined;
+      }
+
+      const signature = `${resolvedSeconds}|${state.status}|${dialElement.clientWidth}x${dialElement.clientHeight}`;
+      if (this._lastDialSignature === signature) {
+        return;
+      }
+      this._lastDialSignature = signature;
       if (dialElement.value !== resolvedSeconds) {
         dialElement.value = resolvedSeconds;
       }
@@ -1172,21 +1446,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    if (this._awaitingDialElementSync) {
-      return;
-    }
-
-    this._awaitingDialElementSync = true;
-    void this.updateComplete.then(() => {
-      this._awaitingDialElementSync = false;
-      const nextState = this._timerState ?? this._timerStateController.state;
-      if (nextState) {
-        this._applyDialDisplay(nextState, this._displayDurationSeconds);
-      }
-    });
+    this._lastDialElement = undefined;
+    this._scheduleApplyDialDisplay("await-dial");
   }
 
   private _updateRunningTickState(state: TimerViewState): void {
+    if (state.connectionStatus !== "connected") {
+      this._cancelRunningTick();
+      return;
+    }
+
     if (state.status !== "running") {
       this._cancelRunningTick();
       this._serverRemainingSeconds = undefined;
@@ -1247,7 +1516,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return undefined;
       }
       const clamped = Math.max(0, Math.floor(fallback));
-      this._setDisplayDurationSeconds(clamped, state);
+      this._setDisplayDurationSeconds(clamped);
       const announcement = this._announcer.announceRunning(clamped);
       if (announcement) {
         this._announce(announcement);
@@ -1258,7 +1527,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const elapsedMs = Math.max(0, Date.now() - syncTs);
     const elapsedSeconds = Math.floor(elapsedMs / 1000);
     const displaySeconds = Math.max(0, Math.floor(baseline) - elapsedSeconds);
-    this._setDisplayDurationSeconds(displaySeconds, state);
+    this._setDisplayDurationSeconds(displaySeconds);
     const announcement = this._announcer.announceRunning(displaySeconds);
     if (announcement) {
       this._announce(announcement);

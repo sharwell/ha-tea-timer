@@ -16,7 +16,6 @@ export async function restartTimer(
   entityId: string,
   durationSeconds: number,
 ): Promise<void> {
-  await hass.callService("timer", "cancel", { entity_id: entityId });
   await hass.callService("timer", "start", {
     entity_id: entityId,
     duration: durationSeconds,
