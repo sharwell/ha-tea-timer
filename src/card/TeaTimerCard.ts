@@ -1362,9 +1362,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         }
         this._applyRunningDisplay(state);
         return;
-      case "finished":
-        next = state.remainingSeconds ?? state.durationSeconds ?? viewModel.dial.selectedDurationSeconds;
+      case "finished": {
+        const selected =
+          viewModel.selectedDurationSeconds ??
+          viewModel.dial.selectedDurationSeconds ??
+          this._displayDurationSeconds;
+        next = selected ?? state.remainingSeconds ?? state.durationSeconds;
         break;
+      }
       case "idle":
         next = viewModel.dial.selectedDurationSeconds;
         break;

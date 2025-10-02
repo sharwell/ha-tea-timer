@@ -789,6 +789,20 @@ describe("TeaTimerCard", () => {
     expect(internals._displayDurationSeconds).toBe(240);
     expect(dialElement.value).toBe(240);
     expect(dialElement.valueText).toBe(formatDurationSeconds(240));
+
+    const finishedState: TimerViewState = {
+      status: "finished",
+      durationSeconds: 240,
+      remainingSeconds: 0,
+    };
+
+    setTimerState(card, finishedState);
+
+    const finished = apply._timerState ?? apply._timerStateController.state;
+    apply._applyDialDisplay(finished, apply._displayDurationSeconds);
+
+    expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
+    expect(dialElement.value).toBe(240);
   });
 
   it("rotates the dial handle to match preset selection", () => {
