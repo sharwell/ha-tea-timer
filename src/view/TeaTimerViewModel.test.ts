@@ -23,6 +23,7 @@ const config: TeaTimerConfig = {
   dialBounds: { min: 15, max: 1200, step: 5 },
   confirmRestart: false,
   finishedAutoIdleMs: 5000,
+  clockSkewEstimatorEnabled: true,
 };
 
 describe("createTeaTimerViewModel", () => {

@@ -28,6 +28,7 @@ describe("parseTeaTimerConfig", () => {
     expect(result.config?.dialBounds).toEqual({ min: 30, max: 600, step: 15 });
     expect(result.config?.confirmRestart).toBe(false);
     expect(result.config?.finishedAutoIdleMs).toBe(5000);
+    expect(result.config?.clockSkewEstimatorEnabled).toBe(true);
   });
 
   it("limits presets to 8 items", () => {
@@ -51,6 +52,17 @@ describe("parseTeaTimerConfig", () => {
 
     expect(result.errors).toHaveLength(0);
     expect(result.config?.confirmRestart).toBe(true);
+  });
+
+  it("parses disableClockSkewEstimator flag", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [],
+      disableClockSkewEstimator: true,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.config?.clockSkewEstimatorEnabled).toBe(false);
   });
 
   it("parses finishedAutoIdleMs", () => {

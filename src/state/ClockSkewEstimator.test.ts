@@ -34,4 +34,19 @@ describe("ClockSkewEstimator", () => {
 
     expect(serverNow).toBeCloseTo(local + 500 - 750, 1);
   });
+
+  it("can be reset to drop the existing estimate", () => {
+    const estimator = new ClockSkewEstimator();
+    const local = 4_000_000;
+    estimator.estimateFromServerStamp(new Date(local - 600).toISOString(), local);
+
+    estimator.reset();
+
+    expect(estimator.getOffsetMs()).toBe(0);
+
+    const laterLocal = local + 1000;
+    estimator.estimateFromServerStamp(new Date(laterLocal - 200).toISOString(), laterLocal);
+
+    expect(estimator.getOffsetMs()).toBeCloseTo(200, 1);
+  });
 });

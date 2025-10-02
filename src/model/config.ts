@@ -18,6 +18,7 @@ export interface TeaTimerCardConfig {
   defaultPreset?: number | string;
   confirmRestart?: boolean;
   finishedAutoIdleMs?: number;
+  disableClockSkewEstimator?: boolean;
 }
 
 export interface TeaTimerConfig {
@@ -30,6 +31,7 @@ export interface TeaTimerConfig {
   confirmRestart: boolean;
   finishedAutoIdleMs: number;
   defaultPresetId?: number;
+  clockSkewEstimatorEnabled: boolean;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -181,6 +183,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
   };
 
   const confirmRestart = typeof raw.confirmRestart === "boolean" ? raw.confirmRestart : false;
+  const clockSkewEstimatorEnabled = raw.disableClockSkewEstimator === true ? false : true;
 
   const config: TeaTimerConfig = {
     type,
@@ -192,6 +195,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     confirmRestart,
     finishedAutoIdleMs,
     defaultPresetId,
+    clockSkewEstimatorEnabled,
   };
 
   return { config, errors };

@@ -105,7 +105,8 @@ To experiment locally, run `npm run dev` and open the playground at http://local
    stepSeconds: 10
    confirmRestart: true # optional—require confirmation before restarting a running timer
    finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
-   ```
+   disableClockSkewEstimator: true # optional—seed countdowns from the local clock instead of HA timestamps
+  ```
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
 
@@ -187,6 +188,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
   9.6. `finishedAutoIdleMs` (default 5000).
    9.7. `confirmRestart` (default false).
+   9.8. `disableClockSkewEstimator` (default false; fallback to the local clock when true).
 
 10. **Accessibility & Internationalization**
     10.1. Full keyboard support: focusable chips; Space/Enter to start/restart; arrow keys to nudge dial when idle (+/‑ step).

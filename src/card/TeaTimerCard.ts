@@ -130,6 +130,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._confirmRestartVisible = false;
     this._confirmRestartDuration = undefined;
     this._clearErrorTimer();
+    this._timerStateController.setClockSkewEstimatorEnabled(
+      this._config?.clockSkewEstimatorEnabled ?? true,
+    );
     this._timerStateController.setFinishedOverlayMs(
       this._config?.finishedAutoIdleMs ?? 5000,
     );

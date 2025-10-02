@@ -3,7 +3,11 @@ import { render, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { TeaTimerCard } from "./TeaTimerCard";
 import type { TimerViewState as MachineTimerViewState } from "../state/TimerStateMachine";
-import type { TimerViewState as ControllerTimerViewState, TimerUiState } from "../state/TimerStateController";
+import {
+  TimerStateController,
+  type TimerViewState as ControllerTimerViewState,
+  type TimerUiState,
+} from "../state/TimerStateController";
 type TimerViewState = MachineTimerViewState;
 import { formatDurationSeconds } from "../model/duration";
 import type { DurationBounds } from "../model/duration";
@@ -155,6 +159,21 @@ describe("TeaTimerCard", () => {
 
   afterEach(() => {
     document.querySelectorAll(tagName).forEach((el) => el.remove());
+  });
+
+  it("can disable the clock skew estimator via config", () => {
+    const spy = vi.spyOn(TimerStateController.prototype, "setClockSkewEstimatorEnabled");
+    const card = createCard();
+
+    spy.mockClear();
+    card.setConfig({ entity: "timer.test", presets: [], disableClockSkewEstimator: true });
+    expect(spy).toHaveBeenCalledWith(false);
+
+    spy.mockClear();
+    card.setConfig({ entity: "timer.test", presets: [] });
+    expect(spy).toHaveBeenCalledWith(true);
+
+    spy.mockRestore();
   });
 
   it("tracks the displayed duration immediately after dial input", () => {

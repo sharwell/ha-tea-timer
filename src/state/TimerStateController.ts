@@ -41,6 +41,7 @@ export interface TimerStateControllerOptions {
   onStateChanged?: (state: TimerViewState) => void;
   now?: () => number;
   monotonicNow?: () => number;
+  clockSkewEstimatorEnabled?: boolean;
 }
 
 interface ConnectionMonitor {
@@ -107,6 +108,8 @@ export class TimerStateController implements ReactiveController {
 
   private readonly clockSkew = new ClockSkewEstimator();
 
+  private clockSkewEstimatorEnabled: boolean;
+
   constructor(host: ReactiveControllerHost, options?: TimerStateControllerOptions) {
     this.host = host;
     this.options = options ?? {};
@@ -116,6 +119,9 @@ export class TimerStateController implements ReactiveController {
       now: this.options.now,
     });
     this.monotonicNow = this.options.monotonicNow ?? (() => (typeof performance !== "undefined" ? performance.now() : Date.now()));
+
+    this.clockSkewEstimatorEnabled =
+      this.options.clockSkewEstimatorEnabled !== undefined ? this.options.clockSkewEstimatorEnabled : true;
 
     this.previousEntityState = this.stateMachine.state;
     this.currentState = this.composeState(this.stateMachine.state);
@@ -198,6 +204,17 @@ export class TimerStateController implements ReactiveController {
     this.emitCurrentState();
   }
 
+  public setClockSkewEstimatorEnabled(enabled: boolean): void {
+    const next = enabled !== false;
+    if (this.clockSkewEstimatorEnabled === next) {
+      return;
+    }
+
+    this.clockSkewEstimatorEnabled = next;
+    this.clockSkew.reset();
+    this.refreshEntityState();
+  }
+
   public clearServiceError(): void {
     if (!this.serviceErrorDetail) {
       return;
@@ -276,7 +293,7 @@ export class TimerStateController implements ReactiveController {
         this.entityId,
         (updatedEntity, event) => {
           const now = this.getCurrentTime();
-          if (event?.time_fired) {
+          if (this.clockSkewEstimatorEnabled && event?.time_fired) {
             this.clockSkew.estimateFromServerStamp(event.time_fired, now);
           }
           this.ingestServerTimestamps(updatedEntity, now);
@@ -299,7 +316,7 @@ export class TimerStateController implements ReactiveController {
     try {
       const unsubFinished = await subscribeTimerFinished(this.hass.connection, this.entityId, (event) => {
         const now = this.getCurrentTime();
-        if (event?.time_fired) {
+        if (this.clockSkewEstimatorEnabled && event?.time_fired) {
           this.clockSkew.estimateFromServerStamp(event.time_fired, now);
         }
         if (this.shouldIgnoreFinish(now)) {
@@ -494,12 +511,16 @@ export class TimerStateController implements ReactiveController {
     return this.options.now ? this.options.now() : Date.now();
   }
 
-  private getServerNow(now: number): number {
+  private getServerNow(now: number): number | undefined {
+    if (!this.clockSkewEstimatorEnabled) {
+      return undefined;
+    }
+
     return this.clockSkew.serverNowMs(now);
   }
 
   private ingestServerTimestamps(entity: HassEntity | undefined, localNow: number): void {
-    if (!entity) {
+    if (!this.clockSkewEstimatorEnabled || !entity) {
       return;
     }
 

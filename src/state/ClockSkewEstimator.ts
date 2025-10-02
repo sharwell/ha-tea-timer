@@ -29,4 +29,9 @@ export class ClockSkewEstimator {
   public serverNowMs(localMs: number = Date.now()): number {
     return localMs - this.offsetMs;
   }
+
+  public reset(): void {
+    this.offsetMs = 0;
+    this.inited = false;
+  }
 }
