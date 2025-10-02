@@ -26,7 +26,7 @@ function wrapUnsubscribe(unsub: HassUnsubscribe | void | Promise<void>): HassUns
 export async function subscribeTimerFinished(
   connection: HassConnection | undefined,
   entityId: string,
-  handler: (event: HassTimerFinishedEvent) => void,
+  handler: (event: HassEventMessage<HassTimerFinishedEvent>) => void,
 ): Promise<HassUnsubscribe> {
   if (!connection) {
     return createNoopUnsubscribe();
@@ -45,7 +45,7 @@ export async function subscribeTimerFinished(
         return;
       }
 
-      handler(event.data);
+      handler(event);
     },
     {
       type: "subscribe_events",
@@ -59,7 +59,7 @@ export async function subscribeTimerFinished(
 export async function subscribeTimerStateChanges(
   connection: HassConnection | undefined,
   entityId: string,
-  handler: (entity: HassEntity | undefined) => void,
+  handler: (entity: HassEntity | undefined, event: HassEventMessage<HassStateChangedEvent>) => void,
 ): Promise<HassUnsubscribe> {
   if (!connection) {
     return createNoopUnsubscribe();
@@ -78,7 +78,7 @@ export async function subscribeTimerStateChanges(
         return;
       }
 
-      handler(event.data?.new_state ?? undefined);
+      handler(event.data?.new_state ?? undefined, event);
     },
     {
       type: "subscribe_events",

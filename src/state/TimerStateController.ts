@@ -10,6 +10,7 @@ import type {
   HomeAssistant,
 } from "../types/home-assistant";
 import { TimerStateMachine, TimerViewState as TimerEntityState } from "./TimerStateMachine";
+import { ClockSkewEstimator } from "./ClockSkewEstimator";
 
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
 
@@ -104,6 +105,8 @@ export class TimerStateController implements ReactiveController {
 
   private currentState: TimerViewState;
 
+  private readonly clockSkew = new ClockSkewEstimator();
+
   constructor(host: ReactiveControllerHost, options?: TimerStateControllerOptions) {
     this.host = host;
     this.options = options ?? {};
@@ -141,7 +144,10 @@ export class TimerStateController implements ReactiveController {
     }
 
     this.stateMachine.setFinishedOverlayMs(value);
-    this.applyEntityState(this.stateMachine.handleTimeAdvance(this.getCurrentTime()));
+    const now = this.getCurrentTime();
+    this.applyEntityState(
+      this.stateMachine.handleTimeAdvance(now, { serverNow: this.getServerNow(now) }),
+    );
   }
 
   public setHass(hass: HomeAssistant | undefined): void {
@@ -240,7 +246,9 @@ export class TimerStateController implements ReactiveController {
     }
 
     const entity = this.getEntityFromHass();
-    this.applyEntityState(this.stateMachine.updateFromEntity(entity, this.getCurrentTime()));
+    const now = this.getCurrentTime();
+    this.ingestServerTimestamps(entity, now);
+    this.applyEntityState(this.stateMachine.updateFromEntity(entity, now, { serverNow: this.getServerNow(now) }));
   }
 
   private async refreshSubscriptions(): Promise<void> {
@@ -254,16 +262,29 @@ export class TimerStateController implements ReactiveController {
     }
 
     const entity = this.getEntityFromHass();
-    this.applyEntityState(this.stateMachine.updateFromEntity(entity, this.getCurrentTime()));
+    const now = this.getCurrentTime();
+    this.ingestServerTimestamps(entity, now);
+    this.applyEntityState(this.stateMachine.updateFromEntity(entity, now, { serverNow: this.getServerNow(now) }));
 
     if (!this.connected) {
       return;
     }
 
     try {
-      const unsubState = await subscribeTimerStateChanges(this.hass.connection, this.entityId, (updatedEntity) => {
-        this.applyEntityState(this.stateMachine.updateFromEntity(updatedEntity, this.getCurrentTime()));
-      });
+      const unsubState = await subscribeTimerStateChanges(
+        this.hass.connection,
+        this.entityId,
+        (updatedEntity, event) => {
+          const now = this.getCurrentTime();
+          if (event?.time_fired) {
+            this.clockSkew.estimateFromServerStamp(event.time_fired, now);
+          }
+          this.ingestServerTimestamps(updatedEntity, now);
+          this.applyEntityState(
+            this.stateMachine.updateFromEntity(updatedEntity, now, { serverNow: this.getServerNow(now) }),
+          );
+        },
+      );
 
       if (token !== this.subscriptionToken) {
         await unsubState();
@@ -276,12 +297,17 @@ export class TimerStateController implements ReactiveController {
     }
 
     try {
-      const unsubFinished = await subscribeTimerFinished(this.hass.connection, this.entityId, () => {
+      const unsubFinished = await subscribeTimerFinished(this.hass.connection, this.entityId, (event) => {
         const now = this.getCurrentTime();
+        if (event?.time_fired) {
+          this.clockSkew.estimateFromServerStamp(event.time_fired, now);
+        }
         if (this.shouldIgnoreFinish(now)) {
           return;
         }
-        this.applyEntityState(this.stateMachine.markFinished(now));
+        this.applyEntityState(
+          this.stateMachine.markFinished(now, { serverNow: this.getServerNow(now) }),
+        );
       });
 
       if (token !== this.subscriptionToken) {
@@ -421,13 +447,19 @@ export class TimerStateController implements ReactiveController {
     const delay = deadline - this.getCurrentTime();
 
     if (delay <= 0) {
-      this.applyEntityState(this.stateMachine.handleTimeAdvance(this.getCurrentTime()));
+      const now = this.getCurrentTime();
+      this.applyEntityState(
+        this.stateMachine.handleTimeAdvance(now, { serverNow: this.getServerNow(now) }),
+      );
       return;
     }
 
     this.overlayTimer = setTimeout(() => {
       this.overlayTimer = undefined;
-      this.applyEntityState(this.stateMachine.handleTimeAdvance(this.getCurrentTime()));
+      const now = this.getCurrentTime();
+      this.applyEntityState(
+        this.stateMachine.handleTimeAdvance(now, { serverNow: this.getServerNow(now) }),
+      );
     }, delay);
   }
 
@@ -460,6 +492,24 @@ export class TimerStateController implements ReactiveController {
 
   private getCurrentTime(): number {
     return this.options.now ? this.options.now() : Date.now();
+  }
+
+  private getServerNow(now: number): number {
+    return this.clockSkew.serverNowMs(now);
+  }
+
+  private ingestServerTimestamps(entity: HassEntity | undefined, localNow: number): void {
+    if (!entity) {
+      return;
+    }
+
+    if (entity.last_changed) {
+      this.clockSkew.estimateFromServerStamp(entity.last_changed, localNow);
+    }
+
+    if (entity.last_updated && entity.last_updated !== entity.last_changed) {
+      this.clockSkew.estimateFromServerStamp(entity.last_updated, localNow);
+    }
   }
 
   private setupConnectionMonitor(connection: HassConnection | undefined): void {

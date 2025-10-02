@@ -8,9 +8,18 @@ function createEntity(options: {
   duration?: string;
   remaining?: string;
   lastChangedOffsetMs?: number;
+  finishesAtOffsetMs?: number;
+  finishesAt?: string;
 }): HassEntity {
   const now = Date.now();
   const lastChanged = new Date(now - (options.lastChangedOffsetMs ?? 0)).toISOString();
+  let finishesAt: string | undefined;
+
+  if (typeof options.finishesAt === "string") {
+    finishesAt = options.finishesAt;
+  } else if (typeof options.finishesAtOffsetMs === "number") {
+    finishesAt = new Date(now + options.finishesAtOffsetMs).toISOString();
+  }
 
   return {
     entity_id: options.entity_id ?? "timer.test_timer",
@@ -18,6 +27,7 @@ function createEntity(options: {
     attributes: {
       duration: options.duration,
       remaining: options.remaining,
+      finishes_at: finishesAt,
     },
     last_changed: lastChanged,
     last_updated: lastChanged,
@@ -34,7 +44,8 @@ describe("normalizeTimerEntity", () => {
       lastChangedOffsetMs: 30_000,
     });
 
-    const state = normalizeTimerEntity(entity, now);
+    const serverNow = now - 1500; // assume client clock runs ahead by 1.5s
+    const state = normalizeTimerEntity(entity, now, { serverNow });
 
     expect(state.status).toBe("running");
     expect(state.remainingSeconds).toBe(270);
@@ -54,6 +65,26 @@ describe("normalizeTimerEntity", () => {
     expect(state.status).toBe("running");
     expect(state.remainingSeconds).toBe(180);
     expect(state.remainingIsEstimated).toBe(true);
+  });
+
+  it("prefers finishes_at when computing remaining", () => {
+    const now = Date.now();
+    const serverNow = now - 3000;
+    const finishesAt = new Date(serverNow + 90_000).toISOString();
+    const entity = createEntity({
+      state: "active",
+      duration: "0:05:00",
+      remaining: undefined,
+      finishesAt,
+    });
+
+    const state = normalizeTimerEntity(entity, now, { serverNow });
+
+    // finishes_at is 90s after server now -> 90 seconds remaining
+    expect(state.status).toBe("running");
+    expect(state.remainingSeconds).toBeGreaterThanOrEqual(89);
+    expect(state.remainingSeconds).toBeLessThanOrEqual(90);
+    expect(state.remainingIsEstimated).toBe(false);
   });
 });
 

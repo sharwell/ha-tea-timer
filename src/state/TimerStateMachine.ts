@@ -52,7 +52,11 @@ function parseHaTime(value: unknown): number | undefined {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-function normalizeEntity(entity: HassEntity | undefined, now: number): TimerViewState {
+function normalizeEntity(
+  entity: HassEntity | undefined,
+  clientNow: number,
+  serverNow?: number,
+): TimerViewState {
   if (!entity) {
     return { status: "unavailable" };
   }
@@ -67,14 +71,23 @@ function normalizeEntity(entity: HassEntity | undefined, now: number): TimerView
   const lastChangedTs = parseTimestamp(entity.last_changed);
   const durationSeconds = parseHaTime(entity.attributes?.duration);
   const reportedRemainingSeconds = parseHaTime(entity.attributes?.remaining);
+  const finishesAt = parseTimestamp(entity.attributes?.finishes_at);
+
+  const effectiveServerNow = serverNow ?? clientNow;
 
   if (state === "active" || state === "paused") {
     let remainingSeconds = reportedRemainingSeconds;
     let remainingIsEstimated = false;
     let estimationDriftSeconds: number | undefined;
 
+    if (state === "active" && finishesAt !== undefined) {
+      const remainingMs = finishesAt - effectiveServerNow;
+      remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+      remainingIsEstimated = false;
+    }
+
     if (remainingSeconds === undefined && durationSeconds !== undefined && lastChangedTs !== undefined) {
-      const elapsedMs = Math.max(0, now - lastChangedTs);
+      const elapsedMs = Math.max(0, effectiveServerNow - lastChangedTs);
       const elapsedSeconds = Math.floor(elapsedMs / 1000);
       const computedRemaining = Math.max(0, durationSeconds - elapsedSeconds);
       remainingSeconds = computedRemaining;
@@ -142,24 +155,28 @@ export class TimerStateMachine {
     return this.current;
   }
 
-  public updateFromEntity(entity: HassEntity | undefined, atTime = this.now()): TimerViewState {
+  public updateFromEntity(
+    entity: HassEntity | undefined,
+    atTime = this.now(),
+    options?: { serverNow?: number },
+  ): TimerViewState {
     this.lastEntity = entity ?? undefined;
-    const baseState = normalizeEntity(entity, atTime);
+    const baseState = normalizeEntity(entity, atTime, options?.serverNow);
     const state = this.applyOverlay(baseState, atTime);
     this.current = state;
     return state;
   }
 
-  public markFinished(atTime = this.now()): TimerViewState {
+  public markFinished(atTime = this.now(), options?: { serverNow?: number }): TimerViewState {
     this.overlayUntil = atTime + this.finishedOverlayMs;
-    const baseState = normalizeEntity(this.lastEntity, atTime);
+    const baseState = normalizeEntity(this.lastEntity, atTime, options?.serverNow);
     const state = this.applyOverlay(baseState, atTime);
     this.current = state;
     return state;
   }
 
-  public handleTimeAdvance(atTime = this.now()): TimerViewState {
-    const baseState = normalizeEntity(this.lastEntity, atTime);
+  public handleTimeAdvance(atTime = this.now(), options?: { serverNow?: number }): TimerViewState {
+    const baseState = normalizeEntity(this.lastEntity, atTime, options?.serverNow);
     const state = this.applyOverlay(baseState, atTime);
     this.current = state;
     return state;
@@ -194,6 +211,10 @@ export class TimerStateMachine {
   }
 }
 
-export function normalizeTimerEntity(entity: HassEntity | undefined, now: number): TimerViewState {
-  return normalizeEntity(entity, now);
+export function normalizeTimerEntity(
+  entity: HassEntity | undefined,
+  now: number,
+  options?: { serverNow?: number },
+): TimerViewState {
+  return normalizeEntity(entity, now, options?.serverNow);
 }
