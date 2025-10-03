@@ -213,12 +213,14 @@ describe("TeaTimerCard", () => {
       _dialElement?: {
         valueText: string;
         shadowRoot: null;
+        setProgressFraction: (fraction: number) => void;
       };
     };
 
     const dialElement = {
       valueText: "",
       shadowRoot: null,
+      setProgressFraction: vi.fn(),
     };
 
     internals._dialElement = dialElement;
@@ -475,6 +477,37 @@ describe("TeaTimerCard", () => {
       vi.clearAllTimers();
       vi.useRealTimers();
     }
+  });
+
+  it("computes the progress fraction from the remaining time", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+    const internals = card as unknown as {
+      _computeProgressFraction(
+        state: MachineTimerViewState,
+        now: number,
+        displaySeconds?: number,
+      ): number | undefined;
+      _serverRemainingSeconds?: number;
+      _lastServerSyncMs?: number;
+    };
+
+    const start = Date.now();
+    internals._serverRemainingSeconds = 300;
+    internals._lastServerSyncMs = start;
+
+    const running: MachineTimerViewState = { status: "running", durationSeconds: 300 };
+
+    const initial = internals._computeProgressFraction(running, start);
+    expect(initial).toBeCloseTo(1, 5);
+
+    const halfway = start + 150_000;
+    const midway = internals._computeProgressFraction(running, halfway);
+    expect(midway).toBeCloseTo(0.5, 2);
+
+    const finished: MachineTimerViewState = { status: "finished" };
+    expect(internals._computeProgressFraction(finished, halfway)).toBe(0);
   });
 
   it("applies elapsed time after long pauses in ticking", () => {
@@ -769,10 +802,10 @@ describe("TeaTimerCard", () => {
     const internals = card as unknown as {
       _viewModel?: { ui: { selectedPresetId?: unknown } };
       _displayDurationSeconds?: number;
-      _dialElement?: { value: number; valueText: string; shadowRoot: null };
+      _dialElement?: { value: number; valueText: string; shadowRoot: null; setProgressFraction: (fraction: number) => void };
     };
 
-    const dialElement = { value: 0, valueText: "", shadowRoot: null };
+    const dialElement = { value: 0, valueText: "", shadowRoot: null, setProgressFraction: vi.fn() };
     internals._dialElement = dialElement;
 
     pointerSelectPreset(card, 1);
@@ -835,6 +868,7 @@ describe("TeaTimerCard", () => {
       value: 0,
       valueText: "",
       bounds: dialBounds,
+      setProgressFraction: vi.fn(),
       shadowRoot: {
         querySelector: (selector: string) => (selector === ".dial-handle" ? handle : null),
       },
@@ -882,10 +916,10 @@ describe("TeaTimerCard", () => {
     const internals = card as unknown as {
       _viewModel?: { ui: { selectedPresetId?: unknown } };
       _displayDurationSeconds?: number;
-      _dialElement?: { value: number; valueText: string; shadowRoot: null };
+      _dialElement?: { value: number; valueText: string; shadowRoot: null; setProgressFraction: (fraction: number) => void };
     };
 
-    const dialElement = { value: 0, valueText: "", shadowRoot: null };
+    const dialElement = { value: 0, valueText: "", shadowRoot: null, setProgressFraction: vi.fn() };
     internals._dialElement = dialElement;
 
     keyboardActivatePreset(card, 1, "Enter");

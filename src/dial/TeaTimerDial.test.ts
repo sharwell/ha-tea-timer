@@ -2,6 +2,50 @@ import { describe, expect, it, vi } from "vitest";
 import { TeaTimerDial } from "./TeaTimerDial";
 
 describe("TeaTimerDial", () => {
+  it("updates the progress arc when the fraction changes", () => {
+    const dial = new TeaTimerDial();
+    const arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    arc.classList.add("dial-progress-arc");
+    Object.defineProperty(dial, "shadowRoot", {
+      configurable: true,
+      value: {
+        querySelector: (selector: string) => (selector === ".dial-progress-arc" ? arc : null),
+      },
+    });
+
+    dial.setProgressFraction(0.25);
+
+    const internals = dial as unknown as { pendingProgressSync: boolean };
+    expect(internals.pendingProgressSync).toBe(false);
+
+    const offset = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
+    const circumference = 2 * Math.PI * (50 - 6 / 2);
+    expect(offset).toBeCloseTo(circumference * 0.75, 2);
+  });
+
+  it("clamps the progress fraction between 0 and 1", () => {
+    const dial = new TeaTimerDial();
+    const arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    arc.classList.add("dial-progress-arc");
+    Object.defineProperty(dial, "shadowRoot", {
+      configurable: true,
+      value: {
+        querySelector: (selector: string) => (selector === ".dial-progress-arc" ? arc : null),
+      },
+    });
+
+    dial.setProgressFraction(2);
+    const internals = dial as unknown as { pendingProgressSync: boolean };
+    expect(internals.pendingProgressSync).toBe(false);
+    const afterMax = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
+    expect(afterMax).toBeCloseTo(0, 2);
+
+    dial.setProgressFraction(-1);
+    const circumference = 2 * Math.PI * (50 - 6 / 2);
+    const afterMin = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
+    expect(afterMin).toBeCloseTo(circumference, 2);
+  });
+
   it("emits dial-input on keyboard adjustment", () => {
     const dial = document.createElement("tea-timer-dial");
     dial.bounds = { min: 15, max: 120, step: 5 };

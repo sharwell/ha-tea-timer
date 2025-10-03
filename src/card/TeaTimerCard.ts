@@ -36,6 +36,9 @@ import type { TeaTimerDial } from "../dial/TeaTimerDial";
 import { restartTimer, startTimer } from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
 
+const PROGRESS_FRAME_INTERVAL_MS = 250;
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
 type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
@@ -111,6 +114,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _lastDialSignature?: string;
   private _lastDialElement?: TeaTimerDial;
 
+  private _progressAnimationHandle?: number;
+
+  private _lastProgressUpdateMs?: number;
+
+  private _prefersReducedMotion = false;
+
+  private _reducedMotionMedia?: MediaQueryList;
+
+  private _onReducedMotionChange?: (event: MediaQueryListEvent) => void;
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
@@ -183,6 +196,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ${this._renderToast()}
       </section>
     `;
+  }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    this._attachReducedMotionListener();
   }
 
   protected override firstUpdated(): void {
@@ -1332,6 +1350,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._clearDialTooltipTimer();
     this._clearErrorTimer();
     this._cancelRunningTick();
+    this._cancelProgressAnimation();
+    this._detachReducedMotionListener();
+    this._lastProgressUpdateMs = undefined;
     this._announcer.reset();
     if (this._applyDialRaf !== undefined) {
       cancelAnimationFrame(this._applyDialRaf);
@@ -1422,11 +1443,17 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       }
     }
 
+    const dialElement = this._resolveDialElement();
+
+    if (dialElement && resolvedSeconds === undefined) {
+      this._syncDialProgress(dialElement, state);
+    }
+
     if (resolvedSeconds === undefined) {
+      this._updateProgressAnimationState(state);
       return;
     }
 
-    const dialElement = this._resolveDialElement();
     if (dialElement) {
       if (dialElement !== this._lastDialElement) {
         this._lastDialElement = dialElement;
@@ -1443,16 +1470,20 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       }
       dialElement.valueText = formatDurationSeconds(resolvedSeconds);
       this._syncDialHandleTransform(dialElement, resolvedSeconds);
+      this._syncDialProgress(dialElement, state, resolvedSeconds);
+      this._updateProgressAnimationState(state);
       return;
     }
 
     this._lastDialElement = undefined;
     this._scheduleApplyDialDisplay("await-dial");
+    this._updateProgressAnimationState(state);
   }
 
   private _updateRunningTickState(state: TimerViewState): void {
     if (state.connectionStatus !== "connected") {
       this._cancelRunningTick();
+      this._updateProgressAnimationState(state);
       return;
     }
 
@@ -1460,6 +1491,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._cancelRunningTick();
       this._serverRemainingSeconds = undefined;
       this._lastServerSyncMs = undefined;
+      this._updateProgressAnimationState(state);
       return;
     }
 
@@ -1494,6 +1526,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     } else {
       this._cancelRunningTick();
     }
+
+    this._updateProgressAnimationState(state);
   }
 
   private _applyRunningDisplay(state: TimerViewState): number | undefined {
@@ -1589,6 +1623,194 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._runningTickTimer = undefined;
     }
     this._nextRunningTickDueMs = undefined;
+  }
+
+  private _syncDialProgress(
+    dialElement: TeaTimerDial | undefined,
+    state: TimerViewState,
+    displaySeconds?: number,
+    now = Date.now(),
+  ): void {
+    if (!dialElement) {
+      return;
+    }
+
+    const fraction = this._computeProgressFraction(state, now, displaySeconds);
+    if (fraction === undefined) {
+      return;
+    }
+
+    dialElement.setProgressFraction(fraction);
+    this._lastProgressUpdateMs = now;
+  }
+
+  private _computeProgressFraction(
+    state: TimerViewState,
+    now: number,
+    displaySeconds?: number,
+  ): number | undefined {
+    if (state.status === "finished") {
+      return 0;
+    }
+
+    if (state.status !== "running") {
+      return 0;
+    }
+
+    const totalDuration =
+      state.durationSeconds ??
+      this._viewModel?.pendingDurationSeconds ??
+      this._viewModel?.dial.selectedDurationSeconds;
+
+    if (totalDuration === undefined || totalDuration <= 0 || !Number.isFinite(totalDuration)) {
+      return 0;
+    }
+
+    let remaining: number | undefined;
+    if (this._serverRemainingSeconds !== undefined && this._lastServerSyncMs !== undefined) {
+      const elapsedSeconds = Math.max(0, now - this._lastServerSyncMs) / 1000;
+      remaining = this._serverRemainingSeconds - elapsedSeconds;
+    } else if (displaySeconds !== undefined) {
+      remaining = displaySeconds;
+    } else if (this._displayDurationSeconds !== undefined) {
+      remaining = this._displayDurationSeconds;
+    } else if (state.remainingSeconds !== undefined) {
+      remaining = state.remainingSeconds;
+    }
+
+    if (remaining === undefined || !Number.isFinite(remaining)) {
+      return undefined;
+    }
+
+    const clampedRemaining = Math.max(0, remaining);
+    const fraction = clampedRemaining / totalDuration;
+    if (!Number.isFinite(fraction)) {
+      return 0;
+    }
+
+    return Math.min(1, Math.max(0, fraction));
+  }
+
+  private _updateProgressAnimationState(state: TimerViewState): void {
+    const dialElement = this._resolveDialElement();
+    if (this._shouldContinueProgressAnimation(state, dialElement)) {
+      this._startProgressAnimation();
+    } else {
+      this._cancelProgressAnimation();
+    }
+  }
+
+  private _shouldContinueProgressAnimation(
+    state: TimerViewState | undefined,
+    dialElement: TeaTimerDial | undefined,
+  ): boolean {
+    return (
+      !!state &&
+      state.status === "running" &&
+      !this._prefersReducedMotion &&
+      dialElement !== undefined &&
+      this._serverRemainingSeconds !== undefined &&
+      this._lastServerSyncMs !== undefined
+    );
+  }
+
+  private _startProgressAnimation(): void {
+    if (this._progressAnimationHandle !== undefined) {
+      return;
+    }
+
+    this._progressAnimationHandle = window.requestAnimationFrame(this._handleProgressAnimationFrame);
+  }
+
+  private readonly _handleProgressAnimationFrame = () => {
+    this._progressAnimationHandle = undefined;
+    const state = this._timerState ?? this._timerStateController.state;
+    const dialElement = this._resolveDialElement();
+
+    if (!this._shouldContinueProgressAnimation(state, dialElement)) {
+      this._cancelProgressAnimation();
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      this._lastProgressUpdateMs === undefined ||
+      now - this._lastProgressUpdateMs >= PROGRESS_FRAME_INTERVAL_MS
+    ) {
+      if (state && dialElement) {
+        this._syncDialProgress(dialElement, state, undefined, now);
+      }
+    }
+
+    if (this._shouldContinueProgressAnimation(state, dialElement)) {
+      this._progressAnimationHandle = window.requestAnimationFrame(this._handleProgressAnimationFrame);
+    }
+  };
+
+  private _cancelProgressAnimation(): void {
+    if (this._progressAnimationHandle !== undefined) {
+      cancelAnimationFrame(this._progressAnimationHandle);
+      this._progressAnimationHandle = undefined;
+    }
+  }
+
+  private _attachReducedMotionListener(): void {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      this._prefersReducedMotion = false;
+      return;
+    }
+
+    const media = window.matchMedia(REDUCED_MOTION_QUERY);
+    this._reducedMotionMedia = media;
+    this._prefersReducedMotion = media.matches;
+
+    const handler = (event: MediaQueryListEvent) => {
+      this._prefersReducedMotion = event.matches;
+      const state = this._timerState ?? this._timerStateController.state;
+      const dialElement = this._resolveDialElement();
+      if (state && dialElement) {
+        this._syncDialProgress(dialElement, state);
+      }
+      if (event.matches) {
+        this._cancelProgressAnimation();
+      } else if (state) {
+        this._updateProgressAnimationState(state);
+      }
+    };
+
+    this._onReducedMotionChange = handler;
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", handler);
+    } else if (typeof media.addListener === "function") {
+      media.addListener(handler);
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+    if (state) {
+      const dialElement = this._resolveDialElement();
+      if (dialElement) {
+        this._syncDialProgress(dialElement, state);
+      }
+      if (!media.matches) {
+        this._updateProgressAnimationState(state);
+      }
+    }
+  }
+
+  private _detachReducedMotionListener(): void {
+    const media = this._reducedMotionMedia;
+    const handler = this._onReducedMotionChange;
+    if (media && handler) {
+      if (typeof media.removeEventListener === "function") {
+        media.removeEventListener("change", handler);
+      } else if (typeof media.removeListener === "function") {
+        media.removeListener(handler);
+      }
+    }
+
+    this._reducedMotionMedia = undefined;
+    this._onReducedMotionChange = undefined;
   }
 
   private _resolveDialElement(): TeaTimerDial | undefined {
