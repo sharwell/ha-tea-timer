@@ -19,7 +19,7 @@ describe("TeaTimerDial", () => {
     expect(internals.pendingProgressSync).toBe(false);
 
     const offset = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
-    const circumference = 2 * Math.PI * 45;
+    const circumference = 2 * Math.PI * (50 - 6 / 2);
     expect(offset).toBeCloseTo(circumference * 0.75, 2);
   });
 
@@ -41,7 +41,7 @@ describe("TeaTimerDial", () => {
     expect(afterMax).toBeCloseTo(0, 2);
 
     dial.setProgressFraction(-1);
-    const circumference = 2 * Math.PI * 45;
+    const circumference = 2 * Math.PI * (50 - 6 / 2);
     const afterMin = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
     expect(afterMin).toBeCloseTo(circumference, 2);
   });

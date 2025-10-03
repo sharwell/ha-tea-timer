@@ -7,7 +7,8 @@ import { DialGestureTracker } from "./DialGestureTracker";
 const TAU = Math.PI * 2;
 const KEY_STEP_SECONDS = 30;
 const PROGRESS_VIEWBOX_SIZE = 100;
-const PROGRESS_RADIUS = 45;
+const PROGRESS_STROKE = 6;
+const PROGRESS_RADIUS = PROGRESS_VIEWBOX_SIZE / 2 - PROGRESS_STROKE / 2;
 const PROGRESS_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RADIUS;
 const PROGRESS_CIRCUMFERENCE_TEXT = PROGRESS_CIRCUMFERENCE.toFixed(3);
 
@@ -84,7 +85,7 @@ export class TeaTimerDial extends LitElement {
     .dial-progress-track {
       fill: none;
       stroke: var(--dial-track-color);
-      stroke-width: 6;
+      stroke-width: ${unsafeCSS(PROGRESS_STROKE)};
       stroke-linecap: round;
       opacity: 0.4;
       transition: stroke 160ms ease;
@@ -93,7 +94,7 @@ export class TeaTimerDial extends LitElement {
     .dial-progress-arc {
       fill: none;
       stroke: var(--dial-progress-color);
-      stroke-width: 6;
+      stroke-width: ${unsafeCSS(PROGRESS_STROKE)};
       stroke-linecap: round;
       transform: rotate(-90deg) scale(1, -1);
       transform-origin: 50% 50%;
