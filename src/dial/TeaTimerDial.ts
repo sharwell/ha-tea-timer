@@ -77,8 +77,6 @@ export class TeaTimerDial extends LitElement {
     .dial-progress-ring {
       position: absolute;
       inset: 10px;
-      width: 100%;
-      height: 100%;
       pointer-events: none;
     }
 
