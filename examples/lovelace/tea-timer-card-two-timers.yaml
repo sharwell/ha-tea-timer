@@ -1,0 +1,25 @@
+# Two Tea Timer Cards sharing presets but targeting different entities.
+# Replace the entity ids with your timer helpers.
+
+- type: custom:tea-timer-card
+  title: Kitchen Tea Timer
+  entity: timer.kitchen_tea
+  presets: &tea_presets
+    - label: Green Tea
+      durationSeconds: 120
+    - label: Black Tea
+      durationSeconds: 240
+    - label: Herbal Blend
+      durationSeconds: 300
+  defaultPreset: Green Tea
+  minDurationSeconds: 30
+  maxDurationSeconds: 1200
+  stepSeconds: 5
+
+- type: custom:tea-timer-card
+  title: Living Room Tea Timer
+  entity: timer.living_room_tea
+  presets: *tea_presets
+  defaultPreset: Herbal Blend
+  confirmRestart: true
+  finishedAutoIdleMs: 7000

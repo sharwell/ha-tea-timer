@@ -9,6 +9,9 @@ Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the p
 - Node.js 18+
 - npm 9+
 
+> **New to Home Assistant?** Follow the [Quick Start guide](docs/quick-start.md) for an end-to-end
+> walkthrough that covers helpers, installation, and first-run validation.
+
 ### Installation
 
 #### Via HACS (recommended)
@@ -70,7 +73,7 @@ npm ci
 - **No live updates**: Ensure the Home Assistant WebSocket connection is available. The card falls back to the latest `hass` object update but real-time updates rely on the connection being online.
 - **Estimated remaining time**: If Home Assistant does not provide `remaining`, the card estimates the value. When the estimate drifts more than ~2 seconds, a note appears until Home Assistant reports an authoritative value.
 
-To experiment locally, run `npm run dev` and open the playground at http://localhost:5173/. The demo page includes controls to simulate timer runs, finished events, and unavailable states.
+To experiment locally, run `npm run dev` and open the playground at <http://localhost:5173/>. The demo page includes controls to simulate timer runs, finished events, and unavailable states.
 
 ### Using the Card in Home Assistant
 
@@ -85,28 +88,28 @@ To experiment locally, run `npm run dev` and open the playground at http://local
 
 4. Configure the card in Lovelace:
 
-   ```yaml
-   type: custom:tea-timer-card
-   title: Kitchen Tea Timer
-   entity: timer.kitchen_tea
-   defaultPreset: Black Tea
-   presets:
-     - label: Green Tea
-       durationSeconds: 120
-     - label: Black Tea
-       durationSeconds: 240
-  ```
+    ```yaml
+    type: custom:tea-timer-card
+    title: Kitchen Tea Timer
+    entity: timer.kitchen_tea
+    defaultPreset: Black Tea
+    presets:
+      - label: Green Tea
+        durationSeconds: 120
+      - label: Black Tea
+        durationSeconds: 240
+    ```
 
    Optional dial bounds (add alongside the other card options):
 
-   ```yaml
-   minDurationSeconds: 30
-   maxDurationSeconds: 900
-   stepSeconds: 10
-   confirmRestart: true # optional—require confirmation before restarting a running timer
-   finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
-   disableClockSkewEstimator: true # optional—seed countdowns from the local clock instead of HA timestamps
-  ```
+    ```yaml
+    minDurationSeconds: 30
+    maxDurationSeconds: 900
+    stepSeconds: 10
+    confirmRestart: true # optional—require confirmation before restarting a running timer
+    finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
+    disableClockSkewEstimator: true # optional—seed countdowns from the local clock instead of HA timestamps
+    ```
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
 
@@ -118,8 +121,17 @@ To experiment locally, run `npm run dev` and open the playground at http://local
 
 ### Documentation
 
-- [Getting Started Guide](docs/getting-started.md)
+- [Quick Start](docs/quick-start.md)
+- [Configuration reference](docs/configuration-reference.md)
+- [Presets and durations](docs/presets-and-durations.md)
+- [State & actions](docs/state-and-actions.md)
 - [Automate on `timer.finished`](docs/automations/finished.md)
+- [Multi-instance & sync](docs/multi-instance-and-sync.md)
+- [Accessibility & reduced motion](docs/accessibility-and-reduced-motion.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Frequently asked questions](docs/faq.md)
+- [Contributing & support](docs/contributing-and-support.md)
+- [Changelog & versioning](docs/changelog-and-versioning.md)
 
 Below is a crisp, implementation‑ready specification for a **Tea Timer Card** as an independent Home Assistant extension (custom Lovelace card + optional helper). It’s organized into **MVD** (minimum viable deliverable) and **Post‑MVD**. Every item is numbered for easy re‑ordering. After the spec, you’ll find a set of **concrete unit milestones**.
 

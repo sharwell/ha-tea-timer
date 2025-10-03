@@ -1,11 +1,7 @@
 # Tea Timer Card — Getting Started
 
-This is a placeholder for the Tea Timer Card documentation. Future updates will include installation and configuration guidance.
+Looking for setup instructions? The new [Quick start](quick-start.md) guide walks you from creating a
+Home Assistant timer helper to installing the card, adding presets, and running your first brew.
 
-## Dial duration options
-
-- `minDurationSeconds` (default `15`) sets the minimum selectable brew time.
-- `maxDurationSeconds` (default `1200`) caps the dial at 20 minutes by default.
-- `stepSeconds` (default `5`) controls the rounding increment for pointer and keyboard input.
-- The dial is interactive only while the timer is idle; pressing the arrow keys or PageUp/PageDown nudges the value by the configured steps.
-- While the timer is running, the dial renders a theme-aware progress arc that tracks elapsed brew time and respects reduced-motion preferences.
+If you maintain bookmarks to this page, update them to the quick start for the most current
+instructions.

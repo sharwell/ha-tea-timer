@@ -9,7 +9,11 @@
     "start": "vite dev",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:markdown": "markdownlint \"docs/**/*.md\" README.md",
+    "lint:spell": "cspell \"docs/**/*.md\" \"README.md\"",
+    "lint:links": "linkinator 'docs/**/*.md' README.md --recurse --silent --skip 'http://localhost:5173/' --skip 'https://hacs.xyz/*' --skip 'https://www.home-assistant.io/*'",
+    "docs:check": "npm run lint:markdown && npm run lint:spell && npm run lint:links"
   },
   "keywords": [
     "home-assistant",
@@ -33,10 +37,13 @@
     "@testing-library/jest-dom": "^6.4.2",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "cspell": "^8.19.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "jsdom": "^24.0.0",
+    "linkinator": "^4.1.3",
     "lit": "^3.1.0",
+    "markdownlint-cli": "^0.39.0",
     "typescript": "5.3.3",
     "vite": "^5.1.6",
     "vitest": "^1.4.0"

@@ -1,0 +1,34 @@
+# Automation: notify when any tea timer finishes.
+# Import into Home Assistant and update entity ids and services to match your setup.
+
+alias: Tea timers – finish handler
+mode: parallel
+triggers:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id:
+        - timer.kitchen_tea
+        - timer.living_room_tea
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.entity_id == 'timer.kitchen_tea' }}"
+        sequence:
+          - service: notify.mobile_app_kitchen_tablet
+            data:
+              message: Kitchen tea is ready!
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.entity_id == 'timer.living_room_tea' }}"
+        sequence:
+          - service: light.turn_on
+            target:
+              entity_id: light.living_room_lamp
+            data:
+              flash: long
+  - service: logbook.log
+    data:
+      name: Tea Timer Card
+      message: "{{ trigger.event.data.entity_id }} finished at {{ trigger.event.data.finished_at }}"
