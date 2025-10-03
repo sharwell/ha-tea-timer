@@ -1,0 +1,18 @@
+# Tea Timer Card — single timer with three presets
+# Replace timer.kitchen_tea with your timer helper entity id.
+
+- type: custom:tea-timer-card
+  title: Kitchen Tea Timer
+  entity: timer.kitchen_tea
+  defaultPreset: Black Tea
+  presets:
+    - label: Green Tea
+      durationSeconds: 120
+    - label: Oolong Tea
+      durationSeconds: 180
+    - label: Black Tea
+      durationSeconds: 240
+  minDurationSeconds: 30
+  maxDurationSeconds: 900
+  stepSeconds: 5
+  finishedAutoIdleMs: 5000

@@ -1,0 +1,28 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": [
+    "node_modules",
+    "dist",
+    "package-lock.json"
+  ],
+  "words": [
+    "Lovelace",
+    "WebSocket",
+    "Oolong",
+    "Ristretto",
+    "Lungo",
+    "Assam",
+    "Sencha",
+    "HomeAssistant",
+    "automations",
+    "Automations",
+    "HACS",
+    "hass",
+    "Toggleable",
+    "autoplay",
+    "multi",
+    "prefers",
+    "websockets"
+  ]
+}
