@@ -23,6 +23,7 @@
     "autoplay",
     "multi",
     "prefers",
-    "websockets"
+    "websockets",
+    "Sonoma"
   ]
 }
