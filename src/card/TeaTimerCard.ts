@@ -1650,7 +1650,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     displaySeconds?: number,
   ): number | undefined {
     if (state.status === "finished") {
-      return 1;
+      return 0;
     }
 
     if (state.status !== "running") {
@@ -1683,7 +1683,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     const clampedRemaining = Math.max(0, remaining);
-    const fraction = 1 - clampedRemaining / totalDuration;
+    const fraction = clampedRemaining / totalDuration;
     if (!Number.isFinite(fraction)) {
       return 0;
     }

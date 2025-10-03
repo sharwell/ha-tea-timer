@@ -479,6 +479,37 @@ describe("TeaTimerCard", () => {
     }
   });
 
+  it("computes the progress fraction from the remaining time", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+    const internals = card as unknown as {
+      _computeProgressFraction(
+        state: MachineTimerViewState,
+        now: number,
+        displaySeconds?: number,
+      ): number | undefined;
+      _serverRemainingSeconds?: number;
+      _lastServerSyncMs?: number;
+    };
+
+    const start = Date.now();
+    internals._serverRemainingSeconds = 300;
+    internals._lastServerSyncMs = start;
+
+    const running: MachineTimerViewState = { status: "running", durationSeconds: 300 };
+
+    const initial = internals._computeProgressFraction(running, start);
+    expect(initial).toBeCloseTo(1, 5);
+
+    const halfway = start + 150_000;
+    const midway = internals._computeProgressFraction(running, halfway);
+    expect(midway).toBeCloseTo(0.5, 2);
+
+    const finished: MachineTimerViewState = { status: "finished" };
+    expect(internals._computeProgressFraction(finished, halfway)).toBe(0);
+  });
+
   it("applies elapsed time after long pauses in ticking", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));

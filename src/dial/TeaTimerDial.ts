@@ -95,7 +95,7 @@ export class TeaTimerDial extends LitElement {
       stroke: var(--dial-progress-color);
       stroke-width: 6;
       stroke-linecap: round;
-      transform: rotate(-90deg);
+      transform: rotate(-90deg) scale(1, -1);
       transform-origin: 50% 50%;
       stroke-dasharray: ${unsafeCSS(PROGRESS_CIRCUMFERENCE_TEXT)};
       stroke-dashoffset: ${unsafeCSS(PROGRESS_CIRCUMFERENCE_TEXT)};
