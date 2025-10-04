@@ -28,13 +28,14 @@ jobs:
         run: npm test
       - name: Build distributable
         run: npm run build
+      - name: Verify release artifacts
+        run: npm run release:verify
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: tea-timer-card-dist
           path: |
-            dist/tea-timer-card.js
-            dist/tea-timer-card.js.map
+            dist/**
 
   hacs-validation:
     if: ${{ false }}
