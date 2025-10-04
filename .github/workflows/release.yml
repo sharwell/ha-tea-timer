@@ -35,6 +35,9 @@ jobs:
       - name: Build distributable
         run: npm run build
 
+      - name: Verify release artifacts
+        run: npm run release:verify
+
       - name: Generate SHA-256 checksums
         run: npm run release:checksums
 
