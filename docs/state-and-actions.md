@@ -34,10 +34,14 @@ stateDiagram-v2
   - Tap/click the card to restart with the queued duration.
   - Change presets—the card queues the new selection for the next restart without interrupting the
     current brew.
+  - Tap the **+1:00** extend chip to add the configured increment to the remaining time. Each tap
+    coalesces with others within 200 ms to avoid duplicate service calls.
   - Cancel or restart the timer from any device; changes propagate immediately.
 - **Announcements:**
   - Start/restart events use a polite live region (“Brew started for Green Tea – 2 minutes”).
   - Queued preset announcements (“Next preset selected: Herbal – 5 minutes”).
+  - Extends announce “Added one minute. New remaining: mm:ss.” while cap and race conditions
+    announce the relevant outcome.
 
 ## Finished (transient)
 
@@ -78,7 +82,12 @@ stateDiagram-v2
 The card never modifies timers locally. Instead it issues Home Assistant service calls:
 
 - `timer.start` with `duration` when starting or restarting.
-- `timer.cancel` immediately followed by `timer.start` when changing durations mid-run.
+- `timer.change` to extend a running brew when Home Assistant supports the service and the result
+  stays within the duration set by the last `timer.start`.
+- `timer.start` with the updated remaining time when `timer.change` is unavailable or would exceed
+  its cap. The card smooths the UI so the progress arc lengthens without flashing.
 
 This approach keeps Home Assistant authoritative for countdowns and ensures events such as
-`timer.finished` fire exactly once per completion.
+`timer.finished` fire exactly once per completion. Automations should continue to listen for
+`timer.finished` (not `timer.started`) to avoid duplicate triggers when the card restarts the timer
+to extend it.

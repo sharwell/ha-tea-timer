@@ -44,6 +44,10 @@ export interface TeaTimerViewModel {
     isCustomDuration: boolean;
     lastActionTs?: number;
     error?: TeaTimerViewModelError;
+    showExtendButton: boolean;
+    extendIncrementSeconds: number;
+    extendIncrementLabel: string;
+    maxExtendSeconds?: number;
   };
   status: TimerStatus;
   dial: TeaTimerDialViewModel;
@@ -297,6 +301,10 @@ export function createTeaTimerViewModel(
       isCustomDuration,
       lastActionTs: previousUi?.lastActionTs,
       error: previousUi?.error,
+      showExtendButton: config.showPlusButton,
+      extendIncrementSeconds: config.plusButtonIncrementSeconds,
+      extendIncrementLabel: `+${formatDurationSeconds(config.plusButtonIncrementSeconds)}`,
+      maxExtendSeconds: config.maxExtendSeconds,
     },
     status: state.status,
     dial,

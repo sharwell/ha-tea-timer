@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MockInstance } from "vitest";
 import { render, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { TeaTimerCard } from "./TeaTimerCard";
@@ -9,21 +10,26 @@ import {
   type TimerUiState,
 } from "../state/TimerStateController";
 type TimerViewState = MachineTimerViewState;
-import { formatDurationSeconds } from "../model/duration";
+import { formatDurationSeconds, formatDurationSpeech } from "../model/duration";
 import type { DurationBounds } from "../model/duration";
 import { STRINGS } from "../strings";
 import type { HomeAssistant } from "../types/home-assistant";
-import { restartTimer, startTimer } from "../ha/services/timer";
+import { changeTimer, restartTimer, startTimer, supportsTimerChange } from "../ha/services/timer";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
 
 vi.mock("../ha/services/timer", () => ({
   startTimer: vi.fn(),
   restartTimer: vi.fn(),
+  changeTimer: vi.fn(),
+  supportsTimerChange: vi.fn().mockReturnValue(false),
 }));
 
 type MockedFn = ReturnType<typeof vi.fn>;
 
 const startTimerMock = startTimer as unknown as MockedFn;
+const restartTimerMock = restartTimer as unknown as MockedFn;
+const changeTimerMock = changeTimer as unknown as MockedFn;
+const supportsTimerChangeMock = supportsTimerChange as unknown as MockedFn;
 
 if (typeof window !== "undefined") {
   if (!window.requestAnimationFrame) {
@@ -156,12 +162,19 @@ describe("TeaTimerCard", () => {
     return {
       locale: { language: "en" },
       states: {},
+      services: {},
       callService: vi.fn().mockResolvedValue(undefined),
     } as unknown as HomeAssistant;
   }
 
+  function triggerExtend(card: TeaTimerCard) {
+    const handler = card as unknown as { _handleExtendAction(): void };
+    handler._handleExtendAction();
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   afterEach(() => {
@@ -777,6 +790,241 @@ describe("TeaTimerCard", () => {
 
     expect(internals._viewModel?.ui.selectedPresetId).toBe(1);
     expect(internals._viewModel?.pendingDurationSeconds).toBe(240);
+  });
+
+  it("uses timer.change when supported and within the original duration", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.tea", plusButtonIncrementS: 30 });
+      const hass = createHass();
+      hass.services = { timer: { change: {} } };
+      card.hass = hass;
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 200,
+      };
+
+      supportsTimerChangeMock.mockReturnValue(true);
+      changeTimerMock.mockResolvedValue(undefined);
+
+      setTimerState(card, runningState);
+
+      triggerExtend(card);
+
+      await vi.runAllTimersAsync();
+
+      expect(changeTimerMock).toHaveBeenCalledWith(card.hass, "timer.tea", 30);
+      expect(restartTimer).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("announces extend additions with the updated remaining time", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.tea" });
+      const hass = createHass();
+      card.hass = hass;
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 240,
+        remainingSeconds: 120,
+      };
+
+      supportsTimerChangeMock.mockReturnValue(false);
+      restartTimerMock.mockResolvedValue(undefined);
+
+      setTimerState(card, runningState);
+
+      triggerExtend(card);
+
+      const internals = card as unknown as {
+        _ariaAnnouncement: string;
+        _displayDurationSeconds?: number;
+      };
+
+      const expected = STRINGS.ariaExtendAdded(
+        formatDurationSpeech(60, STRINGS.durationSpeech),
+        formatDurationSeconds(180),
+      );
+      expect(internals._ariaAnnouncement).toBe(expected);
+      expect(internals._displayDurationSeconds).toBe(180);
+
+      await vi.runAllTimersAsync();
+
+      expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.tea", 180);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to restart when timer.change would exceed the cap", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.tea", plusButtonIncrementS: 60 });
+      const hass = createHass();
+      hass.services = { timer: { change: {} } };
+      card.hass = hass;
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 290,
+      };
+
+      supportsTimerChangeMock.mockReturnValue(true);
+      restartTimerMock.mockResolvedValue(undefined);
+
+      setTimerState(card, runningState);
+
+      triggerExtend(card);
+
+      await vi.runAllTimersAsync();
+
+      expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.tea", 350);
+      expect(changeTimer).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("coalesces rapid extend taps into a single restart", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.tea" });
+      const hass = createHass();
+      card.hass = hass;
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 150,
+      };
+
+      supportsTimerChangeMock.mockReturnValue(false);
+      restartTimerMock.mockResolvedValue(undefined);
+
+      setTimerState(card, runningState);
+
+      triggerExtend(card);
+      triggerExtend(card);
+      triggerExtend(card);
+
+      await vi.runAllTimersAsync();
+
+      expect(restartTimer).toHaveBeenCalledTimes(1);
+      expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.tea", 330);
+      expect(changeTimer).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("respects the maxExtendS cap and announces the limit", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const card = createCard();
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.tea",
+        plusButtonIncrementS: 60,
+        maxExtendS: 60,
+      });
+      const hass = createHass();
+      hass.services = { timer: { change: {} } };
+      card.hass = hass;
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 180,
+      };
+
+      supportsTimerChangeMock.mockReturnValue(true);
+      changeTimerMock.mockResolvedValue(undefined);
+
+      setTimerState(card, runningState);
+
+      triggerExtend(card);
+      await vi.runAllTimersAsync();
+
+      expect(changeTimer).toHaveBeenCalledTimes(1);
+
+      triggerExtend(card);
+      await Promise.resolve();
+
+      expect(changeTimer).toHaveBeenCalledTimes(1);
+      const internals = card as unknown as { _ariaAnnouncement: string; _extendAccumulatedSeconds: number };
+      expect(internals._ariaAnnouncement).toContain(STRINGS.ariaExtendCapReached);
+      expect(internals._extendAccumulatedSeconds).toBe(60);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("announces when the timer finishes before an extend is delivered", async () => {
+    vi.useFakeTimers();
+
+    let announceSpy: MockInstance<[message: string], void> | undefined;
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.tea" });
+      const hass = createHass();
+      card.hass = hass;
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 180,
+        remainingSeconds: 5,
+      };
+
+      supportsTimerChangeMock.mockReturnValue(false);
+      restartTimerMock.mockResolvedValue(undefined);
+
+      setTimerState(card, runningState);
+
+      announceSpy = vi.spyOn(card as unknown as { _announce(message: string): void }, "_announce");
+
+      triggerExtend(card);
+
+      const finishedState: TimerViewState = {
+        status: "finished",
+        durationSeconds: 180,
+        remainingSeconds: 0,
+      };
+
+      setTimerState(card, finishedState);
+
+      const announceCalls = announceSpy?.mock.calls ?? [];
+      const raceAnnounced = announceCalls.some((args) => args[0] === STRINGS.ariaExtendRaceLost);
+      expect(raceAnnounced).toBe(true);
+      expect(restartTimer).not.toHaveBeenCalled();
+      expect(changeTimer).not.toHaveBeenCalled();
+
+      await vi.runAllTimersAsync();
+    } finally {
+      announceSpy?.mockRestore();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it("highlights presets and syncs the dial on pointer activation", () => {

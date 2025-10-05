@@ -56,6 +56,7 @@ export interface HomeAssistant {
   states: Record<string, HassEntity | undefined>;
   connection?: HassConnection;
   callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
+  services?: Record<string, Record<string, unknown>>;
 }
 
 export type LovelaceCardConstructor = new () => LovelaceCard & HTMLElement;

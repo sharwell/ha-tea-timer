@@ -58,6 +58,34 @@ issues.
 - **Fix:** Add or correct the resource entry, then reload the browser. HACS installations may require a
   resource refresh after updates.
 
+## Extend button missing or disabled
+
+- **Symptom:** The **+1:00** chip never appears or is disabled while the timer is running.
+- **Diagnosis:**
+  1. Confirm the card configuration has `showPlusButton: true` (default).
+  2. Verify the timer entity is available and the WebSocket connection is online. The button hides when
+     the entity is unavailable or the connection is down.
+  3. Check that no start/restart action is pending. The button temporarily disables while Home
+     Assistant confirms the last command.
+- **Fix:** Restore the connection or entity, or update the configuration to show the button. It becomes
+  interactive again as soon as the timer reports a healthy running state.
+
+## Extend pressed near finish
+
+- **Symptom:** Pressing extend just before the timer expires sometimes has no effect.
+- **Diagnosis:** Extends issued within ~350 ms of the finish event race against Home Assistant’s
+  authoritative `timer.finished`. The event may fire before the extend reaches Home Assistant.
+- **Fix:** The card automatically announces “Timer finished before the extra time could be added.” If
+  you need guaranteed extensions, tap a little earlier or increase your increment duration to add more
+  runway.
+
+## “Cannot add more time” after several extends
+
+- **Symptom:** The card announces “Cannot add more time.” even though the timer is running.
+- **Diagnosis:** The configuration includes `maxExtendS` and the total added seconds reached that cap.
+- **Fix:** Wait for the brew to finish or restart the timer. Increase `maxExtendS` if you need more head
+  room for extensions, or remove the option for an unlimited top-up.
+
 ## Automations not firing
 
 - **Symptom:** `timer.finished` automations never run even though the card shows “Done.”

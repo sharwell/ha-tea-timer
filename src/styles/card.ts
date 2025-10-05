@@ -116,6 +116,39 @@ export const cardStyles = css`
     gap: 16px;
   }
 
+  .extend-controls {
+    display: flex;
+    justify-content: center;
+  }
+
+  .extend-button {
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
+    border-radius: 999px;
+    padding: 6px 14px;
+    background: var(--chip-background-color, var(--mdc-chip-background-color));
+    color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    min-height: 40px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+
+  .extend-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .extend-button:focus-visible {
+    outline: 3px solid var(--focus-ring-color, rgba(0, 122, 255, 0.6));
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  .extend-controls[data-busy="true"] .extend-button {
+    cursor: progress;
+  }
+
   .interaction .presets {
     order: 1;
   }

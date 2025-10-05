@@ -92,6 +92,27 @@ provided for the card to load.
 - **Example:** `disableClockSkewEstimator: true` is useful if you run a kiosk that routinely loses
   WebSocket updates and you prefer the timer to pause instead of estimating.
 
+### `showPlusButton`
+
+- **Description:** Shows the **+1 minute** extend control while the timer is running. When disabled the
+  card hides the button for that card instance.
+- **Default:** `true` (rendered whenever the timer is running and available).
+- **Example:** `showPlusButton: false` removes the extend button for a timer you never want to extend
+  mid-brew.
+
+### `plusButtonIncrementS`
+
+- **Description:** Number of seconds added each time the extend button is activated.
+- **Default:** `60` seconds.
+- **Example:** `plusButtonIncrementS: 30` creates a **+0:30** chip for smaller top-ups.
+
+### `maxExtendS`
+
+- **Description:** Maximum total seconds that can be added via the extend button during a single brew.
+- **Default:** Unlimited.
+- **Example:** `maxExtendS: 180` allows at most three 60-second extensions before the card refuses
+  further adds and announces “Cannot add more time.”
+
 ## Preset object options
 
 Each entry inside `presets` uses the following keys:
