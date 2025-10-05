@@ -24,6 +24,9 @@ const config: TeaTimerConfig = {
   confirmRestart: false,
   finishedAutoIdleMs: 5000,
   clockSkewEstimatorEnabled: true,
+  showPlusButton: true,
+  plusButtonIncrementSeconds: 60,
+  maxExtendSeconds: undefined,
 };
 
 describe("createTeaTimerViewModel", () => {

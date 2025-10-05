@@ -44,10 +44,15 @@ export interface StringTable {
   ariaRemaining: (durationSpeech: string) => string;
   ariaQueuedPreset: (label: string, durationSpeech: string) => string;
   ariaQueuedCustom: (durationSpeech: string) => string;
+  extendButtonAriaLabel: (durationSpeech: string) => string;
+  ariaExtendAdded: (durationSpeech: string, remainingLabel: string) => string;
+  ariaExtendCapReached: string;
+  ariaExtendRaceLost: string;
   pendingStartLabel: string;
   pendingRestartLabel: string;
   toastStartFailed: string;
   toastRestartFailed: string;
+  toastExtendFailed: string;
   toastEntityUnavailable: (entityId: string) => string;
   restartConfirmMessage: (durationLabel: string) => string;
   restartConfirmConfirm: string;
@@ -77,6 +82,8 @@ export interface StringTable {
     stepSecondsInvalid: string;
     durationBoundsInvalid: string;
     reservedOption: (name: string) => string;
+    plusButtonIncrementInvalid: string;
+    maxExtendInvalid: string;
   };
 }
 
@@ -145,10 +152,16 @@ export const STRINGS: StringTable = {
     `Next preset selected: ${label} for ${durationSpeech}.`,
   ariaQueuedCustom: (durationSpeech: string) =>
     `Next preset selected: custom duration for ${durationSpeech}.`,
+  extendButtonAriaLabel: (durationSpeech: string) => `Add ${durationSpeech} to the running timer.`,
+  ariaExtendAdded: (durationSpeech: string, remainingLabel: string) =>
+    `Added ${durationSpeech}. New remaining time: ${remainingLabel}.`,
+  ariaExtendCapReached: "Cannot add more time.",
+  ariaExtendRaceLost: "Timer finished before the extra time could be added.",
   pendingStartLabel: "Starting…",
   pendingRestartLabel: "Restarting…",
   toastStartFailed: "Couldn't start the timer. Please try again.",
   toastRestartFailed: "Couldn't restart the timer. Please try again.",
+  toastExtendFailed: "Couldn't add more time. Please try again.",
   toastEntityUnavailable: (entityId: string) => "Timer entity " + entityId + " is unavailable.",
   restartConfirmMessage: (durationLabel: string) => "Restart the timer for " + durationLabel + "?",
   restartConfirmConfirm: "Restart",
@@ -188,5 +201,7 @@ export const STRINGS: StringTable = {
     stepSecondsInvalid: "stepSeconds must be a positive number of seconds.",
     durationBoundsInvalid: "maxDurationSeconds must be greater than minDurationSeconds.",
     reservedOption: (name: string) => `The "${name}" option is reserved for a future release.`,
+    plusButtonIncrementInvalid: "plusButtonIncrementS must be a positive number of seconds.",
+    maxExtendInvalid: "maxExtendS must be zero or a positive number of seconds.",
   },
 };

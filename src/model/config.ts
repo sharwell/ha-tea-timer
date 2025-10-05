@@ -19,6 +19,9 @@ export interface TeaTimerCardConfig {
   confirmRestart?: boolean;
   finishedAutoIdleMs?: number;
   disableClockSkewEstimator?: boolean;
+  showPlusButton?: boolean;
+  plusButtonIncrementS?: number;
+  maxExtendS?: number;
 }
 
 export interface TeaTimerConfig {
@@ -32,6 +35,9 @@ export interface TeaTimerConfig {
   finishedAutoIdleMs: number;
   defaultPresetId?: number;
   clockSkewEstimatorEnabled: boolean;
+  showPlusButton: boolean;
+  plusButtonIncrementSeconds: number;
+  maxExtendSeconds?: number;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -44,6 +50,7 @@ const RESERVED_OPTIONS = new Set<string>();
 const DEFAULT_MIN_DURATION_SECONDS = 15;
 const DEFAULT_MAX_DURATION_SECONDS = 1200;
 const DEFAULT_STEP_SECONDS = 5;
+const DEFAULT_PLUS_BUTTON_INCREMENT_SECONDS = 60;
 
 export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
   const errors: string[] = [];
@@ -160,6 +167,34 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
       : undefined;
   const finishedAutoIdleMs = rawFinishedAutoIdleMs !== undefined ? Math.max(0, rawFinishedAutoIdleMs) : 5000;
 
+  const showPlusButton = raw.showPlusButton !== false;
+
+  let plusButtonIncrementSeconds = DEFAULT_PLUS_BUTTON_INCREMENT_SECONDS;
+  if (typeof raw.plusButtonIncrementS === "number" && Number.isFinite(raw.plusButtonIncrementS)) {
+    const rounded = Math.round(raw.plusButtonIncrementS);
+    if (rounded > 0) {
+      plusButtonIncrementSeconds = rounded;
+    } else {
+      errors.push(STRINGS.validation.plusButtonIncrementInvalid);
+    }
+  } else if (raw.plusButtonIncrementS !== undefined) {
+    errors.push(STRINGS.validation.plusButtonIncrementInvalid);
+  }
+
+  let maxExtendSeconds: number | undefined;
+  if (raw.maxExtendS !== undefined) {
+    if (typeof raw.maxExtendS === "number" && Number.isFinite(raw.maxExtendS)) {
+      const rounded = Math.round(raw.maxExtendS);
+      if (rounded >= 0) {
+        maxExtendSeconds = rounded;
+      } else {
+        errors.push(STRINGS.validation.maxExtendInvalid);
+      }
+    } else {
+      errors.push(STRINGS.validation.maxExtendInvalid);
+    }
+  }
+
   let defaultPresetId: number | undefined;
   if (Array.isArray(presets) && presets.length) {
     const defaultPreset = raw.defaultPreset;
@@ -196,6 +231,9 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     finishedAutoIdleMs,
     defaultPresetId,
     clockSkewEstimatorEnabled,
+    showPlusButton,
+    plusButtonIncrementSeconds,
+    maxExtendSeconds,
   };
 
   return { config, errors };

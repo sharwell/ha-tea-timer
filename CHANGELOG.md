@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Extend-in-place **+1 minute** control for running brews. The card now prefers Home Assistant’s
+  `timer.change` service when available, and falls back to a seamless `timer.start` restart when the
+  change would exceed the native cap or the service is missing. Configurable increment and optional
+  per-brew cap keep automations authoritative while preventing visual reset.
+
+### Documentation
+- Document the extend button configuration, near-finish race behaviour, cap handling, and new Lovelace
+  example showcasing the feature.
+
 ## [0.1.0] - 2025-10-03
 
 ### Highlights

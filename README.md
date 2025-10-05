@@ -128,6 +128,7 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
 - The card listens for Home Assistant’s `timer.finished` event to surface the five-second “Done” overlay. You can attach your own automations to the same event to play sounds, flash lights, or send notifications.
 - See [Automate on `timer.finished`](docs/automations/finished.md) for a QA automation example, manual test scenarios, and guidance on handling edge cases like multi-device sync or timers that finish while Home Assistant is offline.
 - Home Assistant does **not replay** missed finishes after a restart. If a timer would have expired while Home Assistant was offline, no `timer.finished` event is emitted on startup.
+- Avoid triggering automations from `timer.started`. The extend button may reissue `timer.start` calls when `timer.change` is unavailable, but the brew still produces a single `timer.finished` event.
 
 ### Documentation
 
@@ -198,7 +199,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 
 8. **Core States & Visuals**
    8.1. **Idle:** dial editable; start action available.
-   8.2. **Running:** progress arc animates; dial read‑only; restart action available; remaining time visible.
+  8.2. **Running:** progress arc animates; dial read‑only; restart action available; remaining time visible; optional extend chip renders when enabled.
    8.3. **Finished:** “Done” state until user taps (which restarts) or it auto‑returns to idle after 5 seconds (configurable).
    8.4. **Disabled/Error:** clearly indicated if bound entity not found/unavailable.
 
@@ -207,10 +208,13 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    9.2. `title` (optional).
    9.3. `presets` (array of `{label, duration}`; at least 3, up to 8).
    9.4. `default_preset` (optional index or label).
-   9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
-  9.6. `finishedAutoIdleMs` (default 5000).
-   9.7. `confirmRestart` (default false).
-   9.8. `disableClockSkewEstimator` (default false; fallback to the local clock when true).
+  9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
+ 9.6. `finishedAutoIdleMs` (default 5000).
+  9.7. `confirmRestart` (default false).
+  9.8. `disableClockSkewEstimator` (default false; fallback to the local clock when true).
+  9.9. `showPlusButton` (default true; hide the extend chip when false).
+  9.10. `plusButtonIncrementS` (default 60; controls the extend increment).
+  9.11. `maxExtendS` (optional cap on total extend seconds per brew).
 
 10. **Accessibility & Internationalization**
     10.1. Full keyboard support: focusable chips; Space/Enter to start/restart; arrow keys to nudge dial when idle (+/‑ step).
@@ -226,10 +230,10 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 
 ## C. Post‑MVD — Nice‑to‑Haves
 
-1. **+1 Minute Button**
-   1.1. Visible while running; each tap **extends** remaining time by +60s **without resetting** the timer.
-   1.2. Implementation: compute new remaining and call a service path that updates the HA timer (custom helper if core timer lacks adjust).
-   1.3. Configurable increment (e.g., 15/30/60 seconds).
+1. **+1 Minute Button** *(delivered in Milestone 14—see §§8.2 & 9)*
+   1.1. Visible while running; each tap **extends** remaining time by the configured increment **without resetting** the timer.
+   1.2. Implementation: prefer `timer.change` when supported; otherwise restart via `timer.start` with the new remaining time.
+   1.3. Configurable increment and optional per-brew cap (`maxExtendS`).
 
 2. **Pause/Resume**
    2.1. Add Pause/Resume alongside Restart.

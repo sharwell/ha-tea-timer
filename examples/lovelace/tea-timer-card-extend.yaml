@@ -1,0 +1,13 @@
+type: custom:tea-timer-card
+title: Extendable Tea Timer
+entity: timer.kitchen_tea
+presets:
+  - label: Sencha
+    durationSeconds: 90
+  - label: Black Tea
+    durationSeconds: 240
+  - label: Herbal Blend
+    durationSeconds: 300
+showPlusButton: true
+plusButtonIncrementS: 45
+maxExtendS: 180

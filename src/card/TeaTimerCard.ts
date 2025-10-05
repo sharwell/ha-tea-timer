@@ -33,11 +33,12 @@ import {
 } from "../model/duration";
 import "../dial/TeaTimerDial";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
-import { restartTimer, startTimer } from "../ha/services/timer";
+import { changeTimer, restartTimer, startTimer, supportsTimerChange } from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const EXTEND_COALESCE_DELAY_MS = 200;
 
 type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
 
@@ -82,6 +83,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   @state()
   private _confirmRestartVisible = false;
 
+  @state()
+  private _extendPendingSeconds = 0;
+
+  @state()
+  private _extendAccumulatedSeconds = 0;
+
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
 
@@ -124,6 +131,20 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _onReducedMotionChange?: (event: MediaQueryListEvent) => void;
 
+  private _extendRunGeneration?: number;
+
+  private _extendRunTotalSeconds?: number;
+
+  private _extendServicePromise?: Promise<void>;
+
+  private _extendInFlightSeconds = 0;
+
+  private _extendBatchBaseRemaining?: number;
+
+  private _extendPendingRestartGeneration?: number;
+
+  private _extendCoalesceTimer?: number;
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
@@ -143,6 +164,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._confirmRestartVisible = false;
     this._confirmRestartDuration = undefined;
     this._clearErrorTimer();
+    this._resetExtendTracking();
+    this._extendServicePromise = undefined;
     this._timerStateController.setClockSkewEstimatorEnabled(
       this._config?.clockSkewEstimatorEnabled ?? true,
     );
@@ -186,6 +209,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         <div class="interaction">
           ${state ? this._renderPresets(state) : this._renderPresets(undefined)}
           ${state ? this._renderDial(state) : this._renderDial(undefined)}
+          ${state ? this._renderExtendControls(state) : nothing}
         </div>
         ${state ? this._renderPrimaryAction(state) : nothing}
         <div class="sr-only" role="status" aria-live="polite">${this._ariaAnnouncement}</div>
@@ -317,6 +341,45 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ${this._dialTooltipVisible
           ? html`<div class="dial-tooltip" role="status">${STRINGS.dialBlockedTooltip}</div>`
           : nothing}
+      </div>
+    `;
+  }
+
+  private _renderExtendControls(state: TimerViewState) {
+    if (!this._viewModel || !this._config) {
+      return nothing;
+    }
+
+    if (!this._viewModel.ui.showExtendButton) {
+      return nothing;
+    }
+
+    if (state.status !== "running") {
+      return nothing;
+    }
+
+    const pendingAction = this._viewModel.ui.pendingAction;
+    const connectionOk = state.connectionStatus === "connected";
+    const hassReady = !!this._hass && !!this._config.entity;
+    const hasError = this._isUiError(state.uiState, "EntityUnavailable") || this._isUiError(state.uiState, "ServiceFailure");
+    const disabled = pendingAction !== "none" || !connectionOk || !hassReady || hasError;
+    const busy = this._extendInFlightSeconds > 0 || this._extendServicePromise !== undefined;
+    const incrementLabel = this._viewModel.ui.extendIncrementLabel;
+    const ariaLabel = STRINGS.extendButtonAriaLabel(
+      formatDurationSpeech(this._viewModel.ui.extendIncrementSeconds, STRINGS.durationSpeech),
+    );
+
+    return html`
+      <div class="extend-controls" data-busy=${busy ? "true" : "false"} aria-busy=${busy ? "true" : "false"}>
+        <button
+          type="button"
+          class="extend-button"
+          aria-label=${ariaLabel}
+          ?disabled=${disabled}
+          @click=${this._onExtendClick}
+        >
+          ${incrementLabel}
+        </button>
       </div>
     `;
   }
@@ -754,6 +817,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return null;
   }
 
+  private readonly _onExtendClick = (event: Event) => {
+    event.stopPropagation();
+    this._handleExtendAction();
+  };
+
   private readonly _onPrimaryButtonClick = (event: Event) => {
     event.stopPropagation();
     this._handlePrimaryAction();
@@ -836,6 +904,48 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     void this._startTimerAction(durationSeconds);
+  }
+
+  private _handleExtendAction(): void {
+    if (!this._viewModel || !this._config?.entity || !this._hass) {
+      return;
+    }
+
+    if (!this._viewModel.ui.showExtendButton) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || state.status !== "running") {
+      return;
+    }
+
+    if (this._viewModel.ui.pendingAction !== "none") {
+      return;
+    }
+
+    if (state.connectionStatus !== "connected") {
+      return;
+    }
+
+    if (this._isUiError(state.uiState, "EntityUnavailable")) {
+      this._showEntityUnavailableToast();
+      return;
+    }
+
+    const increment = Math.max(1, Math.floor(this._viewModel.ui.extendIncrementSeconds));
+    if (increment <= 0) {
+      return;
+    }
+
+    const allowance = this._getExtendAllowance();
+    if (allowance !== undefined && allowance < increment) {
+      this._announce(STRINGS.ariaExtendCapReached);
+      return;
+    }
+
+    this._ensureExtendRunInitialized(state);
+    this._queueExtend(increment, state);
   }
 
   private _getActionDuration(): number {
@@ -924,6 +1034,247 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._announcer.beginRun(durationSeconds);
     const message = this._announcer.announceAction({ action, durationSeconds });
     this._announce(message);
+  }
+
+  private _getExtendAllowance(): number | undefined {
+    if (!this._viewModel) {
+      return undefined;
+    }
+
+    const limit = this._viewModel.ui.maxExtendSeconds;
+    if (limit === undefined) {
+      return undefined;
+    }
+
+    return Math.max(0, limit - this._extendAccumulatedSeconds);
+  }
+
+  private _ensureExtendRunInitialized(state: TimerViewState): void {
+    if (state.status !== "running") {
+      return;
+    }
+
+    if (this._extendRunGeneration === undefined) {
+      this._extendRunGeneration = state.actionGeneration;
+    }
+
+    if (this._extendRunTotalSeconds === undefined) {
+      this._extendRunTotalSeconds = this._resolveRunDurationSeconds(state);
+    }
+  }
+
+  private _queueExtend(increment: number, state: TimerViewState): void {
+    const baseline = this._getEffectiveDisplayRemaining(state) ?? this._resolveRunDurationSeconds(state) ?? 0;
+
+    if (this._extendPendingSeconds === 0) {
+      this._extendBatchBaseRemaining = baseline;
+    }
+
+    const nextRemaining = baseline + increment;
+    this._extendPendingSeconds += increment;
+    this._extendAccumulatedSeconds += increment;
+
+    const totalBase = this._extendRunTotalSeconds ?? this._resolveRunDurationSeconds(state) ?? 0;
+    this._extendRunTotalSeconds = totalBase + increment;
+
+    this._serverRemainingSeconds = Math.max(0, Math.floor(nextRemaining));
+    this._lastServerSyncMs = Date.now();
+    this._setDisplayDurationSeconds(Math.max(0, Math.floor(nextRemaining)));
+    this._announceExtend(increment, nextRemaining);
+    this._scheduleRunningTick();
+
+    if (this._extendCoalesceTimer !== undefined) {
+      clearTimeout(this._extendCoalesceTimer);
+    }
+
+    this._extendCoalesceTimer = window.setTimeout(() => {
+      this._extendCoalesceTimer = undefined;
+      this._flushExtendQueue();
+    }, EXTEND_COALESCE_DELAY_MS);
+  }
+
+  private _flushExtendQueue(): void {
+    if (this._extendServicePromise) {
+      return;
+    }
+
+    if (!this._config?.entity || !this._hass) {
+      this._extendPendingSeconds = 0;
+      return;
+    }
+
+    const seconds = this._extendPendingSeconds;
+    if (seconds <= 0) {
+      return;
+    }
+
+    this._extendPendingSeconds = 0;
+    const batchBase = this._extendBatchBaseRemaining;
+    this._extendBatchBaseRemaining = undefined;
+    this._extendInFlightSeconds = seconds;
+
+    this._extendServicePromise = this._performExtend(seconds, batchBase)
+      .catch(() => {
+        this._handleExtendFailure(seconds);
+      })
+      .finally(() => {
+        this._extendInFlightSeconds = 0;
+        this._extendServicePromise = undefined;
+        if (this._extendPendingSeconds > 0) {
+          this._flushExtendQueue();
+        }
+      });
+  }
+
+  private async _performExtend(seconds: number, batchBaseRemaining?: number): Promise<void> {
+    if (!this._config?.entity || !this._hass) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || state.status !== "running") {
+      return;
+    }
+
+    const baseline =
+      batchBaseRemaining !== undefined
+        ? batchBaseRemaining
+        : Math.max(0, (this._getEffectiveDisplayRemaining(state) ?? 0) - seconds);
+    const targetRemaining = Math.max(0, baseline + seconds);
+
+    const durationLimit = state.durationSeconds ?? this._extendRunTotalSeconds;
+    const canUseChange = supportsTimerChange(this._hass) && durationLimit !== undefined && targetRemaining <= durationLimit;
+
+    if (canUseChange) {
+      try {
+        await changeTimer(this._hass, this._config.entity, seconds);
+        return;
+      } catch {
+        // Fallback to restart semantics if timer.change is unsupported or fails.
+      }
+    }
+
+    const newDuration = Math.max(1, Math.round(targetRemaining));
+    this._extendPendingRestartGeneration = (state.actionGeneration ?? 0) + 1;
+    await restartTimer(this._hass, this._config.entity, newDuration);
+  }
+
+  private _handleExtendFailure(seconds: number): void {
+    this._extendAccumulatedSeconds = Math.max(0, this._extendAccumulatedSeconds - seconds);
+    if (this._extendRunTotalSeconds !== undefined) {
+      const next = this._extendRunTotalSeconds - seconds;
+      this._extendRunTotalSeconds = next > 0 ? next : undefined;
+    }
+    this._extendBatchBaseRemaining = undefined;
+    this._extendPendingRestartGeneration = undefined;
+    this._serverRemainingSeconds = undefined;
+    this._lastServerSyncMs = undefined;
+    if (this._extendCoalesceTimer !== undefined) {
+      clearTimeout(this._extendCoalesceTimer);
+      this._extendCoalesceTimer = undefined;
+    }
+
+    if (this._viewModel) {
+      this._viewModel = setViewModelError(this._viewModel, {
+        message: STRINGS.toastExtendFailed,
+        code: "extend-failed",
+      });
+      this._scheduleErrorClear();
+    }
+  }
+
+  private _announceExtend(incrementSeconds: number, remainingSeconds: number): void {
+    const durationSpeech = formatDurationSpeech(incrementSeconds, STRINGS.durationSpeech);
+    const remainingLabel = formatDurationSeconds(Math.max(0, Math.floor(remainingSeconds)));
+    this._announce(STRINGS.ariaExtendAdded(durationSpeech, remainingLabel));
+  }
+
+  private _getEffectiveDisplayRemaining(state: TimerViewState): number | undefined {
+    if (state.status !== "running") {
+      return this._displayDurationSeconds ?? state.remainingSeconds;
+    }
+
+    if (this._serverRemainingSeconds !== undefined && this._lastServerSyncMs !== undefined) {
+      const elapsedMs = Math.max(0, Date.now() - this._lastServerSyncMs);
+      const elapsedSeconds = Math.floor(elapsedMs / 1000);
+      return Math.max(0, this._serverRemainingSeconds - elapsedSeconds);
+    }
+
+    if (this._displayDurationSeconds !== undefined) {
+      return this._displayDurationSeconds;
+    }
+
+    if (state.remainingSeconds !== undefined) {
+      return state.remainingSeconds;
+    }
+
+    return this._resolveRunDurationSeconds(state);
+  }
+
+  private _updateExtendTracking(state: TimerViewState, previousState?: TimerViewState): void {
+    if (!this._viewModel?.ui.showExtendButton) {
+      if (state.status !== "running") {
+        this._resetExtendTracking();
+      }
+      return;
+    }
+
+    if (state.status !== "running") {
+      if (previousState?.status === "running" && (this._extendPendingSeconds > 0 || this._extendInFlightSeconds > 0)) {
+        this._announce(STRINGS.ariaExtendRaceLost);
+      }
+      this._resetExtendTracking();
+      return;
+    }
+
+    if (this._extendRunGeneration === undefined) {
+      this._extendRunGeneration = state.actionGeneration;
+      this._extendRunTotalSeconds = this._resolveRunDurationSeconds(state);
+      this._extendPendingSeconds = 0;
+      this._extendAccumulatedSeconds = 0;
+      this._extendBatchBaseRemaining = undefined;
+      return;
+    }
+
+    if (state.actionGeneration !== this._extendRunGeneration) {
+      if (
+        this._extendPendingRestartGeneration !== undefined &&
+        state.actionGeneration === this._extendPendingRestartGeneration
+      ) {
+        this._extendRunGeneration = state.actionGeneration;
+        this._extendPendingRestartGeneration = undefined;
+      } else {
+        this._extendRunGeneration = state.actionGeneration;
+        this._extendRunTotalSeconds = this._resolveRunDurationSeconds(state);
+        this._extendPendingSeconds = 0;
+        this._extendAccumulatedSeconds = 0;
+        this._extendBatchBaseRemaining = undefined;
+      }
+    }
+
+    if (state.durationSeconds !== undefined) {
+      if (this._extendRunTotalSeconds === undefined || state.durationSeconds > this._extendRunTotalSeconds) {
+        this._extendRunTotalSeconds = state.durationSeconds;
+      }
+    }
+  }
+
+  private _resetExtendTracking(): void {
+    if (this._extendPendingSeconds !== 0) {
+      this._extendPendingSeconds = 0;
+    }
+    if (this._extendAccumulatedSeconds !== 0) {
+      this._extendAccumulatedSeconds = 0;
+    }
+    this._extendRunGeneration = undefined;
+    this._extendRunTotalSeconds = undefined;
+    this._extendPendingRestartGeneration = undefined;
+    this._extendBatchBaseRemaining = undefined;
+    this._extendInFlightSeconds = 0;
+    if (this._extendCoalesceTimer !== undefined) {
+      clearTimeout(this._extendCoalesceTimer);
+      this._extendCoalesceTimer = undefined;
+    }
   }
 
   private _showEntityUnavailableToast(): void {
@@ -1262,6 +1613,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._confirmRestartDuration = undefined;
     }
     this._timerState = state;
+    this._updateExtendTracking(state, previousState);
     if (this._config) {
       this._viewModel = createTeaTimerViewModel(this._config, state, {
         previousState,
@@ -1354,6 +1706,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._detachReducedMotionListener();
     this._lastProgressUpdateMs = undefined;
     this._announcer.reset();
+    this._resetExtendTracking();
+    this._extendServicePromise = undefined;
     if (this._applyDialRaf !== undefined) {
       cancelAnimationFrame(this._applyDialRaf);
       this._applyDialRaf = undefined;
@@ -1657,10 +2011,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return 0;
     }
 
-    const totalDuration =
+    let totalDuration =
       state.durationSeconds ??
       this._viewModel?.pendingDurationSeconds ??
       this._viewModel?.dial.selectedDurationSeconds;
+
+    if (state.status === "running" && this._extendRunTotalSeconds !== undefined) {
+      totalDuration = this._extendRunTotalSeconds;
+    }
 
     if (totalDuration === undefined || totalDuration <= 0 || !Number.isFinite(totalDuration)) {
       return 0;
