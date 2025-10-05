@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0] - 2024-06-01
+## [0.1.0] - 2025-10-03
 
 ### Highlights
 - 🎉 First minimum viable deliverable of the Tea Timer Card for Home Assistant, including the circular brew dial, preset chips, and real-time countdown synced to your `timer` entity.
