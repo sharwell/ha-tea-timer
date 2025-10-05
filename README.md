@@ -2,6 +2,8 @@
 
 Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the perfect cup. The project is currently in a preview state while core functionality is being implemented.
 
+> **Latest release:** [Tea Timer Card v0.1.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0) — our minimum viable deliverable (MVD). See the [QA matrix](docs/qa-matrix.md) for tested platforms and the [release checklist](docs/release-checklist.md) for the gates we run before publishing.
+
 ## Getting Started
 
 ### Prerequisites
@@ -17,10 +19,18 @@ Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the p
 #### Via HACS (recommended)
 
 1. Add this repository as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS using the **Lovelace** category.
-2. Install **Tea Timer Card** from the HACS frontend.
-3. Reload your browser or clear the Lovelace resources cache so Home Assistant picks up the new card bundle.
+2. Install **Tea Timer Card** v0.1.0 (or the latest available release) from the HACS frontend.
+3. HACS will place `tea-timer-card.js` in your Home Assistant instance. The file is a stable loader that re-exports the fingerprinted production bundle shipped with each release.
+4. Reload your browser or clear the Lovelace resources cache so Home Assistant picks up the new card bundle.
 
-#### Manual build
+#### Manual install (download release assets)
+
+1. Download the `tea-timer-card.js`, `tea-timer-card.<hash>.js`, and optional `tea-timer-card.<hash>.js.map` files from [Tea Timer Card v0.1.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0).
+2. (Optional) Verify integrity by comparing the SHA-256 checksums of the downloaded files with the release `checksums.txt`.
+3. Copy the downloaded files into `<config>/www/` in your Home Assistant setup.
+4. Add a Lovelace resource entry pointing at `/local/tea-timer-card.js` (see [Using the Card in Home Assistant](#using-the-card-in-home-assistant)). The stable loader automatically imports the fingerprinted bundle so browsers refresh cached assets between releases.
+
+#### Local build (for contributors)
 
 ```bash
 npm ci
@@ -77,8 +87,8 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
 
 ### Using the Card in Home Assistant
 
-1. Build the project to produce `dist/tea-timer-card.js`.
-2. Copy the `dist` output to your Home Assistant `www` folder.
+1. Download the release assets (or run `npm run build` locally) to obtain `tea-timer-card.js` and the fingerprinted bundle in `dist/`.
+2. Copy the files into your Home Assistant `www` folder.
 3. Add the following resource reference in your Lovelace configuration:
 
    ```yaml

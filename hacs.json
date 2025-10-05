@@ -1,5 +1,6 @@
 {
   "name": "Tea Timer Card",
   "filename": "tea-timer-card.js",
-  "render_readme": true
+  "render_readme": true,
+  "homeassistant": "2024.5.0"
 }
