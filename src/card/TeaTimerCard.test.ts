@@ -140,6 +140,13 @@ describe("TeaTimerCard", () => {
     );
   }
 
+  function setDialElement(card: TeaTimerCard, dialElement: unknown) {
+    Object.defineProperty(card, "_dialElement", {
+      configurable: true,
+      value: dialElement,
+    });
+  }
+
   function invokePrimaryAction(card: TeaTimerCard) {
     const handler = card as unknown as { _handlePrimaryAction(): void };
     handler._handlePrimaryAction();
@@ -209,21 +216,13 @@ describe("TeaTimerCard", () => {
 
     setTimerState(card, idleState);
 
-    const internals = card as unknown as {
-      _dialElement?: {
-        valueText: string;
-        shadowRoot: null;
-        setProgressFraction: (fraction: number) => void;
-      };
-    };
-
     const dialElement = {
       valueText: "",
       shadowRoot: null,
       setProgressFraction: vi.fn(),
     };
 
-    internals._dialElement = dialElement;
+    setDialElement(card, dialElement);
 
     triggerDialInput(card, 210);
     const apply = card as unknown as {
@@ -806,7 +805,7 @@ describe("TeaTimerCard", () => {
     };
 
     const dialElement = { value: 0, valueText: "", shadowRoot: null, setProgressFraction: vi.fn() };
-    internals._dialElement = dialElement;
+    setDialElement(card, dialElement);
 
     pointerSelectPreset(card, 1);
     const apply = card as unknown as {
@@ -874,7 +873,7 @@ describe("TeaTimerCard", () => {
       },
     } as unknown as TeaTimerDial;
 
-    internals._dialElement = dialElement;
+    setDialElement(card, dialElement);
 
     pointerSelectPreset(card, 1);
     const apply = card as unknown as {
@@ -920,7 +919,7 @@ describe("TeaTimerCard", () => {
     };
 
     const dialElement = { value: 0, valueText: "", shadowRoot: null, setProgressFraction: vi.fn() };
-    internals._dialElement = dialElement;
+    setDialElement(card, dialElement);
 
     keyboardActivatePreset(card, 1, "Enter");
     const apply = card as unknown as {
