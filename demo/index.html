@@ -18,6 +18,33 @@
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       }
 
+      .dial-preview {
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+        justify-items: center;
+      }
+
+      .dial-preview h2 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .dial-preview-controls {
+        display: flex;
+        gap: 12px;
+      }
+
+      .dial-preview-controls label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+      }
+
       .controls {
         display: flex;
         flex-wrap: wrap;
@@ -118,10 +145,33 @@
       <tea-timer-card></tea-timer-card>
       <tea-timer-card></tea-timer-card>
     </main>
+    <section class="dial-preview" aria-label="Dial state preview">
+      <h2>Dial state preview</h2>
+      <tea-timer-dial id="preview-dial"></tea-timer-dial>
+      <div class="dial-preview-controls" role="radiogroup" aria-label="Preview dial state">
+        <label>
+          <input type="radio" name="preview-state" value="idle" checked />
+          Idle
+        </label>
+        <label>
+          <input type="radio" name="preview-state" value="running" />
+          Running
+        </label>
+        <label>
+          <input type="radio" name="preview-state" value="paused" />
+          Paused
+        </label>
+        <label>
+          <input type="radio" name="preview-state" value="finished" />
+          Finished
+        </label>
+      </div>
+    </section>
     <section class="controls" aria-label="Timer controls">
       <button type="button" id="btn-idle">Set idle</button>
       <button type="button" id="btn-run">Set running (2:30)</button>
       <button type="button" id="btn-estimate">Set running (estimated)</button>
+      <button type="button" id="btn-pause">Set paused (1:30)</button>
       <button type="button" id="btn-finish">Emit finished event</button>
       <button type="button" id="btn-unavailable">Mark unavailable</button>
       <button type="button" id="btn-disconnect">Disconnect</button>
@@ -558,9 +608,48 @@
       ];
 
       const environment = createDemoEnvironment("timer.kitchen_tea", 240);
+      const previewDial = document.getElementById("preview-dial");
+
       cards.forEach((card, index) => {
         card.setConfig(configs[index]);
         card.hass = environment.hass;
+      });
+
+      function updatePreviewDial(state) {
+        if (!previewDial || typeof previewDial.setProgressFraction !== "function") {
+          return;
+        }
+
+        previewDial.bounds = { min: 15, max: 360, step: 5 };
+        previewDial.value = state === "idle" ? 180 : 240;
+        previewDial.valueText =
+          state === "running" || state === "paused"
+            ? "2:30"
+            : state === "finished"
+            ? "Done"
+            : "3:00";
+        previewDial.interactive = state === "idle";
+        previewDial.status =
+          state === "finished"
+            ? "finished"
+            : state === "running"
+            ? "running"
+            : state === "paused"
+            ? "paused"
+            : "idle";
+        const fraction = state === "running" || state === "paused" ? 0.6 : state === "finished" ? 1 : 0;
+        previewDial.setProgressFraction(fraction);
+      }
+
+      updatePreviewDial("idle");
+
+      document.querySelectorAll('input[name="preview-state"]').forEach((input) => {
+        input.addEventListener("change", (event) => {
+          const target = event.currentTarget;
+          if (target instanceof HTMLInputElement && target.checked) {
+            updatePreviewDial(target.value);
+          }
+        });
       });
 
       const automationLog = document.getElementById("automation-log");
@@ -613,6 +702,7 @@
       document.getElementById("btn-idle").addEventListener("click", () => environment.setIdle());
       document.getElementById("btn-run").addEventListener("click", () => environment.setRunning(150, true, 150));
       document.getElementById("btn-estimate").addEventListener("click", () => environment.setRunning(120, false, 240));
+      document.getElementById("btn-pause").addEventListener("click", () => environment.setPaused(90));
       document.getElementById("btn-finish").addEventListener("click", () => environment.emitFinished());
       document.getElementById("btn-unavailable").addEventListener("click", () => environment.setUnavailable());
       document.getElementById("btn-disconnect").addEventListener("click", () => environment.disconnect());

@@ -19,8 +19,9 @@ duration (for example, “Preset Green Tea – 2 minutes”).
   `aria-valuenow` reflecting the configured bounds and duration.
 - Arrow keys adjust the value by `stepSeconds`; **PageUp/PageDown** add or subtract 30 seconds; the
   **Home** and **End** keys jump to the minimum and maximum bounds.
-- While the timer runs the dial switches to a progress indicator with `aria-busy="true"` so screen
-  readers understand that it is not editable.
+- While the timer runs or is paused the dial switches to a read-only progress indicator: the handle hides, the
+  slider reports `aria-readonly="true"` and `aria-disabled="true"`, and the element leaves the tab
+  order so screen readers skip it until the card returns to Idle.
 
 ## Live regions
 
