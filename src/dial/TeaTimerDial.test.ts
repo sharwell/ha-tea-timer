@@ -2,6 +2,73 @@ import { describe, expect, it, vi } from "vitest";
 import { TeaTimerDial } from "./TeaTimerDial";
 
 describe("TeaTimerDial", () => {
+  async function setupInteractiveDial() {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dial = document.createElement("tea-timer-dial");
+    dial.bounds = { min: 15, max: 360, step: 5 };
+    dial.value = 60;
+    dial.interactive = true;
+
+    container.appendChild(dial);
+    await dial.updateComplete;
+
+    const root = dial.shadowRoot?.querySelector<HTMLElement>(".dial-root");
+    if (!root) {
+      throw new Error("dial root not found");
+    }
+
+    const captured = new Set<number>();
+    Object.defineProperty(root, "setPointerCapture", {
+      configurable: true,
+      value: vi.fn((pointerId: number) => {
+        captured.add(pointerId);
+      }),
+    });
+    Object.defineProperty(root, "releasePointerCapture", {
+      configurable: true,
+      value: vi.fn((pointerId: number) => {
+        captured.delete(pointerId);
+      }),
+    });
+    Object.defineProperty(root, "hasPointerCapture", {
+      configurable: true,
+      value: (pointerId: number) => captured.has(pointerId),
+    });
+    Object.defineProperty(root, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 200,
+        right: 200,
+        bottom: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    });
+
+    return { dial, root, container };
+  }
+
+  function createPointerEvent(
+    root: HTMLElement,
+    overrides: Partial<{ button: number; pointerId: number; clientX: number; clientY: number }> = {},
+  ): PointerEvent {
+    return {
+      button: overrides.button ?? 0,
+      pointerId: overrides.pointerId ?? 1,
+      clientX: overrides.clientX ?? 100,
+      clientY: overrides.clientY ?? 100,
+      currentTarget: root,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as PointerEvent;
+  }
+
   it("updates the progress arc when the fraction changes", () => {
     const dial = new TeaTimerDial();
     const arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -121,5 +188,63 @@ describe("TeaTimerDial", () => {
     internals.setNormalizedValue.call(dial, 0.25);
 
     expect(requestUpdate).toHaveBeenCalled();
+  });
+
+  it("suppresses the synthetic click after a drag exceeds the slop", async () => {
+    const { dial, root, container } = await setupInteractiveDial();
+    const handlers = dial as unknown as {
+      rootPointerDownHandler(event: PointerEvent): void;
+      pointerMoveHandler(event: PointerEvent): void;
+      pointerEndHandler(event: PointerEvent): void;
+    };
+
+    handlers.rootPointerDownHandler(createPointerEvent(root, { clientX: 90, clientY: 90 }));
+    handlers.pointerMoveHandler(createPointerEvent(root, { clientX: 150, clientY: 90 }));
+    handlers.pointerEndHandler(createPointerEvent(root, { clientX: 150, clientY: 90 }));
+
+    const bubbleSpy = vi.fn();
+    container.addEventListener("click", bubbleSpy);
+
+    const dragClick = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true });
+    root.dispatchEvent(dragClick);
+
+    expect(dragClick.defaultPrevented).toBe(true);
+    expect(bubbleSpy).not.toHaveBeenCalled();
+
+    handlers.rootPointerDownHandler(createPointerEvent(root, { clientX: 120, clientY: 120 }));
+    handlers.pointerMoveHandler(createPointerEvent(root, { clientX: 122, clientY: 120 }));
+    handlers.pointerEndHandler(createPointerEvent(root, { clientX: 122, clientY: 120 }));
+
+    const tapClick = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true });
+    root.dispatchEvent(tapClick);
+
+    expect(tapClick.defaultPrevented).toBe(false);
+    expect(bubbleSpy).toHaveBeenCalledTimes(1);
+
+    container.remove();
+  });
+
+  it("allows dial taps to bubble when movement stays within the slop", async () => {
+    const { dial, root, container } = await setupInteractiveDial();
+    const handlers = dial as unknown as {
+      rootPointerDownHandler(event: PointerEvent): void;
+      pointerMoveHandler(event: PointerEvent): void;
+      pointerEndHandler(event: PointerEvent): void;
+    };
+
+    handlers.rootPointerDownHandler(createPointerEvent(root, { clientX: 100, clientY: 100 }));
+    handlers.pointerMoveHandler(createPointerEvent(root, { clientX: 106, clientY: 100 }));
+    handlers.pointerEndHandler(createPointerEvent(root, { clientX: 106, clientY: 100 }));
+
+    const bubbleSpy = vi.fn();
+    container.addEventListener("click", bubbleSpy);
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true });
+    root.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(false);
+    expect(bubbleSpy).toHaveBeenCalledTimes(1);
+
+    container.remove();
   });
 });

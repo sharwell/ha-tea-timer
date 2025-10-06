@@ -37,6 +37,59 @@
         transform: translateY(1px);
       }
 
+      .service-log {
+        margin-top: 16px;
+        padding: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        background: white;
+      }
+
+      .service-log .toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      .service-log input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+      }
+
+      .service-log ol {
+        margin: 12px 0 0;
+        padding-left: 24px;
+        display: grid;
+        gap: 6px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .service-log ol[hidden] {
+        display: none;
+      }
+
+      .service-log code {
+        font-size: 0.95rem;
+      }
+
+      .service-log .status {
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .service-log .status[data-status="ok"] {
+        color: #0f9d58;
+      }
+
+      .service-log .status[data-status="failed"] {
+        color: #d93025;
+      }
+
+      .service-log .status[data-status="ignored"] {
+        color: #5f6368;
+      }
+
       .automation {
         margin-top: 24px;
         background: white;
@@ -75,6 +128,13 @@
       <button type="button" id="btn-reconnect">Reconnect</button>
       <button type="button" id="btn-fail-service">Fail next service call</button>
     </section>
+    <section class="service-log" aria-label="Service call log">
+      <label class="toggle">
+        <input type="checkbox" id="toggle-service-log" />
+        Log Home Assistant callService invocations
+      </label>
+      <ol id="service-log" reversed hidden></ol>
+    </section>
     <section class="automation" aria-label="Demo automation log">
       <h2>Automation listener</h2>
       <p>
@@ -86,6 +146,77 @@
     </section>
     <script type="module">
       const READY_STATES = { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 };
+
+      const serviceLogList = document.getElementById("service-log");
+      const serviceLogToggle = document.getElementById("toggle-service-log");
+      const MAX_SERVICE_LOG_ENTRIES = 12;
+      let serviceLogEnabled = false;
+
+      function updateServiceLogVisibility() {
+        if (!serviceLogList) {
+          return;
+        }
+
+        const shouldShow = serviceLogEnabled && serviceLogList.childElementCount > 0;
+        serviceLogList.hidden = !shouldShow;
+      }
+
+      function recordServiceCall(domain, service, data) {
+        if (!serviceLogEnabled || !serviceLogList) {
+          return null;
+        }
+
+        const entry = document.createElement("li");
+        const timestamp = document.createElement("strong");
+        timestamp.textContent = new Date().toLocaleTimeString();
+        entry.append(timestamp, document.createTextNode(" — "));
+
+        const serviceCode = document.createElement("code");
+        serviceCode.textContent = `${domain}.${service}`;
+        entry.append(serviceCode);
+
+        if (data !== undefined) {
+          entry.append(document.createTextNode(" "));
+          const dataCode = document.createElement("code");
+          try {
+            dataCode.textContent = JSON.stringify(data);
+          } catch (error) {
+            dataCode.textContent = String(data);
+          }
+          entry.append(dataCode);
+        }
+
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "status";
+        statusSpan.dataset.status = "pending";
+        statusSpan.textContent = "pending";
+        entry.append(document.createTextNode(" — "), statusSpan);
+
+        serviceLogList.prepend(entry);
+        while (serviceLogList.childElementCount > MAX_SERVICE_LOG_ENTRIES) {
+          serviceLogList.lastElementChild?.remove();
+        }
+
+        updateServiceLogVisibility();
+
+        return {
+          mark(status) {
+            statusSpan.textContent = status;
+            statusSpan.dataset.status = status;
+            updateServiceLogVisibility();
+          },
+        };
+      }
+
+      if (serviceLogToggle instanceof HTMLInputElement) {
+        serviceLogEnabled = serviceLogToggle.checked;
+        serviceLogToggle.addEventListener("change", () => {
+          serviceLogEnabled = serviceLogToggle.checked;
+          updateServiceLogVisibility();
+        });
+      }
+
+      updateServiceLogVisibility();
 
       class DemoSocket {
         constructor() {
@@ -266,62 +397,77 @@
               },
             },
             async callService(domain, service, data) {
-              if (shouldFailCall) {
-                shouldFailCall = false;
-                throw new Error("demo service failure");
-              }
+              const logHandle = recordServiceCall(domain, service, data);
+              let outcome = "ok";
+              try {
+                if (shouldFailCall) {
+                  shouldFailCall = false;
+                  outcome = "failed";
+                  throw new Error("demo service failure");
+                }
 
-              if (domain !== "timer") {
-                return undefined;
-              }
-
-              if (service === "start") {
-                const hasDuration = data && data.duration !== undefined;
-                const requestedDuration = hasDuration ? Number(data.duration) : undefined;
-                const isResume = !hasDuration && current.state === "paused";
-
-                if (isResume) {
-                  const resumeSeconds = getRemainingSeconds();
-                  environment.setRunning(resumeSeconds, true);
-                  connection.emit("timer.restarted", { entity_id: entityId });
+                if (domain !== "timer") {
+                  outcome = "ignored";
                   return undefined;
                 }
 
-                const runDuration = Math.max(1, Number.isFinite(requestedDuration) ? Number(requestedDuration) : durationSeconds);
-                durationSeconds = runDuration;
-                environment.setRunning(runDuration, true, runDuration);
-                connection.emit("timer.started", { entity_id: entityId });
+                if (service === "start") {
+                  const hasDuration = data && data.duration !== undefined;
+                  const requestedDuration = hasDuration ? Number(data.duration) : undefined;
+                  const isResume = !hasDuration && current.state === "paused";
+
+                  if (isResume) {
+                    const resumeSeconds = getRemainingSeconds();
+                    environment.setRunning(resumeSeconds, true);
+                    connection.emit("timer.restarted", { entity_id: entityId });
+                    return undefined;
+                  }
+
+                  const runDuration = Math.max(1, Number.isFinite(requestedDuration) ? Number(requestedDuration) : durationSeconds);
+                  durationSeconds = runDuration;
+                  environment.setRunning(runDuration, true, runDuration);
+                  connection.emit("timer.started", { entity_id: entityId });
+                  return undefined;
+                }
+
+                if (service === "cancel") {
+                  environment.setIdle();
+                  return undefined;
+                }
+
+                if (service === "pause") {
+                  const remaining = getRemainingSeconds();
+                  environment.setPaused(remaining);
+                  connection.emit("timer.paused", { entity_id: entityId });
+                  return undefined;
+                }
+
+                if (service === "change") {
+                  const deltaSeconds = Number(data?.duration ?? 0);
+                  if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) {
+                    outcome = "ignored";
+                    return undefined;
+                  }
+
+                  const updated = Math.max(0, getRemainingSeconds() + deltaSeconds);
+                  if (current.state === "paused") {
+                    environment.setPaused(updated);
+                  } else if (current.state === "active") {
+                    environment.setRunning(updated, true);
+                  }
+                  return undefined;
+                }
+
+                outcome = "ignored";
                 return undefined;
+              } catch (error) {
+                outcome = "failed";
+                throw error;
+              } finally {
+                if (logHandle) {
+                  logHandle.mark(outcome);
+                }
               }
-
-              if (service === "cancel") {
-                environment.setIdle();
-                return undefined;
-              }
-
-               if (service === "pause") {
-                 const remaining = getRemainingSeconds();
-                 environment.setPaused(remaining);
-                 connection.emit("timer.paused", { entity_id: entityId });
-                 return undefined;
-               }
-
-               if (service === "change") {
-                 const deltaSeconds = Number(data?.duration ?? 0);
-                 if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) {
-                   return undefined;
-                 }
-
-                 const updated = Math.max(0, getRemainingSeconds() + deltaSeconds);
-                 if (current.state === "paused") {
-                   environment.setPaused(updated);
-                 } else if (current.state === "active") {
-                   environment.setRunning(updated, true);
-                 }
-                 return undefined;
-               }
-
-              return undefined;
             },
           },
           setIdle() {

@@ -13,6 +13,10 @@ All notable changes to this project will be documented in this file.
   change would exceed the native cap or the service is missing. Configurable increment and optional
   per-brew cap keep automations authoritative while preventing visual reset.
 
+### Fixed
+- Prevent idle dial drags from triggering `timer.start`; releasing a drag now leaves the timer idle
+  until an explicit tap/click/keyboard activation starts the brew. (#32)
+
 ### Documentation
 - Document pause/resume flows, helper setup, restore caveats, near-finish races, and update the Lovelace
   examples to include a pause/resume configuration alongside the extend button guidance.

@@ -35,6 +35,16 @@ issues.
 - **Fix:** Resolve the underlying WebSocket issue or performance bottleneck. The card intentionally
   relies on server events to stay authoritative.
 
+## Dragging the dial doesn't start the timer
+
+- **Symptom:** Adjusting the circular dial changes the displayed duration, but the brew stays Idle
+  when you lift your finger or pointer.
+- **Diagnosis:** This is expected. Dial drags only update the pending duration; they never call
+  Home Assistant services. Starting or restarting always requires the configured primary action
+  (tap/click/keyboard activation) so you can adjust the time without accidentally triggering a brew.
+- **Fix:** After dragging to the desired time, tap/click the card (or press **Enter**/**Space**) to
+  call `timer.start`.
+
 ## Countdown drift after reconnect
 
 - **Symptom:** Remaining time briefly jumps forward/backward when the connection restores.
