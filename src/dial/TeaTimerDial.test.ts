@@ -69,6 +69,50 @@ describe("TeaTimerDial", () => {
     } as unknown as PointerEvent;
   }
 
+  async function renderDial(dial: TeaTimerDial) {
+    document.body.appendChild(dial);
+    await dial.updateComplete;
+    const root = dial.shadowRoot?.querySelector<HTMLElement>(".dial-root");
+    const handle = dial.shadowRoot?.querySelector<HTMLElement>(".dial-handle");
+    if (!root || !handle) {
+      throw new Error("dial root or handle not found");
+    }
+
+    return { root, handle };
+  }
+
+  it("hides the handle and removes focus when running", async () => {
+    const dial = document.createElement("tea-timer-dial");
+    dial.bounds = { min: 15, max: 360, step: 5 };
+    dial.value = 120;
+    dial.status = "running";
+    dial.interactive = false;
+
+    const { root } = await renderDial(dial);
+
+    expect(root.classList.contains("is-running")).toBe(true);
+    expect(root.tabIndex).toBe(-1);
+    expect(root.getAttribute("aria-disabled")).toBe("true");
+
+    dial.remove();
+  });
+
+  it("shows the handle and allows focus while idle", async () => {
+    const dial = document.createElement("tea-timer-dial");
+    dial.bounds = { min: 15, max: 360, step: 5 };
+    dial.value = 90;
+    dial.status = "idle";
+    dial.interactive = true;
+
+    const { root } = await renderDial(dial);
+
+    expect(root.classList.contains("is-running")).toBe(false);
+    expect(root.tabIndex).toBe(0);
+    expect(root.getAttribute("aria-disabled")).toBe("false");
+
+    dial.remove();
+  });
+
   it("updates the progress arc when the fraction changes", () => {
     const dial = new TeaTimerDial();
     const arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");

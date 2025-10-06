@@ -117,12 +117,19 @@ export class TeaTimerDial extends LitElement {
       inset: 0;
       pointer-events: none;
       transform: rotate(0deg);
-      transition: transform 80ms ease-out;
+      opacity: 1;
+      visibility: visible;
+      transition: transform 80ms ease-out, opacity 160ms ease;
       color: var(--dial-handle-color, var(--primary-color, #1f2933));
     }
 
     .dial-root[data-pointer="true"] .dial-handle {
       transition: none;
+    }
+
+    .dial-root.is-running .dial-handle {
+      opacity: 0;
+      visibility: hidden;
     }
 
     .dial-handle-dot {
@@ -239,15 +246,21 @@ export class TeaTimerDial extends LitElement {
     const dashOffset = PROGRESS_CIRCUMFERENCE * (1 - fraction);
     const ariaReadonly = this.interactive ? "false" : "true";
 
+    const isRunning = this.status === "running";
+    const rootClass = isRunning ? "dial-root is-running" : "dial-root";
+    const tabIndex = this.interactive ? 0 : -1;
+    const ariaDisabled = this.interactive ? "false" : "true";
+
     return html`
       <div
-        class="dial-root"
+        class=${rootClass}
         role="slider"
-        tabindex="0"
+        .tabIndex=${tabIndex}
         data-status=${this.status}
         data-pointer=${this.pointerActive ? "true" : "false"}
         aria-label=${this.ariaLabel || nothing}
         aria-readonly=${ariaReadonly}
+        aria-disabled=${ariaDisabled}
         aria-valuemin=${this.bounds.min}
         aria-valuemax=${this.bounds.max}
         aria-valuenow=${Math.round(this.value)}

@@ -31,8 +31,8 @@ stateDiagram-v2
 
 ## Running
 
-- **What you see:** Dial locks, a progress arc fills clockwise, remaining time updates once per
-  second (throttled for screen readers), and queued presets appear as a subtitle.
+- **What you see:** Dial locks, the handle hides, a progress arc fills clockwise, remaining time
+  updates once per second (throttled for screen readers), and queued presets appear as a subtitle.
 - **Actions available:**
   - Tap/click the card to restart with the queued duration.
   - Change presets—the card queues the new selection for the next restart without interrupting the
