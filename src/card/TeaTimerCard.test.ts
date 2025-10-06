@@ -202,6 +202,34 @@ describe("TeaTimerCard", () => {
     document.querySelectorAll(tagName).forEach((el) => el.remove());
   });
 
+  it("applies theme tokens to the host style when config changes", () => {
+    const card = createCard();
+
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      themeTokens: {
+        "--ttc-bg": "#101010",
+        "--ttc-fg": "#fafafa",
+      },
+    });
+
+    expect(card.style.getPropertyValue("--ttc-bg").trim()).toBe("#101010");
+    expect(card.style.getPropertyValue("--ttc-fg").trim()).toBe("#fafafa");
+    expect(card.style.getPropertyValue("--ttc-chip-bg").trim()).not.toBe("");
+
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      themeTokens: {
+        "--ttc-bg": "#202020",
+      },
+    });
+
+    expect(card.style.getPropertyValue("--ttc-bg").trim()).toBe("#202020");
+    expect(card.style.getPropertyValue("--ttc-fg").trim()).not.toBe("");
+  });
+
   it("can disable the clock skew estimator via config", () => {
     const spy = vi.spyOn(TimerStateController.prototype, "setClockSkewEstimatorEnabled");
     const card = createCard();

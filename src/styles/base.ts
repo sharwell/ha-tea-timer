@@ -4,7 +4,7 @@ export const baseStyles = css`
   :host {
     display: block;
     box-sizing: border-box;
-    color: var(--primary-text-color, #1f2933);
+    color: var(--ttc-fg, var(--primary-text-color, #1f2933));
     font-family: var(--ha-card-header-font-family, "Roboto", "Noto", sans-serif);
   }
 

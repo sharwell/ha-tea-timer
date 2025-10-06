@@ -3,19 +3,22 @@ import { css } from "lit";
 export const cardStyles = css`
   :host {
     color-scheme: light dark;
-    color: var(--primary-text-color, #1f2933);
-    --mdc-theme-primary: var(--primary-color, #1f2933);
+    color: var(--ttc-fg, var(--primary-text-color, #1f2933));
+    --mdc-theme-primary: var(--ttc-accent, var(--primary-color, #1f2933));
     --mdc-theme-on-primary: var(
-      --text-on-primary-color,
-      var(--text-primary-color, #ffffff)
+      --ttc-chip-selected-fg,
+      var(--text-on-primary-color, #ffffff)
     );
     --mdc-theme-surface: var(
-      --ha-card-background,
-      var(--card-background-color, #ffffff)
+      --ttc-bg,
+      var(--ha-card-background, var(--card-background-color, #ffffff))
     );
-    --mdc-theme-on-surface: var(--primary-text-color, #1f2933);
-    --mdc-chip-background-color: var(--mdc-theme-surface);
-    --mdc-chip-label-ink-color: var(--mdc-theme-on-surface);
+    --mdc-theme-on-surface: var(--ttc-fg, var(--primary-text-color, #1f2933));
+    --mdc-chip-background-color: var(--ttc-chip-bg, var(--mdc-theme-surface));
+    --mdc-chip-label-ink-color: var(--ttc-chip-fg, var(--mdc-theme-on-surface));
+    --chip-background-color: var(--ttc-chip-bg, var(--mdc-chip-background-color));
+    --chip-text-color: var(--ttc-chip-fg, var(--mdc-chip-label-ink-color));
+    --focus-ring-color: var(--ttc-focus-ring, rgba(0, 122, 255, 0.55));
   }
 
   ha-card,
@@ -127,7 +130,7 @@ export const cardStyles = css`
   }
 
   .extend-button {
-    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--ttc-dial-track, var(--divider-color, rgba(0, 0, 0, 0.2)));
     border-radius: 999px;
     padding: 6px 14px;
     background: var(--chip-background-color, var(--mdc-chip-background-color));
@@ -160,7 +163,7 @@ export const cardStyles = css`
   }
 
   .pause-resume-button {
-    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--ttc-dial-track, var(--divider-color, rgba(0, 0, 0, 0.2)));
     border-radius: 999px;
     padding: 6px 18px;
     background: var(--chip-background-color, var(--mdc-chip-background-color));
@@ -208,7 +211,7 @@ export const cardStyles = css`
   }
 
   .preset-chip {
-    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--ttc-dial-track, var(--divider-color, rgba(0, 0, 0, 0.2)));
     border-radius: 16px;
     padding: 6px 12px;
     background: var(--chip-background-color, var(--mdc-chip-background-color));
@@ -235,9 +238,9 @@ export const cardStyles = css`
   }
 
   .preset-chip.preset-selected {
-    background: var(--primary-color, #1f2933);
-    border-color: var(--primary-color, #1f2933);
-    color: var(--text-on-primary-color, var(--mdc-theme-on-primary));
+    background: var(--ttc-chip-selected-bg, var(--primary-color, #1f2933));
+    border-color: var(--ttc-chip-selected-bg, var(--primary-color, #1f2933));
+    color: var(--ttc-chip-selected-fg, var(--text-on-primary-color, var(--mdc-theme-on-primary)));
   }
 
   .preset-chip.preset-queued {
@@ -266,9 +269,9 @@ export const cardStyles = css`
     gap: 2px;
     padding: 12px 16px;
     border-radius: 12px;
-    border: 2px solid var(--primary-color, #1f2933);
-    background: var(--primary-color, #1f2933);
-    color: var(--text-on-primary-color, var(--mdc-theme-on-primary));
+    border: 2px solid var(--ttc-accent, var(--primary-color, #1f2933));
+    background: var(--ttc-accent, var(--primary-color, #1f2933));
+    color: var(--ttc-chip-selected-fg, var(--text-on-primary-color, var(--mdc-theme-on-primary)));
     font-weight: 600;
     font-size: 1rem;
     line-height: 1.2;
@@ -358,7 +361,10 @@ export const cardStyles = css`
     height: 20px;
     border-radius: 50%;
     border: 3px solid rgba(0, 0, 0, 0.12);
-    border-top-color: var(--info-color, rgba(0, 122, 255, 0.6));
+    border-top-color: var(
+      --ttc-dial-progress,
+      var(--info-color, rgba(0, 122, 255, 0.6))
+    );
     animation: tea-timer-spin 900ms linear infinite;
   }
 

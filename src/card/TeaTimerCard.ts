@@ -3,7 +3,7 @@ import { createRef, ref } from "lit/directives/ref.js";
 import { property, query, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
-import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
+import { parseTeaTimerConfig, TeaTimerConfig, ThemeTokensOverride } from "../model/config";
 import {
   applyPresetSelection,
   applyQueuedPreset,
@@ -44,6 +44,7 @@ import {
   supportsTimerPause,
 } from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
+import { resolveThemeTokens, TOKEN_KEYS } from "../theme/tokens";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -162,6 +163,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _pauseHelperEntityId?: string;
 
+  private _appliedThemeTokens: Record<string, string> = {};
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
@@ -189,6 +192,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._timerStateController.setFinishedOverlayMs(
       this._config?.finishedAutoIdleMs ?? 5000,
     );
+    this._applyThemeTokens(this._config?.themeTokens);
     const state = this._timerState ?? this._timerStateController.state;
     if (this._config) {
       this._viewModel = createTeaTimerViewModel(this._config, state);
@@ -2596,6 +2600,17 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._pauseCapability = "unsupported";
+  }
+
+  private _applyThemeTokens(overrides: ThemeTokensOverride | undefined): void {
+    const resolved = resolveThemeTokens(overrides).values;
+    for (const token of TOKEN_KEYS) {
+      const nextValue = resolved[token];
+      if (this._appliedThemeTokens[token] !== nextValue) {
+        this.style.setProperty(token, nextValue);
+        this._appliedThemeTokens[token] = nextValue;
+      }
+    }
   }
 
   private _resolveDialElement(): TeaTimerDial | undefined {

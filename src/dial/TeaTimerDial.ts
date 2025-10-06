@@ -18,7 +18,7 @@ export class TeaTimerDial extends LitElement {
     :host {
       display: inline-flex;
       justify-content: center;
-      color: var(--primary-text-color, #1f2933);
+      color: var(--ttc-fg, var(--primary-text-color, #1f2933));
     }
 
     .dial-root {
@@ -26,9 +26,9 @@ export class TeaTimerDial extends LitElement {
       width: 184px;
       height: 184px;
       border-radius: 50%;
-      --dial-border-color: var(--divider-color, rgba(0, 0, 0, 0.12));
-      --dial-track-color: var(--divider-color, rgba(0, 0, 0, 0.16));
-      --dial-progress-color: var(--info-color, rgba(0, 122, 255, 0.85));
+      --dial-border-color: var(--ttc-dial-track, var(--divider-color, rgba(0, 0, 0, 0.12)));
+      --dial-track-color: var(--ttc-dial-track, rgba(0, 0, 0, 0.16));
+      --dial-progress-color: var(--ttc-dial-progress, var(--info-color, rgba(0, 122, 255, 0.85)));
       border: 3px solid var(--dial-border-color);
       display: grid;
       place-items: center;
@@ -43,7 +43,7 @@ export class TeaTimerDial extends LitElement {
     }
 
     .dial-root:focus-visible {
-      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.28);
+      box-shadow: 0 0 0 3px var(--ttc-focus-ring, rgba(0, 122, 255, 0.28));
     }
 
     .dial-root[data-status="finished"] {
@@ -116,7 +116,7 @@ export class TeaTimerDial extends LitElement {
       pointer-events: none;
       transform: rotate(0deg);
       transition: transform 80ms ease-out;
-      color: var(--dial-handle-color, var(--primary-color, #1f2933));
+      color: var(--dial-handle-color, var(--ttc-accent, var(--primary-color, #1f2933)));
     }
 
     .dial-root[data-pointer="true"] .dial-handle {
