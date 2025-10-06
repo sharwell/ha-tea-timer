@@ -13,6 +13,7 @@ export interface StringTable {
   presetsQueuedLabel: (label: string, durationLabel: string) => string;
   statusIdle: string;
   statusRunning: string;
+  statusPaused: string;
   statusFinished: string;
   statusUnavailable: string;
   statusDisconnected: string;
@@ -36,10 +37,13 @@ export interface StringTable {
   };
   ariaIdle: string;
   ariaRunning: string;
+  ariaPaused: string;
   ariaFinished: string;
   ariaUnavailable: string;
   ariaStarting: (durationSpeech: string) => string;
   ariaRestarting: (durationSpeech: string) => string;
+  ariaPausedAnnouncement: string;
+  ariaResumedAnnouncement: string;
   ariaFinishedWithDuration: (durationSpeech: string) => string;
   ariaRemaining: (durationSpeech: string) => string;
   ariaQueuedPreset: (label: string, durationSpeech: string) => string;
@@ -53,12 +57,20 @@ export interface StringTable {
   toastStartFailed: string;
   toastRestartFailed: string;
   toastExtendFailed: string;
+  toastPauseFailed: string;
+  toastResumeFailed: string;
+  toastPauseHelperMissing: string;
+  toastPauseRemainingUnknown: string;
   toastEntityUnavailable: (entityId: string) => string;
   restartConfirmMessage: (durationLabel: string) => string;
   restartConfirmConfirm: string;
   restartConfirmCancel: string;
   primaryActionStart: string;
   primaryActionRestart: string;
+  pauseButtonLabel: string;
+  pauseButtonAriaLabel: string;
+  resumeButtonLabel: string;
+  resumeButtonAriaLabel: string;
   primaryActionStartLabel: (
     durationSpeech: string,
     presetLabel?: string,
@@ -103,6 +115,7 @@ export const STRINGS: StringTable = {
     `Next: ${label} ${durationLabel}`,
   statusIdle: "Idle",
   statusRunning: "Running",
+  statusPaused: "Paused",
   statusFinished: "Finished",
   statusUnavailable: "Entity unavailable",
   statusDisconnected: "Disconnected",
@@ -141,10 +154,13 @@ export const STRINGS: StringTable = {
   },
   ariaIdle: "Timer idle.",
   ariaRunning: "Timer running.",
+  ariaPaused: "Timer paused.",
   ariaFinished: "Timer finished.",
   ariaUnavailable: "Timer unavailable.",
   ariaStarting: (durationSpeech: string) => `Timer started for ${durationSpeech}.`,
   ariaRestarting: (durationSpeech: string) => `Timer restarted for ${durationSpeech}.`,
+  ariaPausedAnnouncement: "Timer paused.",
+  ariaResumedAnnouncement: "Timer resumed.",
   ariaFinishedWithDuration: (durationSpeech: string) =>
     `Timer finished with ${durationSpeech} elapsed.`,
   ariaRemaining: (durationSpeech: string) => `${durationSpeech} remaining.`,
@@ -162,12 +178,20 @@ export const STRINGS: StringTable = {
   toastStartFailed: "Couldn't start the timer. Please try again.",
   toastRestartFailed: "Couldn't restart the timer. Please try again.",
   toastExtendFailed: "Couldn't add more time. Please try again.",
+  toastPauseFailed: "Couldn't pause the timer. Please try again.",
+  toastResumeFailed: "Couldn't resume the timer. Please try again.",
+  toastPauseHelperMissing: "Pause storage helper not found. Create the input_text helper for this timer.",
+  toastPauseRemainingUnknown: "Remaining time is unknown while paused. Wait for Home Assistant to update, then try again.",
   toastEntityUnavailable: (entityId: string) => "Timer entity " + entityId + " is unavailable.",
   restartConfirmMessage: (durationLabel: string) => "Restart the timer for " + durationLabel + "?",
   restartConfirmConfirm: "Restart",
   restartConfirmCancel: "Cancel",
   primaryActionStart: "Start",
   primaryActionRestart: "Restart",
+  pauseButtonLabel: "Pause",
+  pauseButtonAriaLabel: "Pause the running timer.",
+  resumeButtonLabel: "Resume",
+  resumeButtonAriaLabel: "Resume the paused timer.",
   primaryActionStartLabel: (durationSpeech: string, presetLabel?: string, queued?: boolean) => {
     if (presetLabel) {
       return queued

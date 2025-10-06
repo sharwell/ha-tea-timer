@@ -10,6 +10,9 @@ stateDiagram-v2
     }
     Idle --> Running: Start timer
     Running --> Running: Restart timer
+    Running --> Paused: Pause timer
+    Paused --> Running: Resume timer
+    Paused --> Idle: Restart timer
     Running --> Finished: timer.finished event
     Finished --> Idle: Auto idle timeout / user restart
     Idle --> Error: Entity unavailable
@@ -34,6 +37,8 @@ stateDiagram-v2
   - Tap/click the card to restart with the queued duration.
   - Change presets—the card queues the new selection for the next restart without interrupting the
     current brew.
+  - Tap the **Pause** control to halt the brew without resetting the remaining time. The button
+    disables while the service call is in flight to prevent accidental double taps.
   - Tap the **+1:00** extend chip to add the configured increment to the remaining time. Each tap
     coalesces with others within 200 ms to avoid duplicate service calls.
   - Cancel or restart the timer from any device; changes propagate immediately.
@@ -42,6 +47,20 @@ stateDiagram-v2
   - Queued preset announcements (“Next preset selected: Herbal – 5 minutes”).
   - Extends announce “Added one minute. New remaining: mm:ss.” while cap and race conditions
     announce the relevant outcome.
+
+## Paused
+
+- **What you see:** The dial remains locked, the progress arc freezes in place, and a “Paused” badge
+  appears above the card body. Resume and Restart controls replace the Pause button.
+- **Actions available:**
+  - Tap **Resume** to continue from the stored remaining time (Home Assistant may emit
+    `timer.restarted`; rely on `timer.finished` for automations).
+  - Tap **Restart** to begin again from the current preset/dial duration.
+  - Use the **+1:00** extend chip to add time without resuming; the stored remaining seconds update
+    immediately.
+- **Announcements:** “Timer paused.” and “Timer resumed.” fire through the polite live region when the
+  state changes. If the timer helper is configured with `restore: true`, Home Assistant will restore
+  paused or running timers across restarts, but it will not replay missed `timer.finished` events.
 
 ## Finished (transient)
 
@@ -82,10 +101,16 @@ stateDiagram-v2
 The card never modifies timers locally. Instead it issues Home Assistant service calls:
 
 - `timer.start` with `duration` when starting or restarting.
+- `timer.pause` when Home Assistant supports native pause/resume.
+- `timer.start` with no `duration` to resume a paused timer natively.
 - `timer.change` to extend a running brew when Home Assistant supports the service and the result
   stays within the duration set by the last `timer.start`.
 - `timer.start` with the updated remaining time when `timer.change` is unavailable or would exceed
-  its cap. The card smooths the UI so the progress arc lengthens without flashing.
+  its cap.
+- **Compatibility mode:** When native pause is unavailable, the card writes the remaining seconds to
+  an `input_text` helper (`input_text.<timer>_paused_remaining` by default), calls `timer.cancel` to
+  halt the helper, and later reads the stored value to call `timer.start(duration=remaining)` before
+  clearing the helper.
 
 This approach keeps Home Assistant authoritative for countdowns and ensures events such as
 `timer.finished` fire exactly once per completion. Automations should continue to listen for

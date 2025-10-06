@@ -1,6 +1,6 @@
 import { HassEntity } from "../types/home-assistant";
 
-export type TimerStatus = "idle" | "running" | "finished" | "unavailable";
+export type TimerStatus = "idle" | "running" | "paused" | "finished" | "unavailable";
 
 export interface TimerViewState {
   status: TimerStatus;
@@ -98,9 +98,10 @@ function normalizeEntity(
         estimationDriftSeconds = driftSeconds;
       }
     }
+    const status: TimerStatus = state === "paused" ? "paused" : "running";
 
     return {
-      status: "running",
+      status,
       durationSeconds,
       remainingSeconds,
       lastChangedTs,

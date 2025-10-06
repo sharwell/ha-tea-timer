@@ -86,6 +86,20 @@ describe("normalizeTimerEntity", () => {
     expect(state.remainingSeconds).toBeLessThanOrEqual(90);
     expect(state.remainingIsEstimated).toBe(false);
   });
+
+  it("maps paused entity to paused state", () => {
+    const now = Date.now();
+    const entity = createEntity({
+      state: "paused",
+      duration: "0:05:00",
+      remaining: "0:03:20",
+      lastChangedOffsetMs: 10_000,
+    });
+
+    const state = normalizeTimerEntity(entity, now);
+    expect(state.status).toBe("paused");
+    expect(state.remainingSeconds).toBe(200);
+  });
 });
 
 describe("TimerStateMachine", () => {

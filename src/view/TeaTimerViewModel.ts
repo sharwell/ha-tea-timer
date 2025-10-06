@@ -48,6 +48,7 @@ export interface TeaTimerViewModel {
     extendIncrementSeconds: number;
     extendIncrementLabel: string;
     maxExtendSeconds?: number;
+    showPauseResumeButton: boolean;
   };
   status: TimerStatus;
   dial: TeaTimerDialViewModel;
@@ -305,6 +306,7 @@ export function createTeaTimerViewModel(
       extendIncrementSeconds: config.plusButtonIncrementSeconds,
       extendIncrementLabel: `+${formatDurationSeconds(config.plusButtonIncrementSeconds)}`,
       maxExtendSeconds: config.maxExtendSeconds,
+      showPauseResumeButton: config.showPauseResume,
     },
     status: state.status,
     dial,

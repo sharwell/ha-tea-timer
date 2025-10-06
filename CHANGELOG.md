@@ -5,14 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Pause/Resume controls for running brews, with accessible announcements, a frozen progress arc, and
+  automatic fallback to an `input_text` helper when `timer.pause` is unavailable. Resuming via
+  `timer.start` (without a duration) keeps remaining time authoritative across devices.
 - Extend-in-place **+1 minute** control for running brews. The card now prefers Home Assistant’s
   `timer.change` service when available, and falls back to a seamless `timer.start` restart when the
   change would exceed the native cap or the service is missing. Configurable increment and optional
   per-brew cap keep automations authoritative while preventing visual reset.
 
 ### Documentation
-- Document the extend button configuration, near-finish race behaviour, cap handling, and new Lovelace
-  example showcasing the feature.
+- Document pause/resume flows, helper setup, restore caveats, near-finish races, and update the Lovelace
+  examples to include a pause/resume configuration alongside the extend button guidance.
 
 ## [0.1.0] - 2025-10-03
 

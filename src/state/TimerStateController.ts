@@ -1,5 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from "lit";
 import {
+  subscribeEntityStateChanges,
   subscribeTimerFinished,
   subscribeTimerStateChanges,
 } from "../ha-integration/timerSubscriptions";
@@ -17,6 +18,7 @@ export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
 export type TimerUiState =
   | "Idle"
   | "Running"
+  | "Paused"
   | { kind: "FinishedTransient"; untilTs: number }
   | { kind: "Error"; reason: "Disconnected" | "EntityUnavailable" | "ServiceFailure"; detail?: string };
 
@@ -110,6 +112,12 @@ export class TimerStateController implements ReactiveController {
 
   private clockSkewEstimatorEnabled: boolean;
 
+  private pauseHelperEntityId?: string;
+
+  private pauseHelperRemainingSeconds?: number;
+
+  private pauseHelperUnsubscribe?: HassUnsubscribe;
+
   constructor(host: ReactiveControllerHost, options?: TimerStateControllerOptions) {
     this.host = host;
     this.options = options ?? {};
@@ -144,6 +152,18 @@ export class TimerStateController implements ReactiveController {
 
     this.entityId = normalized;
     this.refreshEntityState();
+    void this.refreshSubscriptions();
+  }
+
+  public setPauseHelperEntityId(entityId: string | undefined): void {
+    const normalized = entityId?.trim().toLowerCase() || undefined;
+    if (this.pauseHelperEntityId === normalized) {
+      return;
+    }
+
+    this.pauseHelperEntityId = normalized;
+    this.pauseHelperRemainingSeconds = undefined;
+    this.refreshPauseHelperFromHass();
     void this.refreshSubscriptions();
   }
 
@@ -268,6 +288,7 @@ export class TimerStateController implements ReactiveController {
     const entity = this.getEntityFromHass();
     const now = this.getCurrentTime();
     this.ingestServerTimestamps(entity, now);
+    this.refreshPauseHelperFromHass();
     this.applyEntityState(this.stateMachine.updateFromEntity(entity, now, { serverNow: this.getServerNow(now) }));
   }
 
@@ -300,6 +321,7 @@ export class TimerStateController implements ReactiveController {
             this.clockSkew.estimateFromServerStamp(event.time_fired, now);
           }
           this.ingestServerTimestamps(updatedEntity, now);
+          this.refreshPauseHelperFromHass();
           this.applyEntityState(
             this.stateMachine.updateFromEntity(updatedEntity, now, { serverNow: this.getServerNow(now) }),
           );
@@ -339,6 +361,27 @@ export class TimerStateController implements ReactiveController {
     } catch {
       // Ignore errors from finished subscription for resilience.
     }
+
+    if (this.pauseHelperEntityId) {
+      try {
+        const unsubPauseHelper = await subscribeEntityStateChanges(
+          this.hass.connection,
+          this.pauseHelperEntityId,
+          (entity) => {
+            this.handlePauseHelperUpdate(entity);
+          },
+        );
+
+        if (token !== this.subscriptionToken) {
+          await unsubPauseHelper();
+          return;
+        }
+
+        this.pauseHelperUnsubscribe = unsubPauseHelper;
+      } catch {
+        this.pauseHelperUnsubscribe = undefined;
+      }
+    }
   }
 
   private shouldIgnoreFinish(eventTime: number): boolean {
@@ -357,11 +400,91 @@ export class TimerStateController implements ReactiveController {
     return this.hass.states?.[this.entityId];
   }
 
+  private handlePauseHelperUpdate(entity: HassEntity | undefined): void {
+    const value = this.parsePauseHelperValue(entity);
+    this.setPauseHelperRemainingSeconds(value);
+  }
+
+  private refreshPauseHelperFromHass(): void {
+    if (!this.pauseHelperEntityId || !this.hass) {
+      this.pauseHelperRemainingSeconds = undefined;
+      return;
+    }
+
+    const helper = this.hass.states?.[this.pauseHelperEntityId];
+    const value = this.parsePauseHelperValue(helper);
+    this.pauseHelperRemainingSeconds = value !== undefined && Number.isFinite(value)
+      ? Math.max(0, Math.round(value))
+      : undefined;
+  }
+
+  private parsePauseHelperValue(entity: HassEntity | undefined): number | undefined {
+    if (!entity) {
+      return undefined;
+    }
+
+    const raw = entity.state;
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return raw >= 0 ? Math.round(raw) : undefined;
+    }
+
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+
+      const parsed = Number(trimmed);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return undefined;
+      }
+
+      return Math.round(parsed);
+    }
+
+    return undefined;
+  }
+
+  private setPauseHelperRemainingSeconds(value: number | undefined): void {
+    const normalized = value !== undefined && Number.isFinite(value) ? Math.max(0, Math.round(value)) : undefined;
+    if (this.pauseHelperRemainingSeconds === normalized) {
+      return;
+    }
+
+    this.pauseHelperRemainingSeconds = normalized;
+    this.applyEntityState(this.stateMachine.state);
+  }
+
+  private applyPauseHelper(state: TimerEntityState): TimerEntityState {
+    if (!this.pauseHelperEntityId) {
+      return state;
+    }
+
+    const remaining = this.pauseHelperRemainingSeconds;
+    if (remaining === undefined || remaining <= 0) {
+      return state;
+    }
+
+    if (state.status === "running" || state.status === "finished" || state.status === "unavailable") {
+      return state;
+    }
+
+    return {
+      ...state,
+      status: "paused",
+      remainingSeconds: remaining,
+      durationSeconds: state.durationSeconds ?? remaining,
+      remainingIsEstimated: false,
+      estimationDriftSeconds: undefined,
+    };
+  }
+
   private applyEntityState(state: TimerEntityState): void {
+    const transformed = this.applyPauseHelper(state);
     const previous = this.previousEntityState;
-    this.previousEntityState = state;
-    this.updateActionGeneration(state, previous);
-    this.composeState(state);
+    this.previousEntityState = transformed;
+    this.updateActionGeneration(transformed, previous);
+    this.composeState(transformed);
     this.emitCurrentState();
     this.scheduleOverlayTimer();
   }
@@ -401,6 +524,8 @@ export class TimerStateController implements ReactiveController {
       uiState = { kind: "FinishedTransient", untilTs: until };
     } else if (entityState.status === "running") {
       uiState = "Running";
+    } else if (entityState.status === "paused") {
+      uiState = "Paused";
     } else {
       uiState = "Idle";
     }
@@ -421,6 +546,13 @@ export class TimerStateController implements ReactiveController {
           clientMonotonicT0 = this.monotonicNow();
         }
       }
+    } else if (entityState.status === "paused") {
+      if (entityState.remainingSeconds !== undefined) {
+        serverRemainingSecAtT0 = Math.max(0, Math.floor(entityState.remainingSeconds));
+      } else {
+        serverRemainingSecAtT0 = undefined;
+      }
+      clientMonotonicT0 = undefined;
     } else {
       serverRemainingSecAtT0 = undefined;
       clientMonotonicT0 = undefined;
@@ -508,6 +640,18 @@ export class TimerStateController implements ReactiveController {
         // ignore cleanup errors
       }
     });
+
+    if (this.pauseHelperUnsubscribe) {
+      try {
+        const result = this.pauseHelperUnsubscribe();
+        if (result instanceof Promise) {
+          void result.catch(() => undefined);
+        }
+      } catch {
+        // ignore cleanup errors
+      }
+      this.pauseHelperUnsubscribe = undefined;
+    }
   }
 
   private getCurrentTime(): number {

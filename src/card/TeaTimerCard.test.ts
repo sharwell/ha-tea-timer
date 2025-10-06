@@ -14,14 +14,27 @@ import { formatDurationSeconds, formatDurationSpeech } from "../model/duration";
 import type { DurationBounds } from "../model/duration";
 import { STRINGS } from "../strings";
 import type { HomeAssistant } from "../types/home-assistant";
-import { changeTimer, restartTimer, startTimer, supportsTimerChange } from "../ha/services/timer";
+import {
+  cancelTimer,
+  changeTimer,
+  pauseTimer,
+  restartTimer,
+  resumeTimer,
+  startTimer,
+  supportsTimerChange,
+  supportsTimerPause,
+} from "../ha/services/timer";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
 
 vi.mock("../ha/services/timer", () => ({
   startTimer: vi.fn(),
   restartTimer: vi.fn(),
   changeTimer: vi.fn(),
+  pauseTimer: vi.fn(),
+  resumeTimer: vi.fn(),
+  cancelTimer: vi.fn(),
   supportsTimerChange: vi.fn().mockReturnValue(false),
+  supportsTimerPause: vi.fn().mockReturnValue(true),
 }));
 
 type MockedFn = ReturnType<typeof vi.fn>;
@@ -30,6 +43,10 @@ const startTimerMock = startTimer as unknown as MockedFn;
 const restartTimerMock = restartTimer as unknown as MockedFn;
 const changeTimerMock = changeTimer as unknown as MockedFn;
 const supportsTimerChangeMock = supportsTimerChange as unknown as MockedFn;
+const pauseTimerMock = pauseTimer as unknown as MockedFn;
+const resumeTimerMock = resumeTimer as unknown as MockedFn;
+const cancelTimerMock = cancelTimer as unknown as MockedFn;
+const supportsTimerPauseMock = supportsTimerPause as unknown as MockedFn;
 
 if (typeof window !== "undefined") {
   if (!window.requestAnimationFrame) {
@@ -64,6 +81,8 @@ describe("TeaTimerCard", () => {
     switch (status) {
       case "running":
         return "Running";
+      case "paused":
+        return "Paused";
       case "idle":
         return "Idle";
       case "finished":
@@ -175,6 +194,8 @@ describe("TeaTimerCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    supportsTimerPauseMock.mockReturnValue(true);
+    supportsTimerChangeMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -603,6 +624,7 @@ describe("TeaTimerCard", () => {
 
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
 
     expect(startTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 180);
     const internals = card as unknown as { _viewModel?: { ui: { pendingAction: string } } };
@@ -852,11 +874,12 @@ describe("TeaTimerCard", () => {
         _displayDurationSeconds?: number;
       };
 
-      const expected = STRINGS.ariaExtendAdded(
-        formatDurationSpeech(60, STRINGS.durationSpeech),
-        formatDurationSeconds(180),
-      );
-      expect(internals._ariaAnnouncement).toBe(expected);
+        const expected = STRINGS.ariaExtendAdded(
+          formatDurationSpeech(60, STRINGS.durationSpeech),
+          formatDurationSeconds(180),
+        );
+        const actual = internals._ariaAnnouncement.replace(/\u200B/g, "");
+        expect(actual).toBe(expected);
       expect(internals._displayDurationSeconds).toBe(180);
 
       await vi.runAllTimersAsync();
@@ -1434,6 +1457,220 @@ describe("TeaTimerCard", () => {
     expect(links.length).toBe(2);
     const labels = links.map((link) => link.textContent?.trim());
     expect(labels).toEqual([STRINGS.gettingStartedLabel, STRINGS.finishAutomationLabel]);
+  });
+
+  it("pauses via helper when native pause is unavailable", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    hass.states["input_text.kettle_paused_remaining"] = { state: "0" } as unknown as HomeAssistant["states"][string];
+    card.hass = hass;
+    supportsTimerPauseMock.mockReturnValue(false);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "running", remainingSeconds: 45 });
+    await card.updateComplete;
+
+    const button = card.shadowRoot?.querySelector<HTMLButtonElement>(".pause-resume-button");
+    expect(button).toBeTruthy();
+    const internalsBefore = card as unknown as { _pauseCapability?: string };
+    expect(internalsBefore._pauseCapability).toBe("compat");
+    button?.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const callService = hass.callService as MockedFn;
+    expect(callService).toHaveBeenCalledWith("input_text", "set_value", {
+      entity_id: "input_text.kettle_paused_remaining",
+      value: 45,
+    });
+    expect(cancelTimerMock).toHaveBeenCalledWith(hass, "timer.kettle");
+  });
+
+  it("resumes from helper value when native pause is unavailable", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    hass.states["input_text.kettle_paused_remaining"] = { state: "30" } as unknown as HomeAssistant["states"][string];
+    card.hass = hass;
+    supportsTimerPauseMock.mockReturnValue(false);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "paused", remainingSeconds: 30 });
+    await card.updateComplete;
+
+    const button = card.shadowRoot?.querySelector<HTMLButtonElement>(".pause-resume-button");
+    expect(button).toBeTruthy();
+    const internalsBefore = card as unknown as { _pauseCapability?: string };
+    expect(internalsBefore._pauseCapability).toBe("compat");
+    button?.click();
+    await Promise.resolve();
+
+    expect(startTimerMock).toHaveBeenCalledWith(hass, "timer.kettle", 30);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const callService = hass.callService as MockedFn;
+    expect(callService).toHaveBeenCalledWith("input_text", "set_value", {
+      entity_id: "input_text.kettle_paused_remaining",
+      value: "",
+    });
+  });
+
+  it("renders pause and resume controls in native mode", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "running", remainingSeconds: 120 });
+    await card.updateComplete;
+
+    let button = card.shadowRoot?.querySelector<HTMLButtonElement>(".pause-resume-button");
+    expect(button?.textContent?.trim()).toBe(STRINGS.pauseButtonLabel);
+    button?.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(pauseTimerMock).toHaveBeenCalledWith(hass, "timer.kettle");
+
+    setTimerState(card, { status: "paused", remainingSeconds: 80 });
+    await card.updateComplete;
+    button = card.shadowRoot?.querySelector<HTMLButtonElement>(".pause-resume-button");
+    expect(button?.textContent?.trim()).toBe(STRINGS.resumeButtonLabel);
+    button?.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(resumeTimerMock).toHaveBeenCalledWith(hass, "timer.kettle");
+  });
+
+  it("extends a paused timer via changeTimer when pause support is native", async () => {
+    const card = createCard();
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    };
+    changeTimerMock.mockResolvedValue(undefined);
+
+    setTimerState(card, pausedState);
+    const internalsBefore = card as unknown as { _pauseCapability?: string };
+    expect(internalsBefore._pauseCapability).toBe("native");
+    const handler = card as unknown as {
+      _extendWhilePaused(increment: number, state: TimerViewState): Promise<void>;
+    };
+
+    await handler._extendWhilePaused(60, pausedState);
+
+    expect(changeTimerMock).toHaveBeenCalledWith(hass, "timer.kettle", 60);
+  });
+
+  it("surfaces extend failures when native paused extend calls fail", async () => {
+    const card = createCard();
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+      durationSeconds: 300,
+      remainingSeconds: 90,
+    };
+    changeTimerMock.mockRejectedValueOnce(new Error("nope"));
+
+    setTimerState(card, pausedState);
+    const handler = card as unknown as {
+      _extendWhilePaused(increment: number, state: TimerViewState): Promise<void>;
+    };
+
+    await handler._extendWhilePaused(60, pausedState);
+
+    expect(changeTimerMock).toHaveBeenCalledWith(hass, "timer.kettle", 60);
+    const internals = card as unknown as { _viewModel?: { ui: { error?: { message?: string } } } };
+    expect(internals._viewModel?.ui.error?.message).toBe(STRINGS.toastExtendFailed);
+  });
+
+  it("extends a paused timer by updating the helper in compatibility mode", async () => {
+    const card = createCard();
+    const hass = createHass();
+    hass.states["input_text.kettle_paused_remaining"] = { state: "120" } as unknown as HomeAssistant["states"][string];
+    card.hass = hass;
+    supportsTimerPauseMock.mockReturnValue(false);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, pausedState);
+    const internalsBefore = card as unknown as { _pauseCapability?: string };
+    expect(internalsBefore._pauseCapability).toBe("compat");
+    const handler = card as unknown as {
+      _extendWhilePaused(increment: number, state: TimerViewState): Promise<void>;
+    };
+
+    await handler._extendWhilePaused(60, pausedState);
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const callService = hass.callService as MockedFn;
+    expect(callService).toHaveBeenCalledWith("input_text", "set_value", {
+      entity_id: "input_text.kettle_paused_remaining",
+      value: 180,
+    });
+    const internals = card as unknown as { _displayDurationSeconds?: number };
+    expect(internals._displayDurationSeconds).toBe(180);
+  });
+
+  it("announces when paused remaining is unknown in compatibility mode", async () => {
+    const card = createCard();
+    const hass = createHass();
+    card.hass = hass;
+    supportsTimerPauseMock.mockReturnValue(false);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+    };
+
+    setTimerState(card, pausedState);
+    const handler = card as unknown as {
+      _extendWhilePaused(increment: number, state: TimerViewState): Promise<void>;
+    };
+    await handler._extendWhilePaused(60, pausedState);
+
+    const internals = card as unknown as { _viewModel?: { ui: { error?: { message?: string } } } };
+    expect(internals._viewModel?.ui.error?.message).toBe(STRINGS.toastPauseRemainingUnknown);
+  });
+
+  it("surfaces helper update failures while paused in compatibility mode", async () => {
+    const card = createCard();
+    const hass = createHass();
+    hass.callService = vi.fn().mockRejectedValueOnce(new Error("boom"));
+    hass.states["input_text.kettle_paused_remaining"] = { state: "45" } as unknown as HomeAssistant["states"][string];
+    card.hass = hass;
+    supportsTimerPauseMock.mockReturnValue(false);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+      remainingSeconds: 45,
+    };
+
+    setTimerState(card, pausedState);
+    const handler = card as unknown as {
+      _extendWhilePaused(increment: number, state: TimerViewState): Promise<void>;
+    };
+    await handler._extendWhilePaused(60, pausedState);
+
+    const internals = card as unknown as { _viewModel?: { ui: { error?: { message?: string } } } };
+    expect(internals._viewModel?.ui.error?.message).toBe(STRINGS.toastExtendFailed);
   });
 
   it("clears the pending action when Home Assistant reports running", async () => {

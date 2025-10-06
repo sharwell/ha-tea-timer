@@ -88,3 +88,36 @@ export async function subscribeTimerStateChanges(
 
   return wrapUnsubscribe(unsubscribe);
 }
+
+export async function subscribeEntityStateChanges(
+  connection: HassConnection | undefined,
+  entityId: string,
+  handler: (entity: HassEntity | undefined, event: HassEventMessage<HassStateChangedEvent>) => void,
+): Promise<HassUnsubscribe> {
+  if (!connection) {
+    return createNoopUnsubscribe();
+  }
+
+  const normalizedEntityId = entityId.toLowerCase();
+
+  const unsubscribe = await connection.subscribeMessage<HassEventMessage<HassStateChangedEvent>>(
+    (event) => {
+      if (event?.event_type !== "state_changed") {
+        return;
+      }
+
+      const eventEntityId = event.data?.entity_id;
+      if (typeof eventEntityId !== "string" || eventEntityId.toLowerCase() !== normalizedEntityId) {
+        return;
+      }
+
+      handler(event.data?.new_state ?? undefined, event);
+    },
+    {
+      type: "subscribe_events",
+      event_type: "state_changed",
+    },
+  );
+
+  return wrapUnsubscribe(unsubscribe);
+}

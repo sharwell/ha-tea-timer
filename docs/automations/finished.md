@@ -89,6 +89,10 @@ mode: parallel
 - Home Assistant does **not replay** missed `timer.finished` events after restarts. If this matters,
   add an automation on `homeassistant.start` to inspect timers with `remaining` less than or equal to
   zero.
+- Pausing and later resuming a brew may emit `timer.restarted` (native pause) or `timer.started`
+  (compatibility mode) as the timer continues, but the brew still produces a single
+  `timer.finished` event at the true end. Keep automations keyed to `timer.finished` for
+  deterministic behavior.
 - Restarting the timer via the card issues `timer.cancel` followed by `timer.start`. Only the final
   finish fires the event, so your automation will not run twice.
 - Always filter on `event_data.entity_id` to avoid triggering from unrelated timers.
