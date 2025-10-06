@@ -130,7 +130,6 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
 - Enable `restore: true` on both the timer helper and the compatibility helper so paused brews survive Home Assistant restarts. Without restoration Home Assistant returns the entity to Idle on boot.
 - With the helper in place, the Pause/Resume buttons appear even on older Home Assistant versions and continue to coalesce +1 minute updates while paused.
 
-
 ### Automate on finish
 
 - The card listens for Home Assistant’s `timer.finished` event to surface the five-second “Done” overlay. You can attach your own automations to the same event to play sounds, flash lights, or send notifications.
