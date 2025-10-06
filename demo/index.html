@@ -112,6 +112,14 @@
         can contrast presets side-by-side.
       </p>
       <div class="appearance-control">
+        <label for="layout-density">Layout density</label>
+        <select id="layout-density">
+          <option value="auto">Auto (responsive)</option>
+          <option value="compact">Compact</option>
+          <option value="regular">Regular</option>
+        </select>
+      </div>
+      <div class="appearance-control">
         <label for="theme-select">Theme tokens</label>
         <select id="theme-select">
           <option value="inherit">Inherit (Home Assistant)</option>
@@ -549,6 +557,7 @@
       ];
 
       const appearanceState = {
+        density: "auto",
         theme: "inherit",
         palette: "neutral",
       };
@@ -594,6 +603,8 @@
       function buildConfig(base, state) {
         const config = cloneConfig(base.config);
         if (base.allowAppearance) {
+          config.layoutDensity = state.density;
+
           const tokens = resolveThemeTokens(state.theme);
           if (tokens) {
             config.themeTokens = tokens;
@@ -625,6 +636,19 @@
         themeSelect.addEventListener("change", (event) => {
           const value = event.target.value;
           appearanceState.theme = value in THEME_PRESETS ? value : "inherit";
+          refreshCards();
+        });
+      }
+
+      const densitySelect = document.getElementById("layout-density");
+      if (densitySelect instanceof HTMLSelectElement) {
+        densitySelect.addEventListener("change", (event) => {
+          const value = event.target.value;
+          if (value === "compact" || value === "regular") {
+            appearanceState.density = value;
+          } else {
+            appearanceState.density = "auto";
+          }
           refreshCards();
         });
       }
