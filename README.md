@@ -123,6 +123,14 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
 
+#### Pause/Resume compatibility helper (optional)
+
+- The card automatically prefers Home Assistant’s native `timer.pause` and resumes paused brews by calling `timer.start` without a duration. When the pause service is missing, it transparently falls back to a helper named `input_text.<timer_slug>_paused_remaining` (for example `input_text.kitchen_tea_paused_remaining`).
+- Create the helper via **Settings → Devices & services → Helpers → Create helper → Text** (or add the YAML equivalent). Leave the value editable; the card accepts either numeric or string states as long as the helper stores the remaining seconds.
+- Enable `restore: true` on both the timer helper and the compatibility helper so paused brews survive Home Assistant restarts. Without restoration Home Assistant returns the entity to Idle on boot.
+- With the helper in place, the Pause/Resume buttons appear even on older Home Assistant versions and continue to coalesce +1 minute updates while paused.
+
+
 ### Automate on finish
 
 - The card listens for Home Assistant’s `timer.finished` event to surface the five-second “Done” overlay. You can attach your own automations to the same event to play sounds, flash lights, or send notifications.
@@ -174,7 +182,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 
 3. **Start & Restart by Click**
    3.1. **Single tap/click on the card body** when idle → starts countdown using the **currently selected preset duration** (or dial‑set duration if no preset selected).
-   3.2. **Single tap/click while running** → **restarts** the countdown to the current preset/dial duration from full (no pause in MVD).
+  3.2. **Single tap/click while running** → **restarts** the countdown to the current preset/dial duration from full. Dedicated Pause/Resume controls are provided to halt and continue without resetting the brew.
    3.3. Optional “Are you sure?” restart confirmation is **off by default**, to satisfy the “restart by clicking” requirement.
 
 4. **Remaining Time Text**
@@ -199,9 +207,10 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 
 8. **Core States & Visuals**
    8.1. **Idle:** dial editable; start action available.
-  8.2. **Running:** progress arc animates; dial read‑only; restart action available; remaining time visible; optional extend chip renders when enabled.
-   8.3. **Finished:** “Done” state until user taps (which restarts) or it auto‑returns to idle after 5 seconds (configurable).
-   8.4. **Disabled/Error:** clearly indicated if bound entity not found/unavailable.
+  8.2. **Running:** progress arc animates; dial read‑only; pause and restart actions available; remaining time visible; optional extend chip renders when enabled.
+  8.3. **Paused:** progress arc freezes; dial stays read‑only; resume and restart actions available; “Paused” badge visible; +1 Minute updates retained remaining without resuming.
+   8.4. **Finished:** “Done” state until user taps (which restarts) or it auto‑returns to idle after 5 seconds (configurable).
+   8.5. **Disabled/Error:** clearly indicated if bound entity not found/unavailable.
 
 9. **Configuration (per card instance)**
    9.1. `entity` (required): HA `timer` entity id.
@@ -215,6 +224,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
   9.9. `showPlusButton` (default true; hide the extend chip when false).
   9.10. `plusButtonIncrementS` (default 60; controls the extend increment).
   9.11. `maxExtendS` (optional cap on total extend seconds per brew).
+  9.12. `showPauseResume` (default true; hide the pause/resume controls when false).
 
 10. **Accessibility & Internationalization**
     10.1. Full keyboard support: focusable chips; Space/Enter to start/restart; arrow keys to nudge dial when idle (+/‑ step).
@@ -235,9 +245,11 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    1.2. Implementation: prefer `timer.change` when supported; otherwise restart via `timer.start` with the new remaining time.
    1.3. Configurable increment and optional per-brew cap (`maxExtendS`).
 
-2. **Pause/Resume**
-   2.1. Add Pause/Resume alongside Restart.
-   2.2. Leverage `timer.pause`/`timer.resume` (if available) or custom helper.
+2. **Pause/Resume** *(delivered in Milestone 15 — see §§8.2, 8.3, and 9.12)*
+   2.1. Pause/Resume lives alongside Restart with a frozen dial, ARIA announcements, and cross-device
+        sync.
+   2.2. Native `timer.pause`/`timer.start` resume is preferred; a compatibility helper keeps the feature
+        available on older installs.
 
 3. **Haptics & Sound**
    3.1. Optional **client‑side chime** on finish (in addition to server automations).
@@ -293,7 +305,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 5. `minDurationSeconds` (seconds), `maxDurationSeconds` (seconds), `stepSeconds` (number)
 6. `confirm_restart` (boolean)
 7. `finished_auto_idle_ms` (number)
-8. *(Post‑MVD)* `plus_button_increment_s`, `show_plus_button`, `pause_enabled`, `preset_icons`, `preset_colors`, `compact`
+8. *(Post‑MVD)* `plus_button_increment_s`, `show_plus_button`, `show_pause_resume`, `preset_icons`, `preset_colors`, `compact`
 
 ---
 

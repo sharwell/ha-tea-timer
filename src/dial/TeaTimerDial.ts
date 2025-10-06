@@ -62,6 +62,14 @@ export class TeaTimerDial extends LitElement {
       color: var(--primary-text-color, #1f2933);
     }
 
+    .dial-root[data-status="paused"] {
+      --dial-border-color: rgba(250, 204, 21, 0.5);
+      --dial-track-color: rgba(250, 204, 21, 0.24);
+      --dial-progress-color: rgba(250, 204, 21, 0.8);
+      background: rgba(250, 204, 21, 0.08);
+      color: var(--primary-text-color, #1f2933);
+    }
+
     .dial-root[data-status="unavailable"] {
       opacity: 0.6;
     }

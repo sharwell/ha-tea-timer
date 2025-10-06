@@ -1,0 +1,19 @@
+# Tea Timer Card — pause/resume enabled with compatibility helper fallback
+# Replace timer.kitchen_tea with your timer entity.
+# If your Home Assistant version lacks timer.pause, create an input_text helper named
+# input_text.kitchen_tea_paused_remaining so the card can store the paused remaining seconds.
+
+- type: custom:tea-timer-card
+  title: Kitchen Tea Timer (Pause/Resume)
+  entity: timer.kitchen_tea
+  showPauseResume: true
+  presets:
+    - label: Green Tea
+      durationSeconds: 120
+    - label: Oolong Tea
+      durationSeconds: 180
+    - label: Black Tea
+      durationSeconds: 240
+  plusButtonIncrementS: 60
+  maxExtendS: 180
+  confirmRestart: true

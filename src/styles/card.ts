@@ -91,6 +91,11 @@ export const cardStyles = css`
     color: var(--primary-text-color, #1f2933);
   }
 
+  .status-pill.status-paused {
+    background: rgba(250, 204, 21, 0.16);
+    color: var(--warning-color, #a86a13);
+  }
+
   .status-pill.status-finished {
     background: rgba(73, 190, 125, 0.16);
     color: var(--primary-text-color, #1f2933);
@@ -146,6 +151,38 @@ export const cardStyles = css`
   }
 
   .extend-controls[data-busy="true"] .extend-button {
+    cursor: progress;
+  }
+
+  .pause-resume-controls {
+    display: flex;
+    justify-content: center;
+  }
+
+  .pause-resume-button {
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
+    border-radius: 999px;
+    padding: 6px 18px;
+    background: var(--chip-background-color, var(--mdc-chip-background-color));
+    color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
+    font-size: 0.95rem;
+    min-height: 44px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+
+  .pause-resume-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .pause-resume-button:focus-visible {
+    outline: 3px solid var(--focus-ring-color, rgba(0, 122, 255, 0.6));
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  .pause-resume-controls[data-busy="true"] .pause-resume-button {
     cursor: progress;
   }
 

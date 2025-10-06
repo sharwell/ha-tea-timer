@@ -100,6 +100,14 @@ provided for the card to load.
 - **Example:** `showPlusButton: false` removes the extend button for a timer you never want to extend
   mid-brew.
 
+### `showPauseResume`
+
+- **Description:** Shows the **Pause/Resume** control set when the timer is running or paused. Disable
+  this when you want to rely solely on restart behavior.
+- **Default:** `true` (controls render whenever the timer can be paused or resumed).
+- **Example:** `showPauseResume: false` hides the pause/resume buttons for a kiosk display that only
+  supports restarts.
+
 ### `plusButtonIncrementS`
 
 - **Description:** Number of seconds added each time the extend button is activated.
@@ -149,5 +157,6 @@ finishedAutoIdleMs: 5000
 ```
 
 > Tip: Need YAML for testing or onboarding? Start with the
-> [`single-timer example`](../examples/lovelace/tea-timer-card-basic.yaml) or the
+> [`single-timer example`](../examples/lovelace/tea-timer-card-basic.yaml), the
+> [`pause/resume example`](../examples/lovelace/tea-timer-card-pause-resume.yaml), or the
 > [`two-timer layout`](../examples/lovelace/tea-timer-card-two-timers.yaml).

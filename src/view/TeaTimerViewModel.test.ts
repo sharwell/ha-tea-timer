@@ -27,6 +27,7 @@ const config: TeaTimerConfig = {
   showPlusButton: true,
   plusButtonIncrementSeconds: 60,
   maxExtendSeconds: undefined,
+  showPauseResume: true,
 };
 
 describe("createTeaTimerViewModel", () => {
@@ -52,6 +53,7 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.isCustomDuration).toBe(false);
     expect(viewModel.ui.confirmRestart).toBe(false);
     expect(viewModel.ui.pendingAction).toBe("none");
+    expect(viewModel.ui.showPauseResumeButton).toBe(true);
   });
 
   it("falls back to defaults when title missing", () => {

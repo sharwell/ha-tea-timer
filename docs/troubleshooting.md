@@ -79,12 +79,46 @@ issues.
   you need guaranteed extensions, tap a little earlier or increase your increment duration to add more
   runway.
 
+## Paused but remaining time unknown
+
+- **Symptom:** The card announces “Remaining time is unknown while paused” when you try to extend or
+  resume.
+- **Diagnosis:** Home Assistant did not report a `remaining` value for the paused timer, and the
+  compatibility helper value is missing or blank. When native pause is available the card waits for Home
+  Assistant to report the remaining seconds. In compatibility mode you must provide an `input_text`
+  helper named `input_text.<timer_slug>_paused_remaining` (for example
+  `input_text.kitchen_tea_paused_remaining`).
+- **Fix:** Wait for the paused entity to report `remaining`, or add/update the helper entity so it
+  stores the latest paused seconds. The card resumes normal operation as soon as the value is
+  available.
+
+## Pause service not available
+
+- **Symptom:** Attempting to pause displays “Couldn’t pause the timer. Please try again.” or the Pause
+  button never appears.
+- **Diagnosis:** Your Home Assistant build does not expose the `timer.pause` service. The card falls
+  back to compatibility mode when an `input_text.<timer_slug>_paused_remaining` helper exists, but it
+  hides the control when neither native pause nor the helper is available.
+- **Fix:** Update Home Assistant to a version that supports `timer.pause`, or create the helper entity
+  described above and ensure the Tea Timer Card can read and write it. Lovelace reloads pick up the new
+  helper automatically.
+
 ## “Cannot add more time” after several extends
 
 - **Symptom:** The card announces “Cannot add more time.” even though the timer is running.
 - **Diagnosis:** The configuration includes `maxExtendS` and the total added seconds reached that cap.
 - **Fix:** Wait for the brew to finish or restart the timer. Increase `maxExtendS` if you need more head
   room for extensions, or remove the option for an unlimited top-up.
+
+## Pause pressed as the timer finished
+
+- **Symptom:** Sometimes the brew finishes instead of pausing (or vice-versa) when you click Pause at
+  the last moment.
+- **Diagnosis:** Pause requests issued within a few hundred milliseconds of zero race against the
+  authoritative `timer.finished` event. Home Assistant decides which action wins based on the entity’s
+  final state.
+- **Fix:** The card announces the winning outcome (“Timer paused.” or “Tea is ready!”). If you routinely
+  cut it close, add a little buffer to your brew or extend earlier.
 
 ## Automations not firing
 
@@ -97,6 +131,16 @@ issues.
 - **Fix:** Update the automation to listen to the correct entity id or adjust conditions. Remember that
   Home Assistant does not replay finishes missed while it was offline; consider a startup automation
   if you need catch-up behavior.
+
+## Paused state lost after Home Assistant restart
+
+- **Symptom:** A paused brew resumes from the beginning after Home Assistant restarts.
+- **Diagnosis:** Timers only restore their paused/remaining duration when the helper is created with
+  `restore: true`. Without restoration Home Assistant treats the entity as idle on startup, so the card
+  follows suit.
+- **Fix:** Edit the timer helper in **Settings → Devices & services → Helpers** and enable **Restore**.
+  Alternatively, update your YAML helper definition to include `restore: true`. Compatibility mode also
+  resumes correctly as long as the associated `input_text` helper retains its value across restarts.
 
 ## Still stuck?
 

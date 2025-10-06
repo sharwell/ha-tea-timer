@@ -33,7 +33,16 @@ import {
 } from "../model/duration";
 import "../dial/TeaTimerDial";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
-import { changeTimer, restartTimer, startTimer, supportsTimerChange } from "../ha/services/timer";
+import {
+  cancelTimer,
+  changeTimer,
+  pauseTimer,
+  restartTimer,
+  resumeTimer,
+  startTimer,
+  supportsTimerChange,
+  supportsTimerPause,
+} from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
@@ -56,6 +65,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const oldValue = this._hass;
     this._hass = value;
     this._timerStateController.setHass(value);
+    this._evaluatePauseCapability();
     this.requestUpdate("hass", oldValue);
   }
 
@@ -88,6 +98,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   @state()
   private _extendAccumulatedSeconds = 0;
+
+  @state()
+  private _pauseResumeInFlight: "pause" | "resume" | undefined = undefined;
 
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
@@ -145,6 +158,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _extendCoalesceTimer?: number;
 
+  private _pauseCapability: "native" | "compat" | "unsupported" = "unsupported";
+
+  private _pauseHelperEntityId?: string;
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
@@ -182,6 +199,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._syncDisplayDuration(state);
     this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
+    this._pauseHelperEntityId = this._derivePauseHelperEntityId(this._config?.entity);
+    this._timerStateController.setPauseHelperEntityId(this._pauseHelperEntityId);
+    this._evaluatePauseCapability();
     this.requestUpdate();
   }
 
@@ -210,6 +230,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           ${state ? this._renderPresets(state) : this._renderPresets(undefined)}
           ${state ? this._renderDial(state) : this._renderDial(undefined)}
           ${state ? this._renderExtendControls(state) : nothing}
+          ${state ? this._renderPauseResumeControls(state) : nothing}
         </div>
         ${state ? this._renderPrimaryAction(state) : nothing}
         <div class="sr-only" role="status" aria-live="polite">${this._ariaAnnouncement}</div>
@@ -354,7 +375,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
-    if (state.status !== "running") {
+    if (state.status !== "running" && state.status !== "paused") {
       return nothing;
     }
 
@@ -382,6 +403,262 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         </button>
       </div>
     `;
+  }
+
+  private _renderPauseResumeControls(state: TimerViewState) {
+    if (!this._shouldRenderPauseResume(state)) {
+      return nothing;
+    }
+
+    const isPaused = state.status === "paused";
+    const label = isPaused ? STRINGS.resumeButtonLabel : STRINGS.pauseButtonLabel;
+    const ariaLabel = isPaused ? STRINGS.resumeButtonAriaLabel : STRINGS.pauseButtonAriaLabel;
+    const disabled = this._isPauseResumeDisabled(state);
+    const busy = this._pauseResumeInFlight !== undefined;
+
+    return html`
+      <div class="pause-resume-controls" data-busy=${busy ? "true" : "false"} aria-busy=${
+        busy ? "true" : "false"
+      }>
+        <button
+          type="button"
+          class="pause-resume-button"
+          aria-label=${ariaLabel}
+          ?disabled=${disabled}
+          @click=${this._onPauseResumeClick}
+        >
+          ${label}
+        </button>
+      </div>
+    `;
+  }
+
+  private _shouldRenderPauseResume(state: TimerViewState): boolean {
+    if (!this._viewModel?.ui.showPauseResumeButton) {
+      return false;
+    }
+
+    if (this._pauseCapability === "unsupported") {
+      return false;
+    }
+
+    return state.status === "running" || state.status === "paused";
+  }
+
+  private _isPauseResumeDisabled(state: TimerViewState): boolean {
+    if (!this._config?.entity || !this._hass) {
+      return true;
+    }
+
+    if (this._pauseCapability === "unsupported") {
+      return true;
+    }
+
+    if (this._pauseResumeInFlight !== undefined) {
+      return true;
+    }
+
+    if (state.connectionStatus !== "connected") {
+      return true;
+    }
+
+    if (this._isUiError(state.uiState, "EntityUnavailable")) {
+      return true;
+    }
+
+    const remaining = this._getPauseRemainingSeconds(state);
+    if (remaining === undefined) {
+      return true;
+    }
+
+    if (state.status === "paused" && remaining <= 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private readonly _onPauseResumeClick = (event: Event) => {
+    event.stopPropagation();
+    void this._handlePauseResume();
+  };
+
+  private async _handlePauseResume(): Promise<void> {
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || (state.status !== "running" && state.status !== "paused")) {
+      return;
+    }
+
+    if (!this._config?.entity || !this._hass) {
+      return;
+    }
+
+    if (this._pauseCapability === "unsupported") {
+      return;
+    }
+
+    const action: "pause" | "resume" = state.status === "running" ? "pause" : "resume";
+    if (this._pauseResumeInFlight) {
+      return;
+    }
+
+    this._pauseResumeInFlight = action;
+
+    try {
+      if (action === "pause") {
+        await this._performPause(state);
+      } else {
+        await this._performResume(state);
+      }
+    } catch (error) {
+      this._handlePauseResumeFailure(action, error);
+    } finally {
+      this._pauseResumeInFlight = undefined;
+    }
+  }
+
+  private async _performPause(state: TimerViewState): Promise<void> {
+    if (!this._config?.entity || !this._hass) {
+      throw new Error("unsupported");
+    }
+
+    if (this._pauseCapability === "native") {
+      await pauseTimer(this._hass, this._config.entity);
+      return;
+    }
+
+    if (this._pauseCapability !== "compat" || !this._pauseHelperEntityId) {
+      throw new Error("unsupported");
+    }
+
+    const helperState = this._hass.states?.[this._pauseHelperEntityId];
+    if (!helperState) {
+      throw new Error("helper-missing");
+    }
+
+    const remaining = this._getPauseRemainingSeconds(state);
+    if (remaining === undefined) {
+      throw new Error("remaining-unknown");
+    }
+
+    await this._hass.callService("input_text", "set_value", {
+      entity_id: this._pauseHelperEntityId,
+      value: Math.max(0, Math.round(remaining)),
+    });
+
+    await cancelTimer(this._hass, this._config.entity);
+  }
+
+  private async _performResume(state: TimerViewState): Promise<void> {
+    if (!this._config?.entity || !this._hass) {
+      throw new Error("unsupported");
+    }
+
+    if (this._pauseCapability === "native") {
+      await resumeTimer(this._hass, this._config.entity);
+      return;
+    }
+
+    if (this._pauseCapability !== "compat" || !this._pauseHelperEntityId) {
+      throw new Error("unsupported");
+    }
+
+    const helperState = this._hass.states?.[this._pauseHelperEntityId];
+    if (!helperState) {
+      throw new Error("helper-missing");
+    }
+
+    const remaining = this._getPauseRemainingSeconds(state);
+    if (remaining === undefined || remaining <= 0) {
+      throw new Error("remaining-unknown");
+    }
+
+    await startTimer(this._hass, this._config.entity, Math.max(1, Math.round(remaining)));
+    await this._hass.callService("input_text", "set_value", {
+      entity_id: this._pauseHelperEntityId,
+      value: "",
+    });
+  }
+
+  private _handlePauseResumeFailure(action: "pause" | "resume", error: unknown): void {
+    if (!this._viewModel) {
+      return;
+    }
+
+    let message = action === "pause" ? STRINGS.toastPauseFailed : STRINGS.toastResumeFailed;
+    if (error instanceof Error) {
+      if (error.message === "helper-missing") {
+        message = STRINGS.toastPauseHelperMissing;
+      } else if (error.message === "remaining-unknown") {
+        message = STRINGS.toastPauseRemainingUnknown;
+      }
+    }
+
+    this._viewModel = setViewModelError(this._viewModel, {
+      message,
+      code: action === "pause" ? "pause-failed" : "resume-failed",
+    });
+    this._scheduleErrorClear();
+  }
+
+  private _getPauseRemainingSeconds(state: TimerViewState): number | undefined {
+    if (state.status === "running") {
+      if (state.remainingSeconds !== undefined) {
+        return Math.max(0, Math.floor(state.remainingSeconds));
+      }
+
+      const effective = this._getEffectiveDisplayRemaining(state);
+      if (effective !== undefined) {
+        return Math.max(0, Math.floor(effective));
+      }
+
+      return undefined;
+    }
+
+    if (state.status === "paused") {
+      if (state.remainingSeconds !== undefined) {
+        return Math.max(0, Math.floor(state.remainingSeconds));
+      }
+
+      const helperValue = this._getPauseHelperRemainingFromHass();
+      if (helperValue !== undefined) {
+        return helperValue;
+      }
+    }
+
+    return undefined;
+  }
+
+  private _getPauseHelperRemainingFromHass(): number | undefined {
+    if (!this._pauseHelperEntityId) {
+      return undefined;
+    }
+
+    const helper = this._hass?.states?.[this._pauseHelperEntityId];
+    if (!helper) {
+      return undefined;
+    }
+
+    const raw = helper.state;
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return Math.max(0, Math.round(raw));
+    }
+
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+
+      const parsed = Number(trimmed);
+      if (!Number.isFinite(parsed)) {
+        return undefined;
+      }
+
+      return Math.max(0, Math.round(parsed));
+    }
+
+    return undefined;
   }
 
   private _renderPresets(state?: TimerViewState) {
@@ -916,7 +1193,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     const state = this._timerState ?? this._timerStateController.state;
-    if (!state || state.status !== "running") {
+    if (!state || (state.status !== "running" && state.status !== "paused")) {
       return;
     }
 
@@ -941,6 +1218,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const allowance = this._getExtendAllowance();
     if (allowance !== undefined && allowance < increment) {
       this._announce(STRINGS.ariaExtendCapReached);
+      return;
+    }
+
+    if (state.status === "paused") {
+      void this._extendWhilePaused(increment, state);
       return;
     }
 
@@ -1124,6 +1406,72 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           this._flushExtendQueue();
         }
       });
+  }
+
+  private async _extendWhilePaused(increment: number, state: TimerViewState): Promise<void> {
+    if (!this._config?.entity || !this._hass) {
+      return;
+    }
+
+    const remaining = this._getPauseRemainingSeconds(state);
+    if (remaining === undefined) {
+      if (this._viewModel) {
+        this._viewModel = setViewModelError(this._viewModel, {
+          message: STRINGS.toastPauseRemainingUnknown,
+          code: "extend-failed",
+        });
+        this._scheduleErrorClear();
+      }
+      return;
+    }
+
+    const next = Math.max(0, Math.floor(remaining + increment));
+
+    if (this._pauseCapability === "native") {
+      try {
+        await changeTimer(this._hass, this._config.entity, increment);
+        return;
+      } catch (error) {
+        if (this._viewModel) {
+          this._viewModel = setViewModelError(this._viewModel, {
+            message: STRINGS.toastExtendFailed,
+            code: "extend-failed",
+          });
+          this._scheduleErrorClear();
+        }
+      }
+      return;
+    }
+
+    if (this._pauseCapability !== "compat" || !this._pauseHelperEntityId) {
+      if (this._viewModel) {
+        this._viewModel = setViewModelError(this._viewModel, {
+          message: STRINGS.toastExtendFailed,
+          code: "extend-failed",
+        });
+        this._scheduleErrorClear();
+      }
+      return;
+    }
+
+    try {
+      await this._hass.callService("input_text", "set_value", {
+        entity_id: this._pauseHelperEntityId,
+        value: next,
+      });
+      this._serverRemainingSeconds = next;
+      this._lastServerSyncMs = undefined;
+      this._setDisplayDurationSeconds(next);
+      this._announceExtend(increment, next);
+    } catch (error) {
+      if (this._viewModel) {
+        this._viewModel = setViewModelError(this._viewModel, {
+          message: STRINGS.toastExtendFailed,
+          code: "extend-failed",
+        });
+        this._scheduleErrorClear();
+      }
+    }
   }
 
   private async _performExtend(seconds: number, batchBaseRemaining?: number): Promise<void> {
@@ -1341,7 +1689,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return STRINGS.timerFinished;
     }
 
-    if (state.status === "running") {
+    if (state.status === "running" || state.status === "paused") {
       const seconds =
         displaySeconds ??
         this._displayDurationSeconds ??
@@ -1392,6 +1740,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     if (uiState === "Running") {
       return STRINGS.statusRunning;
     }
+    if (uiState === "Paused") {
+      return STRINGS.statusPaused;
+    }
     if (typeof uiState === "object") {
       if (uiState.kind === "FinishedTransient") {
         return STRINGS.statusFinished;
@@ -1415,6 +1766,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return STRINGS.statusIdle;
       case "running":
         return STRINGS.statusRunning;
+      case "paused":
+        return STRINGS.statusPaused;
       case "finished":
         return STRINGS.statusFinished;
       default:
@@ -1426,6 +1779,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const uiState = state.uiState;
     if (uiState === "Running") {
       return "status-pill status-running";
+    }
+    if (uiState === "Paused") {
+      return "status-pill status-paused";
     }
     if (uiState === "Idle") {
       return "status-pill status-idle";
@@ -1448,6 +1804,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     switch (state.status) {
       case "running":
         return "status-pill status-running";
+      case "paused":
+        return "status-pill status-paused";
       case "finished":
         return "status-pill status-finished";
       case "idle":
@@ -1531,16 +1889,24 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     if (statusChanged) {
       switch (state.status) {
         case "running": {
+          const wasPaused = previousState?.status === "paused";
           const previousAction = previousViewModel?.ui.pendingAction ?? "none";
           const durationSeconds = this._resolveRunDurationSeconds(state);
-          this._announcer.beginRun(durationSeconds);
-          if (previousAction !== "start" && previousAction !== "restart") {
+          const initialSeconds = state.remainingSeconds ?? durationSeconds;
+          this._announcer.beginRun(initialSeconds);
+          if (wasPaused) {
+            this._announce(STRINGS.ariaResumedAnnouncement);
+          } else if (previousAction !== "start" && previousAction !== "restart") {
             const message = this._announcer.announceAction({
               action: "start",
               durationSeconds,
             });
             this._announce(message);
           }
+          break;
+        }
+        case "paused": {
+          this._announce(STRINGS.ariaPausedAnnouncement);
           break;
         }
         case "finished": {
@@ -1608,6 +1974,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _handleTimerStateChanged(state: TimerViewState) {
     const previousState = this._previousTimerState;
     const previousViewModel = this._viewModel;
+    this._evaluatePauseCapability();
     if (this._confirmRestartVisible && state.status !== "running") {
       this._confirmRestartVisible = false;
       this._confirmRestartDuration = undefined;
@@ -1737,6 +2104,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         }
         this._applyRunningDisplay(state);
         return;
+      case "paused":
+        next =
+          state.remainingSeconds ??
+          this._displayDurationSeconds ??
+          viewModel.dial.selectedDurationSeconds ??
+          viewModel.pendingDurationSeconds;
+        break;
       case "finished": {
         const selected =
           viewModel.selectedDurationSeconds ??
@@ -1837,6 +2211,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _updateRunningTickState(state: TimerViewState): void {
     if (state.connectionStatus !== "connected") {
       this._cancelRunningTick();
+      this._updateProgressAnimationState(state);
+      return;
+    }
+
+    if (state.status === "paused") {
+      this._cancelRunningTick();
+      if (state.remainingSeconds !== undefined) {
+        const candidate = Math.max(0, Math.floor(state.remainingSeconds));
+        this._serverRemainingSeconds = candidate;
+        this._lastServerSyncMs = undefined;
+        this._setDisplayDurationSeconds(candidate);
+      }
       this._updateProgressAnimationState(state);
       return;
     }
@@ -2007,7 +2393,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return 0;
     }
 
-    if (state.status !== "running") {
+    if (state.status !== "running" && state.status !== "paused") {
       return 0;
     }
 
@@ -2016,7 +2402,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._viewModel?.pendingDurationSeconds ??
       this._viewModel?.dial.selectedDurationSeconds;
 
-    if (state.status === "running" && this._extendRunTotalSeconds !== undefined) {
+    if (this._extendRunTotalSeconds !== undefined) {
       totalDuration = this._extendRunTotalSeconds;
     }
 
@@ -2025,7 +2411,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     let remaining: number | undefined;
-    if (this._serverRemainingSeconds !== undefined && this._lastServerSyncMs !== undefined) {
+    if (
+      state.status === "running" &&
+      this._serverRemainingSeconds !== undefined &&
+      this._lastServerSyncMs !== undefined
+    ) {
       const elapsedSeconds = Math.max(0, now - this._lastServerSyncMs) / 1000;
       remaining = this._serverRemainingSeconds - elapsedSeconds;
     } else if (displaySeconds !== undefined) {
@@ -2169,6 +2559,43 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     this._reducedMotionMedia = undefined;
     this._onReducedMotionChange = undefined;
+  }
+
+  private _derivePauseHelperEntityId(entityId: string | undefined): string | undefined {
+    if (!entityId) {
+      return undefined;
+    }
+
+    const parts = entityId.split(".");
+    if (parts.length !== 2) {
+      return undefined;
+    }
+
+    const slug = parts[1]?.trim();
+    if (!slug) {
+      return undefined;
+    }
+
+    return `input_text.${slug}_paused_remaining`;
+  }
+
+  private _evaluatePauseCapability(): void {
+    if (!this._viewModel?.ui.showPauseResumeButton || !this._config?.entity) {
+      this._pauseCapability = "unsupported";
+      return;
+    }
+
+    if (supportsTimerPause(this._hass)) {
+      this._pauseCapability = "native";
+      return;
+    }
+
+    if (this._pauseHelperEntityId) {
+      this._pauseCapability = "compat";
+      return;
+    }
+
+    this._pauseCapability = "unsupported";
   }
 
   private _resolveDialElement(): TeaTimerDial | undefined {
