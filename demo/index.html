@@ -18,6 +18,46 @@
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       }
 
+      .appearance {
+        margin-top: 24px;
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        max-width: 480px;
+      }
+
+      .appearance h2 {
+        margin: 0 0 8px;
+        font-size: 1.1rem;
+      }
+
+      .appearance p {
+        margin: 0;
+        color: rgba(15, 23, 42, 0.72);
+        line-height: 1.5;
+      }
+
+      .appearance-control {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 16px;
+      }
+
+      .appearance-control label {
+        font-weight: 600;
+      }
+
+      .appearance-control select {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        font-size: 0.95rem;
+        background: white;
+        color: #111827;
+      }
+
       .controls {
         display: flex;
         flex-wrap: wrap;
@@ -65,6 +105,30 @@
       <tea-timer-card></tea-timer-card>
       <tea-timer-card></tea-timer-card>
     </main>
+    <section class="appearance" aria-label="Appearance options">
+      <h2>Appearance</h2>
+      <p>
+        Preview theming tokens and per-preset colors. Changes apply to the first card above so you
+        can contrast presets side-by-side.
+      </p>
+      <div class="appearance-control">
+        <label for="theme-select">Theme tokens</label>
+        <select id="theme-select">
+          <option value="inherit">Inherit (Home Assistant)</option>
+          <option value="sunset">Sunset Glow</option>
+          <option value="midnight">Midnight Brew</option>
+          <option value="contrast">High Contrast</option>
+        </select>
+      </div>
+      <div class="appearance-control">
+        <label for="preset-palette">Preset palette</label>
+        <select id="preset-palette">
+          <option value="neutral">Neutral (no preset colors)</option>
+          <option value="tea-flight">Tea Flight</option>
+          <option value="citrus">Citrus Zest</option>
+        </select>
+      </div>
+    </section>
     <section class="controls" aria-label="Timer controls">
       <button type="button" id="btn-idle">Set idle</button>
       <button type="button" id="btn-run">Set running (2:30)</button>
@@ -394,28 +458,185 @@
       }
 
       const cards = Array.from(document.querySelectorAll("tea-timer-card"));
-      const configs = [
-        {
-          title: "Kitchen Tea Timer",
-          entity: "timer.kitchen_tea",
-          defaultPreset: "Black",
-          presets: [
-            { label: "Green", durationSeconds: 120 },
-            { label: "Black", durationSeconds: 240 },
-            { label: "Herbal", durationSeconds: 300 },
+      const THEME_PRESETS = {
+        inherit: {},
+        sunset: {
+          tokens: {
+            "--ttc-bg": "#fff7ed",
+            "--ttc-fg": "#7c2d12",
+            "--ttc-accent": "#fb923c",
+            "--ttc-dial-track": "#fed7aa",
+            "--ttc-dial-progress": "#ea580c",
+            "--ttc-chip-bg": "#fed7aa",
+            "--ttc-chip-fg": "#7c2d12",
+            "--ttc-chip-selected-bg": "#f97316",
+            "--ttc-chip-selected-fg": "#ffffff",
+            "--ttc-danger": "#b91c1c",
+            "--ttc-focus-ring": "#fb923c",
+          },
+        },
+        midnight: {
+          tokens: {
+            "--ttc-bg": "#0f172a",
+            "--ttc-fg": "#e2e8f0",
+            "--ttc-accent": "#38bdf8",
+            "--ttc-dial-track": "rgba(148, 163, 184, 0.35)",
+            "--ttc-dial-progress": "#38bdf8",
+            "--ttc-chip-bg": "rgba(148, 163, 184, 0.25)",
+            "--ttc-chip-fg": "#e2e8f0",
+            "--ttc-chip-selected-bg": "#1d4ed8",
+            "--ttc-chip-selected-fg": "#f8fafc",
+            "--ttc-danger": "#f87171",
+            "--ttc-focus-ring": "#e0f2fe",
+          },
+        },
+        contrast: {
+          tokens: {
+            "--ttc-bg": "#0b1120",
+            "--ttc-fg": "#f8fafc",
+            "--ttc-accent": "#facc15",
+            "--ttc-dial-track": "#1e293b",
+            "--ttc-dial-progress": "#facc15",
+            "--ttc-chip-bg": "#1f2937",
+            "--ttc-chip-fg": "#f8fafc",
+            "--ttc-chip-selected-bg": "#facc15",
+            "--ttc-chip-selected-fg": "#111827",
+            "--ttc-danger": "#f87171",
+            "--ttc-focus-ring": "#facc15",
+          },
+        },
+      };
+
+      const PRESET_PALETTES = {
+        neutral: { colors: [] },
+        "tea-flight": {
+          colors: [
+            { match: "Green", color: "#2f855a", icon: "mdi:leaf" },
+            { match: "Black", color: "#1f2937", icon: "mdi:coffee" },
+            { match: "Herbal", color: "#be123c", icon: "mdi:flower" },
           ],
         },
+        citrus: {
+          colors: [
+            { match: "Green", color: "#0f766e", icon: "mdi:leaf" },
+            { match: "Black", color: "#f97316", icon: "mdi:cup-steam" },
+            { match: "Herbal", color: "#facc15", icon: "mdi:flower" },
+          ],
+        },
+      };
+
+      const baseCardConfigs = [
         {
-          title: "Office Break Timer",
-          presets: [],
+          allowAppearance: true,
+          config: {
+            title: "Kitchen Tea Timer",
+            entity: "timer.kitchen_tea",
+            defaultPreset: "Black",
+            presets: [
+              { label: "Green", durationSeconds: 120 },
+              { label: "Black", durationSeconds: 240 },
+              { label: "Herbal", durationSeconds: 300 },
+            ],
+          },
+        },
+        {
+          allowAppearance: false,
+          config: {
+            title: "Office Break Timer",
+            presets: [],
+          },
         },
       ];
 
+      const appearanceState = {
+        theme: "inherit",
+        palette: "neutral",
+      };
+
       const environment = createDemoEnvironment("timer.kitchen_tea", 240);
-      cards.forEach((card, index) => {
-        card.setConfig(configs[index]);
-        card.hass = environment.hass;
-      });
+
+      function cloneConfig(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function resolveThemeTokens(key) {
+        const theme = THEME_PRESETS[key];
+        if (!theme || !theme.tokens) {
+          return undefined;
+        }
+        return { ...theme.tokens };
+      }
+
+      function applyPresetPalette(presets, paletteKey) {
+        const palette = PRESET_PALETTES[paletteKey];
+        if (!palette || !Array.isArray(palette.colors) || palette.colors.length === 0) {
+          return presets.map((preset) => ({ ...preset }));
+        }
+
+        return presets.map((preset, index) => {
+          const match = palette.colors.find(
+            (candidate) =>
+              typeof candidate.match === "string" &&
+              candidate.match.toLowerCase() === preset.label.toLowerCase(),
+          );
+          const colorDef = match ?? palette.colors[index % palette.colors.length];
+          const next = { ...preset };
+          if (colorDef.color) {
+            next.color = colorDef.color;
+          }
+          if (colorDef.icon) {
+            next.icon = colorDef.icon;
+          }
+          return next;
+        });
+      }
+
+      function buildConfig(base, state) {
+        const config = cloneConfig(base.config);
+        if (base.allowAppearance) {
+          const tokens = resolveThemeTokens(state.theme);
+          if (tokens) {
+            config.themeTokens = tokens;
+          } else {
+            delete config.themeTokens;
+          }
+
+          if (Array.isArray(config.presets) && config.presets.length > 0) {
+            config.presets = applyPresetPalette(config.presets, state.palette);
+          }
+        }
+
+        return config;
+      }
+
+      function refreshCards() {
+        cards.forEach((card, index) => {
+          const base = baseCardConfigs[index] ?? baseCardConfigs[baseCardConfigs.length - 1];
+          const config = buildConfig(base, appearanceState);
+          card.setConfig(config);
+          card.hass = environment.hass;
+        });
+      }
+
+      refreshCards();
+
+      const themeSelect = document.getElementById("theme-select");
+      if (themeSelect instanceof HTMLSelectElement) {
+        themeSelect.addEventListener("change", (event) => {
+          const value = event.target.value;
+          appearanceState.theme = value in THEME_PRESETS ? value : "inherit";
+          refreshCards();
+        });
+      }
+
+      const presetSelect = document.getElementById("preset-palette");
+      if (presetSelect instanceof HTMLSelectElement) {
+        presetSelect.addEventListener("change", (event) => {
+          const value = event.target.value;
+          appearanceState.palette = value in PRESET_PALETTES ? value : "neutral";
+          refreshCards();
+        });
+      }
 
       const automationLog = document.getElementById("automation-log");
 
