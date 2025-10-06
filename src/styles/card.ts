@@ -29,6 +29,7 @@ export const cardStyles = css`
     flex-direction: column;
     gap: 16px;
     position: relative;
+    touch-action: manipulation;
   }
 
   .header {
@@ -312,6 +313,31 @@ export const cardStyles = css`
     font-size: 0.75rem;
     color: var(--secondary-text-color, #52606d);
     margin: 0;
+  }
+
+  .interaction-hint {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(0, 122, 255, 0.08);
+    color: var(--primary-text-color, #1f2933);
+    font-size: 0.85rem;
+  }
+
+  .interaction-hint button {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .interaction-hint button:focus-visible {
+    outline: 3px solid var(--focus-ring-color, rgba(0, 122, 255, 0.6));
+    outline-offset: 2px;
   }
 
   .links {

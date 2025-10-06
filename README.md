@@ -55,7 +55,7 @@ npm ci
   - `timer.finished` triggers a five-second overlay before settling back to Idle.
 - When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
 - Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy. The countdown pauses while disconnected and resumes after a successful resync.
-- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration. Running taps restart the timer by calling `timer.start` again with the desired duration (no client-side cancel). The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state.
+- Taps on the card body proxy to Home Assistant services. By default, idle taps call `timer.start` with the normalized dial duration and running taps restart the brew (no client-side cancel). Cards can opt into pause/resume tap modes, double-tap restarts, and long-press restart using the interaction preferences (see Configuration Reference). In all modes the UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further gestures until Home Assistant confirms the new state.
 - The connection status is monitored in real time. If the Home Assistant WebSocket disconnects the card freezes the countdown, surfaces a “Disconnected” banner, and disables interactions until the link is restored and a fresh state snapshot is fetched.
 
 ### Dial duration configuration
@@ -226,7 +226,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
   9.12. `showPauseResume` (default true; hide the pause/resume controls when false).
 
 10. **Accessibility & Internationalization**
-    10.1. Full keyboard support: focusable chips; Space/Enter to start/restart; arrow keys to nudge dial when idle (+/‑ step).
+    10.1. Full keyboard support: focusable chips; Enter mirrors the configured tap action; optional Space shortcut toggles pause/resume; arrow keys to nudge the dial when idle (+/‑ step).
     10.2. Live region for remaining time (ARIA) without spamming assistive tech (throttled).
     10.3. Localized time formats and labels (strings externalized).
 

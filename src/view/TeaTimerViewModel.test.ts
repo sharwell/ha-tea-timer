@@ -28,6 +28,11 @@ const config: TeaTimerConfig = {
   plusButtonIncrementSeconds: 60,
   maxExtendSeconds: undefined,
   showPauseResume: true,
+  tapActionMode: "restart",
+  doubleTapRestartEnabled: false,
+  doubleTapWindowMs: 300,
+  longPressAction: "none",
+  keyboardSpaceTogglesPause: true,
 };
 
 describe("createTeaTimerViewModel", () => {

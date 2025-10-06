@@ -1,0 +1,11 @@
+type: custom:tea-timer-card
+title: Mode C — Tap Pause, Long-Press Restart
+entity: timer.kitchen_tea
+tapActionMode: pause_resume
+longPressAction: restart
+presets:
+  - label: White Tea
+    durationSeconds: 150
+  - label: Chai
+    durationSeconds: 240
+showPauseResume: true

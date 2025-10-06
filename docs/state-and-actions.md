@@ -25,7 +25,7 @@ stateDiagram-v2
   preset or custom duration.
 - **Actions available:**
   - Drag the dial or use arrow keys/PageUp/PageDown to change the duration (rounded to `stepSeconds`).
-  - Tap/click/press **Space** or **Enter** anywhere on the card body to start the timer.
+  - Tap/click or press **Enter** anywhere on the card body to start the timer.
   - Pick a preset to update the dial.
 - **Announcements:** Screen readers hear the selected preset and duration when it changes.
 
@@ -34,7 +34,9 @@ stateDiagram-v2
 - **What you see:** Dial locks, a progress arc fills clockwise, remaining time updates once per
   second (throttled for screen readers), and queued presets appear as a subtitle.
 - **Actions available:**
-  - Tap/click the card to restart with the queued duration.
+  - By default, tap/click the card to restart with the queued duration. When `tapActionMode` is set to
+    `pause_resume`, taps toggle Pause/Resume instead and the configured double-tap or long-press
+    restart gestures remain available.
   - Change presets—the card queues the new selection for the next restart without interrupting the
     current brew.
   - Tap the **Pause** control to halt the brew without resetting the remaining time. The button
@@ -47,6 +49,19 @@ stateDiagram-v2
   - Queued preset announcements (“Next preset selected: Herbal – 5 minutes”).
   - Extends announce “Added one minute. New remaining: mm:ss.” while cap and race conditions
     announce the relevant outcome.
+
+### Interaction modes
+
+| Mode | Configuration | Tap (Idle) | Tap (Running) | Tap (Paused) | Double-tap | Long-press |
+| --- | --- | --- | --- | --- | --- | --- |
+| **A – Restart** | `tapActionMode: restart` (default) | Start timer | Restart | Restart | — | — |
+| **B – Pause/Resume + Double Tap** | `tapActionMode: pause_resume`, `doubleTapRestartEnabled: true` | Start timer | Pause/Resume | Pause/Resume | Restart | — |
+| **C – Pause/Resume + Long Press** | `tapActionMode: pause_resume`, `longPressAction: restart` | Start timer | Pause/Resume | Pause/Resume | — | Restart |
+
+Other long-press actions include focusing the preset list (`open_preset_picker`) or dispatching the
+Lovelace card menu (`open_card_menu`). Hints surface once per card instance after changing modes and
+can be dismissed. When `confirmRestart` is enabled the dialog appears for any path that triggers a
+restart.
 
 ## Paused
 
@@ -88,7 +103,10 @@ stateDiagram-v2
 
 ## Keyboard & pointer shortcuts
 
-- **Start or restart:** **Space** or **Enter** when the card is focused.
+- **Enter:** Mirrors the current tap action (start/restart in Mode A, pause/resume in Modes B/C when
+  running).
+- **Space:** Toggles Pause/Resume when `keyboardSpaceTogglesPause` is `true` and the timer supports the
+  action.
 - **Adjust duration:**
   - **Arrow keys:** ±`stepSeconds`.
   - **PageUp/PageDown:** ±30 seconds.

@@ -3,6 +3,11 @@ export interface StringTable {
   emptyState: string;
   missingEntity: string;
   draftNote: string;
+  interactionHintDoubleTapRestart: string;
+  interactionHintLongPressRestart: string;
+  interactionHintLongPressPresetPicker: string;
+  interactionHintLongPressMenu: string;
+  interactionHintDismiss: string;
   gettingStartedLabel: string;
   gettingStartedUrl: string;
   finishAutomationLabel: string;
@@ -96,6 +101,9 @@ export interface StringTable {
     reservedOption: (name: string) => string;
     plusButtonIncrementInvalid: string;
     maxExtendInvalid: string;
+    tapActionModeInvalid: string;
+    doubleTapWindowInvalid: string;
+    longPressActionInvalid: string;
   };
 }
 
@@ -104,6 +112,11 @@ export const STRINGS: StringTable = {
   emptyState: "Configure an entity and presets to get started.",
   missingEntity: "Timer entity not configured.",
   draftNote: "This is a preview of the Tea Timer Card. Functionality will be enabled in upcoming updates.",
+  interactionHintDoubleTapRestart: "Tip: Double-tap the card to restart while it is running.",
+  interactionHintLongPressRestart: "Tip: Long-press the card to restart while it is running.",
+  interactionHintLongPressPresetPicker: "Tip: Long-press to focus the preset list.",
+  interactionHintLongPressMenu: "Tip: Long-press to open the Lovelace card menu.",
+  interactionHintDismiss: "Dismiss",
   gettingStartedLabel: "Getting Started",
   gettingStartedUrl: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/getting-started.md",
   finishAutomationLabel: "Automate timer finish",
@@ -227,5 +240,9 @@ export const STRINGS: StringTable = {
     reservedOption: (name: string) => `The "${name}" option is reserved for a future release.`,
     plusButtonIncrementInvalid: "plusButtonIncrementS must be a positive number of seconds.",
     maxExtendInvalid: "maxExtendS must be zero or a positive number of seconds.",
+    tapActionModeInvalid: "tapActionMode must be either 'restart' or 'pause_resume'.",
+    doubleTapWindowInvalid: "doubleTapWindowMs must be between 200 and 500 milliseconds.",
+    longPressActionInvalid:
+      "longPressAction must be 'none', 'restart', 'open_preset_picker', or 'open_card_menu'.",
   },
 };

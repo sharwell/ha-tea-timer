@@ -23,6 +23,11 @@ export interface TeaTimerCardConfig {
   plusButtonIncrementS?: number;
   maxExtendS?: number;
   showPauseResume?: boolean;
+  tapActionMode?: "restart" | "pause_resume";
+  doubleTapRestartEnabled?: boolean;
+  doubleTapWindowMs?: number;
+  longPressAction?: "none" | "restart" | "open_preset_picker" | "open_card_menu";
+  keyboardSpaceTogglesPause?: boolean;
 }
 
 export interface TeaTimerConfig {
@@ -40,6 +45,11 @@ export interface TeaTimerConfig {
   plusButtonIncrementSeconds: number;
   maxExtendSeconds?: number;
   showPauseResume: boolean;
+  tapActionMode: "restart" | "pause_resume";
+  doubleTapRestartEnabled: boolean;
+  doubleTapWindowMs: number;
+  longPressAction: "none" | "restart" | "open_preset_picker" | "open_card_menu";
+  keyboardSpaceTogglesPause: boolean;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -172,6 +182,48 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
   const showPlusButton = raw.showPlusButton !== false;
   const showPauseResume = raw.showPauseResume !== false;
 
+  let tapActionMode: "restart" | "pause_resume" = "restart";
+  if (raw.tapActionMode === "restart" || raw.tapActionMode === "pause_resume") {
+    tapActionMode = raw.tapActionMode;
+  } else if (raw.tapActionMode !== undefined) {
+    errors.push(STRINGS.validation.tapActionModeInvalid);
+  }
+
+  const doubleTapRestartEnabled =
+    tapActionMode === "pause_resume" && raw.doubleTapRestartEnabled === true;
+
+  let doubleTapWindowMs = 300;
+  if (raw.doubleTapWindowMs !== undefined) {
+    if (typeof raw.doubleTapWindowMs === "number" && Number.isFinite(raw.doubleTapWindowMs)) {
+      const rounded = Math.round(raw.doubleTapWindowMs);
+      if (rounded >= 200 && rounded <= 500) {
+        doubleTapWindowMs = rounded;
+      } else {
+        errors.push(STRINGS.validation.doubleTapWindowInvalid);
+      }
+    } else {
+      errors.push(STRINGS.validation.doubleTapWindowInvalid);
+    }
+  }
+
+  const allowedLongPressActions: TeaTimerCardConfig["longPressAction"][] = [
+    "none",
+    "restart",
+    "open_preset_picker",
+    "open_card_menu",
+  ];
+
+  let longPressAction: TeaTimerCardConfig["longPressAction"] = "none";
+  if (raw.longPressAction !== undefined) {
+    if (typeof raw.longPressAction === "string" && allowedLongPressActions.includes(raw.longPressAction)) {
+      longPressAction = raw.longPressAction;
+    } else {
+      errors.push(STRINGS.validation.longPressActionInvalid);
+    }
+  }
+
+  const keyboardSpaceTogglesPause = raw.keyboardSpaceTogglesPause !== false;
+
   let plusButtonIncrementSeconds = DEFAULT_PLUS_BUTTON_INCREMENT_SECONDS;
   if (typeof raw.plusButtonIncrementS === "number" && Number.isFinite(raw.plusButtonIncrementS)) {
     const rounded = Math.round(raw.plusButtonIncrementS);
@@ -238,6 +290,11 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     plusButtonIncrementSeconds,
     maxExtendSeconds,
     showPauseResume,
+    tapActionMode,
+    doubleTapRestartEnabled,
+    doubleTapWindowMs,
+    longPressAction,
+    keyboardSpaceTogglesPause,
   };
 
   return { config, errors };

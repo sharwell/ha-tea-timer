@@ -43,6 +43,7 @@ import {
   supportsTimerChange,
   supportsTimerPause,
 } from "../ha/services/timer";
+import { GestureEngine } from "../interaction/gestureEngine";
 import { TimerAnnouncer } from "./TimerAnnouncer";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
@@ -53,6 +54,8 @@ type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
+
+  private static readonly _dismissedInteractionHints = new Set<string>();
 
   private _hass?: HomeAssistant;
 
@@ -102,12 +105,17 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   @state()
   private _pauseResumeInFlight: "pause" | "resume" | undefined = undefined;
 
+  @state()
+  private _interactionHintMessage: string | null = null;
+
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
 
   private readonly _timerStateController: TimerStateController;
 
   private readonly _announcer = new TimerAnnouncer(STRINGS);
+
+  private readonly _gestureEngine: GestureEngine;
 
   private _announcementToggle = false;
 
@@ -162,6 +170,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _pauseHelperEntityId?: string;
 
+  private _interactionHintKey?: string;
+
+  private _gestureBaselineGeneration?: number;
+
+  private _gestureBaselineStatus?: TimerViewState["status"];
+
+  private _suppressPointerClick = false;
+
+  private _spaceKeyActive = false;
+
   constructor() {
     super();
     this._timerStateController = new TimerStateController(this, {
@@ -172,6 +190,20 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     });
     this._timerState = this._timerStateController.state;
     this._previousTimerState = this._timerState;
+    this._gestureEngine = new GestureEngine({
+      onTap: (event) => {
+        this._suppressNextPointerClick();
+        this._handlePointerTap(event);
+      },
+      onDoubleTap: (event) => {
+        this._suppressNextPointerClick();
+        this._handlePointerDoubleTap(event);
+      },
+      onLongPress: (event) => {
+        this._suppressNextPointerClick();
+        this._handlePointerLongPress(event);
+      },
+    });
   }
 
   public setConfig(config: unknown): void {
@@ -195,6 +227,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     } else {
       this._viewModel = undefined;
     }
+    this._updateGestureOptions();
+    this._refreshInteractionHint();
     this._updateRunningTickState(state);
     this._syncDisplayDuration(state);
     this._previousTimerState = state;
@@ -220,9 +254,19 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         class="card"
         data-instance-id=${this._config?.cardInstanceId ?? "unconfigured"}
         aria-busy=${hasPending ? "true" : "false"}
+        tabindex="0"
+        role="group"
         @click=${this._onCardClick}
+        @pointerdown=${this._onCardPointerDown}
+        @pointermove=${this._onCardPointerMove}
+        @pointerup=${this._onCardPointerUp}
+        @pointercancel=${this._onCardPointerCancel}
+        @pointerleave=${this._onCardPointerCancel}
+        @keydown=${this._onCardKeyDown}
+        @keyup=${this._onCardKeyUp}
       >
         ${this._renderHeader()}
+        ${this._renderInteractionHint()}
         ${this._renderSubtitle()}
         ${state ? this._renderStatusPill(state) : nothing}
         ${state ? this._renderStateBanner(state) : nothing}
@@ -305,6 +349,19 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         <h2 class="title">${title}</h2>
         <span class="entity">${entityLabel}</span>
       </header>
+    `;
+  }
+
+  private _renderInteractionHint() {
+    if (!this._interactionHintMessage) {
+      return nothing;
+    }
+
+    return html`
+      <div class="interaction-hint" role="note">
+        <span>${this._interactionHintMessage}</span>
+        <button type="button" @click=${this._onDismissInteractionHint}>${STRINGS.interactionHintDismiss}</button>
+      </div>
     `;
   }
 
@@ -1104,8 +1161,30 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._handlePrimaryAction();
   };
 
+  private readonly _onDismissInteractionHint = () => {
+    const cardId = this._config?.cardInstanceId;
+    if (cardId && this._interactionHintKey) {
+      TeaTimerCard._dismissedInteractionHints.add(`${cardId}:${this._interactionHintKey}`);
+    }
+    this._interactionHintMessage = null;
+  };
+
   private readonly _onCardClick = (event: MouseEvent) => {
     if (event.defaultPrevented || this._confirmRestartVisible) {
+      return;
+    }
+
+    if (this._suppressPointerClick) {
+      event.preventDefault();
+      this._suppressPointerClick = false;
+      return;
+    }
+
+    if (event.detail > 0) {
+      return;
+    }
+
+    if (event.target !== event.currentTarget) {
       return;
     }
 
@@ -1113,10 +1192,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    this._handlePrimaryAction();
+    this._handleTapInteraction("keyboard");
   };
 
-  private _shouldIgnoreCardClick(event: MouseEvent): boolean {
+  private _shouldIgnoreCardClick(event: Event): boolean {
     const path = event.composedPath();
     for (const node of path) {
       if (!(node instanceof HTMLElement)) {
@@ -1136,10 +1215,335 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (role === "button") {
         return true;
       }
+
+      if (tagName === "tea-timer-dial") {
+        return true;
+      }
     }
 
     return false;
   }
+
+  private readonly _onCardPointerDown = (event: PointerEvent) => {
+    if (event.defaultPrevented || this._confirmRestartVisible) {
+      return;
+    }
+
+    if (this._shouldIgnoreCardClick(event)) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || !this._canInteract(state)) {
+      return;
+    }
+
+    if (this._viewModel?.ui.pendingAction !== "none") {
+      return;
+    }
+
+    if (this._pauseResumeInFlight !== undefined) {
+      return;
+    }
+
+    this._updateGestureOptions();
+    this._gestureBaselineGeneration = state.actionGeneration;
+    this._gestureBaselineStatus = state.status;
+    this._gestureEngine.onPointerDown(event);
+  };
+
+  private readonly _onCardPointerMove = (event: PointerEvent) => {
+    this._gestureEngine.onPointerMove(event);
+  };
+
+  private readonly _onCardPointerUp = (event: PointerEvent) => {
+    this._gestureEngine.onPointerUp(event);
+    this._resetGestureBaseline();
+  };
+
+  private readonly _onCardPointerCancel = (event: PointerEvent) => {
+    this._gestureEngine.onPointerCancel(event);
+    this._resetGestureBaseline();
+  };
+
+  private _resetGestureBaseline(): void {
+    this._gestureBaselineGeneration = undefined;
+    this._gestureBaselineStatus = undefined;
+  }
+
+  private _suppressNextPointerClick(): void {
+    this._suppressPointerClick = true;
+    window.setTimeout(() => {
+      this._suppressPointerClick = false;
+    }, 0);
+  }
+
+  private _handlePointerTap(_event: PointerEvent): void {
+    if (!this._isGestureActionAllowed()) {
+      return;
+    }
+
+    this._handleTapInteraction("pointer");
+  }
+
+  private _handlePointerDoubleTap(_event: PointerEvent): void {
+    if (!this._isGestureActionAllowed()) {
+      return;
+    }
+
+    if (!this._viewModel || this._viewModel.ui.tapActionMode !== "pause_resume") {
+      return;
+    }
+
+    if (!this._viewModel.ui.doubleTapRestartEnabled) {
+      return;
+    }
+
+    this._handlePrimaryAction();
+  }
+
+  private _handlePointerLongPress(_event: PointerEvent): void {
+    if (!this._isGestureActionAllowed()) {
+      return;
+    }
+
+    if (!this._viewModel) {
+      return;
+    }
+
+    switch (this._viewModel.ui.longPressAction) {
+      case "restart":
+        this._handlePrimaryAction();
+        break;
+      case "open_preset_picker":
+        this._focusPresetList();
+        break;
+      case "open_card_menu":
+        this._openCardMenu();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private _isGestureActionAllowed(): boolean {
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state) {
+      return false;
+    }
+
+    if (this._gestureBaselineGeneration !== undefined && state.actionGeneration !== this._gestureBaselineGeneration) {
+      return false;
+    }
+
+    if (this._gestureBaselineStatus && state.status !== this._gestureBaselineStatus) {
+      return false;
+    }
+
+    if (this._confirmRestartVisible) {
+      return false;
+    }
+
+    if (this._viewModel?.ui.pendingAction !== "none") {
+      return false;
+    }
+
+    if (!this._canInteract(state)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private _focusPresetList(): void {
+    const button = this.renderRoot?.querySelector<HTMLButtonElement>(".presets button");
+    button?.focus();
+  }
+
+  private _openCardMenu(): void {
+    const event = new CustomEvent("ll-custom-card-menu-open", {
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+
+  private _handleTapInteraction(_source: "pointer" | "keyboard"): void {
+    if (!this._viewModel || this._confirmRestartVisible) {
+      return;
+    }
+
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state) {
+      return;
+    }
+
+    if (this._shouldTogglePauseOnTap(state)) {
+      void this._handlePauseResume();
+      return;
+    }
+
+    this._handlePrimaryAction();
+  }
+
+  private _shouldTogglePauseOnTap(state: TimerViewState): boolean {
+    if (!this._viewModel || this._viewModel.ui.tapActionMode !== "pause_resume") {
+      return false;
+    }
+
+    return this._canTogglePauseResume(state);
+  }
+
+  private _canTogglePauseResume(state: TimerViewState): boolean {
+    if (state.status !== "running" && state.status !== "paused") {
+      return false;
+    }
+
+    if (this._pauseCapability === "unsupported") {
+      return false;
+    }
+
+    if (!this._config?.entity || !this._hass) {
+      return false;
+    }
+
+    if (this._pauseResumeInFlight !== undefined) {
+      return false;
+    }
+
+    if (this._isPauseResumeDisabled(state)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private _updateGestureOptions(): void {
+    const viewModel = this._viewModel;
+    if (!viewModel) {
+      this._gestureEngine.configure({
+        doubleTapEnabled: false,
+        doubleTapWindowMs: 300,
+        longPressEnabled: false,
+        longPressMs: 550,
+        movementThresholdPx: 16,
+      });
+      return;
+    }
+
+    const doubleTapEnabled =
+      viewModel.ui.tapActionMode === "pause_resume" && viewModel.ui.doubleTapRestartEnabled;
+    const longPressEnabled = viewModel.ui.longPressAction !== "none";
+    const windowMs = Math.max(200, Math.min(500, viewModel.ui.doubleTapWindowMs));
+
+    this._gestureEngine.configure({
+      doubleTapEnabled,
+      doubleTapWindowMs: windowMs,
+      longPressEnabled,
+      longPressMs: 550,
+      movementThresholdPx: 16,
+    });
+  }
+
+  private _refreshInteractionHint(): void {
+    const cardId = this._config?.cardInstanceId;
+    const viewModel = this._viewModel;
+
+    if (!cardId || !viewModel) {
+      this._interactionHintMessage = null;
+      this._interactionHintKey = undefined;
+      return;
+    }
+
+    const hint = this._computeInteractionHint(viewModel);
+    if (!hint) {
+      this._interactionHintMessage = null;
+      this._interactionHintKey = undefined;
+      return;
+    }
+
+    const storageKey = `${cardId}:${hint.key}`;
+    this._interactionHintKey = hint.key;
+    if (TeaTimerCard._dismissedInteractionHints.has(storageKey)) {
+      this._interactionHintMessage = null;
+      return;
+    }
+
+    this._interactionHintMessage = hint.message;
+  }
+
+  private _computeInteractionHint(
+    viewModel: TeaTimerViewModel,
+  ): { key: string; message: string } | null {
+    if (viewModel.ui.doubleTapRestartEnabled && viewModel.ui.tapActionMode === "pause_resume") {
+      return { key: "double-tap-restart", message: STRINGS.interactionHintDoubleTapRestart };
+    }
+
+    switch (viewModel.ui.longPressAction) {
+      case "restart":
+        return { key: "long-press-restart", message: STRINGS.interactionHintLongPressRestart };
+      case "open_preset_picker":
+        return {
+          key: "long-press-preset-picker",
+          message: STRINGS.interactionHintLongPressPresetPicker,
+        };
+      case "open_card_menu":
+        return { key: "long-press-menu", message: STRINGS.interactionHintLongPressMenu };
+      default:
+        return null;
+    }
+  }
+
+  private readonly _onCardKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (event.repeat) {
+        return;
+      }
+      event.preventDefault();
+      this._handleTapInteraction("keyboard");
+      return;
+    }
+
+    if (event.key === " " || event.key === "Spacebar") {
+      if (!this._viewModel?.ui.keyboardSpaceTogglesPause) {
+        return;
+      }
+
+      if (this._spaceKeyActive) {
+        return;
+      }
+
+      this._spaceKeyActive = true;
+      event.preventDefault();
+    }
+  };
+
+  private readonly _onCardKeyUp = (event: KeyboardEvent) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key === " " || event.key === "Spacebar") {
+      if (!this._spaceKeyActive) {
+        return;
+      }
+
+      this._spaceKeyActive = false;
+      event.preventDefault();
+      const state = this._timerState ?? this._timerStateController.state;
+      if (!state) {
+        return;
+      }
+
+      if (this._viewModel?.ui.keyboardSpaceTogglesPause && this._canTogglePauseResume(state)) {
+        void this._handlePauseResume();
+      }
+    }
+  };
 
   private _handlePrimaryAction(): void {
     if (!this._viewModel || !this._config?.entity) {
@@ -1987,6 +2391,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         previousViewModel,
       });
     }
+
+    this._updateGestureOptions();
+    this._refreshInteractionHint();
 
     if (this._viewModel) {
       const inFlight = state.inFlightAction?.kind ?? "none";

@@ -12,10 +12,15 @@ All notable changes to this project will be documented in this file.
   `timer.change` service when available, and falls back to a seamless `timer.start` restart when the
   change would exceed the native cap or the service is missing. Configurable increment and optional
   per-brew cap keep automations authoritative while preventing visual reset.
+- Interaction preferences: configure tap behavior (restart vs. pause/resume), optional double-tap
+  restart window, long-press actions, and keyboard space toggles. A gesture engine suppresses duplicate
+  service calls and surfaces one-time hints when the mode changes.
 
 ### Documentation
 - Document pause/resume flows, helper setup, restore caveats, near-finish races, and update the Lovelace
   examples to include a pause/resume configuration alongside the extend button guidance.
+- Add interaction mode reference tables, keyboard mapping updates, double-tap/long-press
+  troubleshooting, and Mode A/B/C Lovelace examples with demo playground toggles.
 
 ## [0.1.0] - 2025-10-03
 

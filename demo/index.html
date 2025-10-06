@@ -37,6 +37,20 @@
         transform: translateY(1px);
       }
 
+      .controls label {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.9rem;
+      }
+
+      .controls select,
+      .controls input {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        min-width: 160px;
+      }
+
       .automation {
         margin-top: 24px;
         background: white;
@@ -74,6 +88,35 @@
       <button type="button" id="btn-disconnect">Disconnect</button>
       <button type="button" id="btn-reconnect">Reconnect</button>
       <button type="button" id="btn-fail-service">Fail next service call</button>
+      <label>
+        Interaction mode
+        <select id="interaction-mode">
+          <option value="restart">Mode A — Restart on tap</option>
+          <option value="pause-double">Mode B — Pause + double-tap restart</option>
+          <option value="pause-long">Mode C — Pause + long-press restart</option>
+        </select>
+      </label>
+      <label>
+        Double-tap window (ms)
+        <input
+          id="doubletap-window"
+          type="number"
+          min="200"
+          max="500"
+          step="10"
+          value="300"
+          disabled
+        />
+      </label>
+      <label>
+        Long-press action
+        <select id="longpress-action" disabled>
+          <option value="restart">Restart timer</option>
+          <option value="open_preset_picker">Focus preset list</option>
+          <option value="open_card_menu">Open card menu</option>
+          <option value="none">No action</option>
+        </select>
+      </label>
     </section>
     <section class="automation" aria-label="Demo automation log">
       <h2>Automation listener</h2>
@@ -394,17 +437,18 @@
       }
 
       const cards = Array.from(document.querySelectorAll("tea-timer-card"));
+      const baseConfig = {
+        title: "Kitchen Tea Timer",
+        entity: "timer.kitchen_tea",
+        defaultPreset: "Black",
+        presets: [
+          { label: "Green", durationSeconds: 120 },
+          { label: "Black", durationSeconds: 240 },
+          { label: "Herbal", durationSeconds: 300 },
+        ],
+      };
       const configs = [
-        {
-          title: "Kitchen Tea Timer",
-          entity: "timer.kitchen_tea",
-          defaultPreset: "Black",
-          presets: [
-            { label: "Green", durationSeconds: 120 },
-            { label: "Black", durationSeconds: 240 },
-            { label: "Herbal", durationSeconds: 300 },
-          ],
-        },
+        { ...baseConfig },
         {
           title: "Office Break Timer",
           presets: [],
@@ -416,6 +460,56 @@
         card.setConfig(configs[index]);
         card.hass = environment.hass;
       });
+
+      const modeSelect = document.getElementById("interaction-mode");
+      const doubleTapInput = document.getElementById("doubletap-window");
+      const longPressSelect = document.getElementById("longpress-action");
+
+      function applyInteractionConfig() {
+        const mode = modeSelect?.value ?? "restart";
+        const doubleTapWindow = Math.min(500, Math.max(200, Number(doubleTapInput?.value ?? 300)));
+        const longPressAction = longPressSelect?.value ?? "restart";
+
+        const config = { ...baseConfig };
+        if (mode === "pause-double") {
+          config.tapActionMode = "pause_resume";
+          config.doubleTapRestartEnabled = true;
+          config.doubleTapWindowMs = doubleTapWindow;
+          config.longPressAction = "none";
+        } else if (mode === "pause-long") {
+          config.tapActionMode = "pause_resume";
+          config.longPressAction = longPressAction;
+          config.doubleTapRestartEnabled = false;
+        }
+
+        configs[0] = config;
+        cards[0]?.setConfig(config);
+      }
+
+      if (modeSelect && doubleTapInput && longPressSelect) {
+        modeSelect.addEventListener("change", () => {
+          const mode = modeSelect.value;
+          doubleTapInput.disabled = mode !== "pause-double";
+          longPressSelect.disabled = mode !== "pause-long";
+          applyInteractionConfig();
+        });
+
+        doubleTapInput.addEventListener("change", () => {
+          if (!doubleTapInput.disabled) {
+            applyInteractionConfig();
+          }
+        });
+
+        longPressSelect.addEventListener("change", () => {
+          if (!longPressSelect.disabled) {
+            applyInteractionConfig();
+          }
+        });
+
+        doubleTapInput.disabled = modeSelect.value !== "pause-double";
+        longPressSelect.disabled = modeSelect.value !== "pause-long";
+        applyInteractionConfig();
+      }
 
       const automationLog = document.getElementById("automation-log");
 

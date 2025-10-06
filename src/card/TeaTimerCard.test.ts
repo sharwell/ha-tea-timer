@@ -1704,4 +1704,127 @@ describe("TeaTimerCard", () => {
     const internalsAfter = card as unknown as { _viewModel?: { ui: { pendingAction: string } } };
     expect(internalsAfter._viewModel?.ui.pendingAction).toBe("none");
   });
+
+  describe("interaction preferences", () => {
+    it("invokes restart when tap action mode is restart", () => {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+      card.hass = createHass();
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 180,
+        remainingSeconds: 120,
+      };
+
+      setTimerState(card, runningState);
+
+      const primarySpy = vi
+        .spyOn(card as unknown as { _handlePrimaryAction(): void }, "_handlePrimaryAction")
+        .mockImplementation(() => {});
+
+      const handler = card as unknown as { _handleTapInteraction(source: "pointer" | "keyboard"): void };
+      handler._handleTapInteraction("pointer");
+
+      expect(primarySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("invokes pause/resume when tap action mode is pause_resume", () => {
+      const card = createCard();
+      supportsTimerPauseMock.mockReturnValue(true);
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.kettle",
+        tapActionMode: "pause_resume",
+      });
+      card.hass = createHass();
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 200,
+        remainingSeconds: 150,
+      };
+
+      setTimerState(card, runningState);
+
+      const pauseSpy = vi
+        .spyOn(card as unknown as { _handlePauseResume(): Promise<void> }, "_handlePauseResume")
+        .mockResolvedValue();
+
+      const handler = card as unknown as { _handleTapInteraction(source: "pointer" | "keyboard"): void };
+      handler._handleTapInteraction("pointer");
+
+      expect(pauseSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("restarts on double tap when enabled", () => {
+      const card = createCard();
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.kettle",
+        tapActionMode: "pause_resume",
+        doubleTapRestartEnabled: true,
+      });
+      card.hass = createHass();
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 240,
+        remainingSeconds: 180,
+      };
+
+      setTimerState(card, runningState);
+
+      const primarySpy = vi
+        .spyOn(card as unknown as { _handlePrimaryAction(): void }, "_handlePrimaryAction")
+        .mockImplementation(() => {});
+
+      const internals = card as unknown as {
+        _handlePointerDoubleTap(event: PointerEvent): void;
+        _gestureBaselineGeneration?: number;
+        _gestureBaselineStatus?: TimerViewState["status"];
+      };
+
+      internals._gestureBaselineGeneration = 0;
+      internals._gestureBaselineStatus = "running";
+      internals._handlePointerDoubleTap({} as PointerEvent);
+
+      expect(primarySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("restarts on long press when configured", () => {
+      const card = createCard();
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.kettle",
+        tapActionMode: "pause_resume",
+        longPressAction: "restart",
+      });
+      card.hass = createHass();
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 200,
+      };
+
+      setTimerState(card, runningState);
+
+      const primarySpy = vi
+        .spyOn(card as unknown as { _handlePrimaryAction(): void }, "_handlePrimaryAction")
+        .mockImplementation(() => {});
+
+      const internals = card as unknown as {
+        _handlePointerLongPress(event: PointerEvent): void;
+        _gestureBaselineGeneration?: number;
+        _gestureBaselineStatus?: TimerViewState["status"];
+      };
+
+      internals._gestureBaselineGeneration = 0;
+      internals._gestureBaselineStatus = "running";
+      internals._handlePointerLongPress({} as PointerEvent);
+
+      expect(primarySpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

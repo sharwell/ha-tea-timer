@@ -1,0 +1,11 @@
+type: custom:tea-timer-card
+title: Mode A — Restart on Tap
+entity: timer.kitchen_tea
+presets:
+  - label: Green Tea
+    durationSeconds: 120
+  - label: Oolong
+    durationSeconds: 180
+  - label: Herbal
+    durationSeconds: 300
+# tapActionMode defaults to "restart"; taps restart while running.

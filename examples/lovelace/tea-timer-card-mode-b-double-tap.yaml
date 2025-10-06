@@ -1,0 +1,13 @@
+type: custom:tea-timer-card
+title: Mode B — Tap Pause, Double-Tap Restart
+entity: timer.kitchen_tea
+tapActionMode: pause_resume
+doubleTapRestartEnabled: true
+doubleTapWindowMs: 320
+presets:
+  - label: Sencha
+    durationSeconds: 90
+  - label: Black Tea
+    durationSeconds: 210
+  - label: Herbal Blend
+    durationSeconds: 240

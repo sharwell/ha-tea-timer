@@ -108,6 +108,47 @@ provided for the card to load.
 - **Example:** `showPauseResume: false` hides the pause/resume buttons for a kiosk display that only
   supports restarts.
 
+### `tapActionMode`
+
+- **Description:** Chooses what a single tap/click on the card body does while the timer is running.
+  `restart` keeps the legacy behavior (tap restarts the brew), while `pause_resume` toggles the
+  pause/resume action instead. Idle taps always start the timer regardless of mode.
+- **Default:** `restart`.
+- **Example:** `tapActionMode: pause_resume` makes taps pause/resume and relies on double-tap or
+  long-press to restart.
+
+### `doubleTapRestartEnabled`
+
+- **Description:** When `true` and `tapActionMode` is `pause_resume`, a double-tap (or double-click)
+  within the configured window restarts the timer once. Single taps continue to pause/resume.
+- **Default:** `false`.
+- **Example:** `doubleTapRestartEnabled: true` enables “tap to pause, double-tap to restart” for a
+  shared wall display.
+
+### `doubleTapWindowMs`
+
+- **Description:** Milliseconds allowed between taps when double-tap restart is enabled. Values must
+  fall between 200 and 500 inclusive.
+- **Default:** `300`.
+- **Example:** `doubleTapWindowMs: 350` gives viewers a slightly wider window to trigger a double
+  tap on tablets.
+
+### `longPressAction`
+
+- **Description:** Action to perform after a long press (about half a second) on the card. Options are
+  `none`, `restart`, `open_preset_picker`, or `open_card_menu`.
+- **Default:** `none`.
+- **Example:** `longPressAction: restart` enables “tap to pause, long-press to restart” for Mode C of
+  the interaction preferences.
+
+### `keyboardSpaceTogglesPause`
+
+- **Description:** When `true`, pressing the space bar while the card has focus toggles pause/resume
+  (if supported). Set to `false` to disable the shortcut.
+- **Default:** `true`.
+- **Example:** `keyboardSpaceTogglesPause: false` is useful for kiosks that rely on keyboard scripts
+  and want Space to remain unused.
+
 ### `plusButtonIncrementS`
 
 - **Description:** Number of seconds added each time the extend button is activated.

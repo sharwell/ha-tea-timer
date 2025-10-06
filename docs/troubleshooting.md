@@ -79,6 +79,15 @@ issues.
   you need guaranteed extensions, tap a little earlier or increase your increment duration to add more
   runway.
 
+## Double-tap restart not detected
+
+- **Symptom:** Double-tapping occasionally triggers Pause/Resume or does nothing.
+- **Diagnosis:** The `doubleTapWindowMs` window might be too short for your device, or the timer was not
+  in `pause_resume` mode when you tapped.
+- **Fix:** Increase `doubleTapWindowMs` (200–500 ms) to match your users’ cadence and confirm
+  `doubleTapRestartEnabled: true`. If the timer finishes between taps the card intentionally aborts the
+  restart.
+
 ## Paused but remaining time unknown
 
 - **Symptom:** The card announces “Remaining time is unknown while paused” when you try to extend or
@@ -119,6 +128,24 @@ issues.
   final state.
 - **Fix:** The card announces the winning outcome (“Timer paused.” or “Tea is ready!”). If you routinely
   cut it close, add a little buffer to your brew or extend earlier.
+
+## Long-press triggers the OS context menu
+
+- **Symptom:** Holding the card opens the browser or operating system context menu instead of the
+  configured action.
+- **Diagnosis:** Some mobile browsers reserve long-press gestures for native menus.
+- **Fix:** Use the double-tap restart mode or disable the long-press action (`longPressAction: none`) on
+  affected devices. The card sets `touch-action: manipulation`, but certain platforms still reserve the
+  gesture.
+
+## Long-press ignored when the timer finishes mid-gesture
+
+- **Symptom:** Holding the card to restart occasionally does nothing when the brew ends during the
+  hold.
+- **Diagnosis:** The card intentionally cancels gestures if the timer transitions to Finished while a
+  long press or tap is in progress so it does not override the authoritative result.
+- **Fix:** Wait for the overlay to clear or start a new brew from Idle. Restart gestures fire normally
+  when the timer remains Running/Paused during the press.
 
 ## Automations not firing
 
