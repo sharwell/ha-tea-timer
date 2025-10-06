@@ -1,4 +1,4 @@
-import { css, html, LitElement, nothing, unsafeCSS } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { DurationBounds, normalizeDurationSeconds } from "../model/duration";
 import type { TimerStatus } from "../state/TimerStateMachine";
@@ -7,10 +7,8 @@ import { DialGestureTracker } from "./DialGestureTracker";
 const TAU = Math.PI * 2;
 const KEY_STEP_SECONDS = 30;
 const PROGRESS_VIEWBOX_SIZE = 100;
-const PROGRESS_STROKE = 6;
-const PROGRESS_RADIUS = PROGRESS_VIEWBOX_SIZE / 2 - PROGRESS_STROKE / 2;
-const PROGRESS_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RADIUS;
-const PROGRESS_CIRCUMFERENCE_TEXT = PROGRESS_CIRCUMFERENCE.toFixed(3);
+const MIN_TRACK_WIDTH = 2;
+const MAX_TRACK_WIDTH = 12;
 
 @customElement("tea-timer-dial")
 export class TeaTimerDial extends LitElement {
@@ -19,12 +17,14 @@ export class TeaTimerDial extends LitElement {
       display: inline-flex;
       justify-content: center;
       color: var(--ttc-fg, var(--primary-text-color, #1f2933));
+      width: min(100%, var(--ttc-layout-dial-diameter, 184px));
+      height: min(100%, var(--ttc-layout-dial-diameter, 184px));
     }
 
     .dial-root {
       position: relative;
-      width: 184px;
-      height: 184px;
+      width: 100%;
+      height: 100%;
       border-radius: 50%;
       --dial-border-color: var(--ttc-dial-track, var(--divider-color, rgba(0, 0, 0, 0.12)));
       --dial-track-color: var(--ttc-dial-track, rgba(0, 0, 0, 0.16));
@@ -91,7 +91,7 @@ export class TeaTimerDial extends LitElement {
     .dial-progress-track {
       fill: none;
       stroke: var(--dial-track-color);
-      stroke-width: ${unsafeCSS(PROGRESS_STROKE)};
+      stroke-width: var(--ttc-layout-dial-track-width, 6px);
       stroke-linecap: round;
       opacity: 0.4;
       transition: stroke 160ms ease;
@@ -100,12 +100,10 @@ export class TeaTimerDial extends LitElement {
     .dial-progress-arc {
       fill: none;
       stroke: var(--dial-progress-color);
-      stroke-width: ${unsafeCSS(PROGRESS_STROKE)};
+      stroke-width: var(--ttc-layout-dial-track-width, 6px);
       stroke-linecap: round;
       transform: rotate(-90deg);
       transform-origin: 50% 50%;
-      stroke-dasharray: ${unsafeCSS(PROGRESS_CIRCUMFERENCE_TEXT)};
-      stroke-dashoffset: ${unsafeCSS(PROGRESS_CIRCUMFERENCE_TEXT)};
       transition: stroke 160ms ease, stroke-dashoffset 480ms cubic-bezier(0.33, 1, 0.68, 1);
       opacity: 0.9;
     }
@@ -187,6 +185,9 @@ export class TeaTimerDial extends LitElement {
   @property({ type: String })
   public valueText = "";
 
+  @property({ type: Number })
+  public trackWidth = 6;
+
   private pointerActive = false;
 
   private readonly gestureTracker = new DialGestureTracker(0);
@@ -218,14 +219,18 @@ export class TeaTimerDial extends LitElement {
   }
 
   protected render() {
+    const { trackWidth, radius, circumference } = this.getProgressGeometry();
     const normalized = this.pointerActive
       ? this.normalizedValue
       : this.valueToNormalized(this.value);
     const baseAngle = normalized * TAU;
     const angleDegrees = (baseAngle * 180) / Math.PI;
     const fraction = this.progressFraction;
-    const dashOffset = PROGRESS_CIRCUMFERENCE * (1 - fraction);
+    const dashOffset = circumference * (1 - fraction);
     const ariaReadonly = this.interactive ? "false" : "true";
+
+    const circumferenceText = circumference.toFixed(3);
+    const dashOffsetText = dashOffset.toFixed(3);
 
     return html`
       <div
@@ -253,14 +258,17 @@ export class TeaTimerDial extends LitElement {
             class="dial-progress-track"
             cx=${PROGRESS_VIEWBOX_SIZE / 2}
             cy=${PROGRESS_VIEWBOX_SIZE / 2}
-            r=${PROGRESS_RADIUS}
+            r=${radius}
+            stroke-width=${trackWidth}
           ></circle>
           <circle
             class="dial-progress-arc"
             cx=${PROGRESS_VIEWBOX_SIZE / 2}
             cy=${PROGRESS_VIEWBOX_SIZE / 2}
-            r=${PROGRESS_RADIUS}
-            stroke-dashoffset=${dashOffset.toFixed(3)}
+            r=${radius}
+            stroke-width=${trackWidth}
+            stroke-dasharray=${circumferenceText}
+            stroke-dashoffset=${dashOffsetText}
           ></circle>
         </svg>
         <div class="dial-handle" style=${`transform: rotate(${angleDegrees}deg);`} aria-hidden="true">
@@ -517,12 +525,20 @@ export class TeaTimerDial extends LitElement {
       return false;
     }
 
-    const offset = PROGRESS_CIRCUMFERENCE * (1 - this.progressFraction);
+    const { circumference } = this.getProgressGeometry();
+    const offset = circumference * (1 - this.progressFraction);
     const offsetText = offset.toFixed(3);
     if (arc.style.strokeDashoffset !== offsetText) {
       arc.style.strokeDashoffset = offsetText;
     }
     return true;
+  }
+
+  private getProgressGeometry() {
+    const width = Math.min(MAX_TRACK_WIDTH, Math.max(MIN_TRACK_WIDTH, this.trackWidth || 6));
+    const radius = PROGRESS_VIEWBOX_SIZE / 2 - width / 2;
+    const circumference = 2 * Math.PI * radius;
+    return { trackWidth: width, radius, circumference };
   }
 }
 

@@ -4,6 +4,8 @@ export const cardStyles = css`
   :host {
     color-scheme: light dark;
     color: var(--ttc-fg, var(--primary-text-color, #1f2933));
+    --ttc-layout-dial-diameter: 184px;
+    --ttc-layout-dial-track-width: 6px;
     --mdc-theme-primary: var(--ttc-accent, var(--primary-color, #1f2933));
     --mdc-theme-on-primary: var(
       --ttc-chip-selected-fg,
@@ -63,10 +65,13 @@ export const cardStyles = css`
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    width: 100%;
+    max-width: var(--ttc-layout-dial-diameter, 184px);
   }
 
   tea-timer-dial {
-    width: 100%;
+    width: min(100%, var(--ttc-layout-dial-diameter, 184px));
+    height: min(100%, var(--ttc-layout-dial-diameter, 184px));
   }
 
   .dial-tooltip {
@@ -122,6 +127,22 @@ export const cardStyles = css`
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+
+  :host([data-density="compact"]) .card {
+    gap: 12px;
+  }
+
+  :host([data-density="compact"]) .interaction {
+    gap: 12px;
+  }
+
+  :host([data-density="compact"]) .title {
+    font-size: 1.1rem;
+  }
+
+  :host([data-density="compact"]) .subtitle {
+    font-size: 0.8rem;
   }
 
   .extend-controls {

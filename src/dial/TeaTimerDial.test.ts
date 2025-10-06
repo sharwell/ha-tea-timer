@@ -19,7 +19,7 @@ describe("TeaTimerDial", () => {
     expect(internals.pendingProgressSync).toBe(false);
 
     const offset = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
-    const circumference = 2 * Math.PI * (50 - 6 / 2);
+    const circumference = 2 * Math.PI * (50 - dial.trackWidth / 2);
     expect(offset).toBeCloseTo(circumference * 0.75, 2);
   });
 
@@ -41,9 +41,28 @@ describe("TeaTimerDial", () => {
     expect(afterMax).toBeCloseTo(0, 2);
 
     dial.setProgressFraction(-1);
-    const circumference = 2 * Math.PI * (50 - 6 / 2);
+    const circumference = 2 * Math.PI * (50 - dial.trackWidth / 2);
     const afterMin = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
     expect(afterMin).toBeCloseTo(circumference, 2);
+  });
+
+  it("adapts the progress arc to the configured track width", () => {
+    const dial = new TeaTimerDial();
+    dial.trackWidth = 4;
+    const arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    arc.classList.add("dial-progress-arc");
+    Object.defineProperty(dial, "shadowRoot", {
+      configurable: true,
+      value: {
+        querySelector: (selector: string) => (selector === ".dial-progress-arc" ? arc : null),
+      },
+    });
+
+    dial.setProgressFraction(0.5);
+
+    const circumference = 2 * Math.PI * (50 - dial.trackWidth / 2);
+    const offset = Number(arc.style.strokeDashoffset || arc.getAttribute("stroke-dashoffset") || "0");
+    expect(offset).toBeCloseTo(circumference * 0.5, 2);
   });
 
   it("emits dial-input on keyboard adjustment", () => {

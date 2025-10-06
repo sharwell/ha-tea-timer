@@ -230,6 +230,50 @@ describe("TeaTimerCard", () => {
     expect(card.style.getPropertyValue("--ttc-fg").trim()).not.toBe("");
   });
 
+  it("reflects the resolved layout density onto the card host", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      layoutDensity: "compact",
+      presets: [{ label: "A", durationSeconds: 60 }],
+    });
+
+    await card.updateComplete;
+
+    const cardElement = card.shadowRoot?.querySelector<HTMLElement>(".card");
+    expect(cardElement).toBeTruthy();
+    if (!cardElement) {
+      card.remove();
+      return;
+    }
+
+    cardElement.style.padding = "16px";
+    Object.defineProperty(cardElement, "clientWidth", {
+      configurable: true,
+      get: () => 320,
+    });
+    Object.defineProperty(cardElement, "clientHeight", {
+      configurable: true,
+      get: () => 320,
+    });
+
+    const internals = card as unknown as { _applyLayoutMetrics(): void };
+    internals._applyLayoutMetrics();
+
+    expect(card.getAttribute("data-density")).toBe("compact");
+    expect(cardElement.getAttribute("data-density")).toBe("compact");
+    expect(cardElement.style.getPropertyValue("--ttc-layout-dial-diameter")).toBe("203px");
+    expect(cardElement.style.getPropertyValue("--ttc-layout-track-width")).toBe("4px");
+
+    const dial = card.shadowRoot?.querySelector("tea-timer-dial") as TeaTimerDial | null;
+    expect(dial?.trackWidth).toBe(4);
+
+    card.remove();
+  });
+
   it("can disable the clock skew estimator via config", () => {
     const spy = vi.spyOn(TimerStateController.prototype, "setClockSkewEstimatorEnabled");
     const card = createCard();

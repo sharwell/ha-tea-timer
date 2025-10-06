@@ -45,6 +45,7 @@ import {
 } from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
 import { resolveThemeTokens, TOKEN_KEYS } from "../theme/tokens";
+import { computeLayout, type LayoutComputationResult } from "../layout/responsive";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -106,6 +107,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
 
+  @query("section.card")
+  private _cardElement?: HTMLElement;
+
   private readonly _timerStateController: TimerStateController;
 
   private readonly _announcer = new TimerAnnouncer(STRINGS);
@@ -134,6 +138,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _dialResizeObserver?: ResizeObserver;
   private _lastDialSignature?: string;
   private _lastDialElement?: TeaTimerDial;
+
+  private _cardResizeObserver?: ResizeObserver;
+
+  private _layoutRaf?: number;
+
+  private _appliedLayout?: LayoutComputationResult;
 
   private _progressAnimationHandle?: number;
 
@@ -193,6 +203,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._config?.finishedAutoIdleMs ?? 5000,
     );
     this._applyThemeTokens(this._config?.themeTokens);
+    this._appliedLayout = undefined;
     const state = this._timerState ?? this._timerStateController.state;
     if (this._config) {
       this._viewModel = createTeaTimerViewModel(this._config, state);
@@ -207,6 +218,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._timerStateController.setPauseHelperEntityId(this._pauseHelperEntityId);
     this._evaluatePauseCapability();
     this.requestUpdate();
+    void this.updateComplete.then(() => {
+      this._scheduleLayoutComputation();
+    });
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -262,6 +276,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._dialResizeObserver.observe(dialWrapper);
     }
 
+    const cardElement = this._cardElement;
+    if (cardElement && "ResizeObserver" in window) {
+      this._cardResizeObserver = new ResizeObserver(() => {
+        this._scheduleLayoutComputation();
+      });
+      this._cardResizeObserver.observe(cardElement);
+    }
+
+    this._scheduleLayoutComputation();
     this._scheduleApplyDialDisplay("first-updated");
   }
 
@@ -2085,6 +2108,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
     this._dialResizeObserver?.disconnect();
     this._dialResizeObserver = undefined;
+    if (this._layoutRaf !== undefined) {
+      cancelAnimationFrame(this._layoutRaf);
+      this._layoutRaf = undefined;
+    }
+    this._cardResizeObserver?.disconnect();
+    this._cardResizeObserver = undefined;
+    this._appliedLayout = undefined;
     this._lastDialSignature = undefined;
     this._lastDialElement = undefined;
   }
@@ -2137,6 +2167,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   protected updated(changed: Map<string, unknown>) {
     super.updated(changed);
     this._scheduleApplyDialDisplay("updated");
+    this._scheduleLayoutComputation();
   }
 
   private _scheduleApplyDialDisplay(_reason: string): void {
@@ -2152,6 +2183,70 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       }
       this._applyDialDisplay(state, this._displayDurationSeconds);
     });
+  }
+
+  private _scheduleLayoutComputation(): void {
+    if (this._layoutRaf !== undefined) {
+      return;
+    }
+
+    this._layoutRaf = window.requestAnimationFrame(() => {
+      this._layoutRaf = undefined;
+      this._applyLayoutMetrics();
+    });
+  }
+
+  private _applyLayoutMetrics(): void {
+    const cardElement = this._cardElement;
+    if (!cardElement) {
+      return;
+    }
+
+    const style = window.getComputedStyle(cardElement);
+    const paddingLeft = Number.parseFloat(style.paddingLeft || "0") || 0;
+    const paddingRight = Number.parseFloat(style.paddingRight || "0") || 0;
+    const paddingTop = Number.parseFloat(style.paddingTop || "0") || 0;
+    const paddingBottom = Number.parseFloat(style.paddingBottom || "0") || 0;
+    const innerWidth = cardElement.clientWidth - (paddingLeft + paddingRight);
+    const innerHeight = cardElement.clientHeight - (paddingTop + paddingBottom);
+
+    if (!Number.isFinite(innerWidth) || innerWidth <= 0) {
+      return;
+    }
+
+    if (!Number.isFinite(innerHeight) || innerHeight <= 0) {
+      return;
+    }
+
+    const layout = computeLayout({
+      width: innerWidth,
+      height: innerHeight,
+      density: this._config?.layoutDensity ?? "auto",
+    });
+
+    const previous = this._appliedLayout;
+    if (
+      previous &&
+      previous.density === layout.density &&
+      previous.dialDiameter === layout.dialDiameter &&
+      previous.dialTrackWidth === layout.dialTrackWidth &&
+      previous.showHeaderTime === layout.showHeaderTime
+    ) {
+      return;
+    }
+
+    this._appliedLayout = { ...layout };
+
+    cardElement.style.setProperty("--ttc-layout-dial-diameter", `${layout.dialDiameter}px`);
+    cardElement.style.setProperty("--ttc-layout-track-width", `${layout.dialTrackWidth}px`);
+    cardElement.toggleAttribute("data-show-header-time", layout.showHeaderTime);
+    cardElement.setAttribute("data-density", layout.density);
+    this.setAttribute("data-density", layout.density);
+
+    const dialElement = this._resolveDialElement();
+    if (dialElement && dialElement.trackWidth !== layout.dialTrackWidth) {
+      dialElement.trackWidth = layout.dialTrackWidth;
+    }
   }
 
   private _setDisplayDurationSeconds(next: number | undefined) {
