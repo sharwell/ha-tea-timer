@@ -317,6 +317,36 @@ describe("TeaTimerCard", () => {
     expect(root.getAttribute("aria-disabled")).toBe("true");
   });
 
+  it("marks the dial as readonly while paused", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+    const pausedState: MachineTimerViewState = {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 90,
+    };
+
+    setTimerState(card, pausedState);
+    await card.updateComplete;
+
+    const dial = card.shadowRoot?.querySelector("tea-timer-dial") as TeaTimerDial | null;
+    expect(dial).toBeTruthy();
+    await dial?.updateComplete;
+
+    const root = dial?.shadowRoot?.querySelector<HTMLElement>(".dial-root");
+    expect(root).toBeTruthy();
+    if (!dial || !root) {
+      throw new Error("dial not ready");
+    }
+
+    expect(dial.interactive).toBe(false);
+    expect(root.classList.contains("is-paused")).toBe(true);
+    expect(root.tabIndex).toBe(-1);
+    expect(root.getAttribute("aria-disabled")).toBe("true");
+  });
+
   it("does not start the timer after dragging the dial while idle", async () => {
     const card = createCard();
     document.body.appendChild(card);

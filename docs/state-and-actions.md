@@ -50,8 +50,9 @@ stateDiagram-v2
 
 ## Paused
 
-- **What you see:** The dial remains locked, the progress arc freezes in place, and a “Paused” badge
-  appears above the card body. Resume and Restart controls replace the Pause button.
+- **What you see:** The dial remains locked with the handle hidden, the progress arc freezes in
+  place, and a “Paused” badge appears above the card body. Resume and Restart controls replace the
+  Pause button.
 - **Actions available:**
   - Tap **Resume** to continue from the stored remaining time (Home Assistant may emit
     `timer.restarted`; rely on `timer.finished` for automations).

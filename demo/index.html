@@ -158,6 +158,10 @@
           Running
         </label>
         <label>
+          <input type="radio" name="preview-state" value="paused" />
+          Paused
+        </label>
+        <label>
           <input type="radio" name="preview-state" value="finished" />
           Finished
         </label>
@@ -167,6 +171,7 @@
       <button type="button" id="btn-idle">Set idle</button>
       <button type="button" id="btn-run">Set running (2:30)</button>
       <button type="button" id="btn-estimate">Set running (estimated)</button>
+      <button type="button" id="btn-pause">Set paused (1:30)</button>
       <button type="button" id="btn-finish">Emit finished event</button>
       <button type="button" id="btn-unavailable">Mark unavailable</button>
       <button type="button" id="btn-disconnect">Disconnect</button>
@@ -617,10 +622,22 @@
 
         previewDial.bounds = { min: 15, max: 360, step: 5 };
         previewDial.value = state === "idle" ? 180 : 240;
-        previewDial.valueText = state === "running" ? "2:30" : state === "finished" ? "Done" : "3:00";
+        previewDial.valueText =
+          state === "running" || state === "paused"
+            ? "2:30"
+            : state === "finished"
+            ? "Done"
+            : "3:00";
         previewDial.interactive = state === "idle";
-        previewDial.status = state === "finished" ? "finished" : state === "running" ? "running" : "idle";
-        const fraction = state === "running" ? 0.6 : state === "finished" ? 1 : 0;
+        previewDial.status =
+          state === "finished"
+            ? "finished"
+            : state === "running"
+            ? "running"
+            : state === "paused"
+            ? "paused"
+            : "idle";
+        const fraction = state === "running" || state === "paused" ? 0.6 : state === "finished" ? 1 : 0;
         previewDial.setProgressFraction(fraction);
       }
 
@@ -685,6 +702,7 @@
       document.getElementById("btn-idle").addEventListener("click", () => environment.setIdle());
       document.getElementById("btn-run").addEventListener("click", () => environment.setRunning(150, true, 150));
       document.getElementById("btn-estimate").addEventListener("click", () => environment.setRunning(120, false, 240));
+      document.getElementById("btn-pause").addEventListener("click", () => environment.setPaused(90));
       document.getElementById("btn-finish").addEventListener("click", () => environment.emitFinished());
       document.getElementById("btn-unavailable").addEventListener("click", () => environment.setUnavailable());
       document.getElementById("btn-disconnect").addEventListener("click", () => environment.disconnect());
