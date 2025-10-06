@@ -12,6 +12,8 @@ const PROGRESS_RADIUS = PROGRESS_VIEWBOX_SIZE / 2 - PROGRESS_STROKE / 2;
 const PROGRESS_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RADIUS;
 const PROGRESS_CIRCUMFERENCE_TEXT = PROGRESS_CIRCUMFERENCE.toFixed(3);
 
+const POINTER_DRAG_SLOP_PX = 8;
+
 @customElement("tea-timer-dial")
 export class TeaTimerDial extends LitElement {
   static styles = css`
@@ -199,11 +201,21 @@ export class TeaTimerDial extends LitElement {
 
   private pendingProgressSync = false;
 
+  private pointerStartX: number | undefined;
+
+  private pointerStartY: number | undefined;
+
+  private pointerDragExceededSlop = false;
+
+  private suppressNextClick = false;
+
   private readonly pointerMoveHandler = (event: PointerEvent) => this.handlePointerMove(event);
 
   private readonly pointerEndHandler = (event: PointerEvent) => this.handlePointerEnd(event);
 
   private readonly rootPointerDownHandler = (event: PointerEvent) => this.handlePointerDown(event);
+
+  private readonly rootClickHandler = (event: MouseEvent) => this.handleRootClick(event);
 
   private readonly rootKeyDownHandler = (event: KeyboardEvent) => this.handleKeyDown(event);
 
@@ -241,6 +253,7 @@ export class TeaTimerDial extends LitElement {
         aria-valuenow=${Math.round(this.value)}
         aria-valuetext=${this.valueText || nothing}
         @pointerdown=${this.rootPointerDownHandler}
+        @click=${this.rootClickHandler}
         @keydown=${this.rootKeyDownHandler}
       >
         <div class="dial-track"></div>
@@ -298,6 +311,11 @@ export class TeaTimerDial extends LitElement {
     this.setPointerActive(true);
     this.gestureTracker.setNormalized(this.normalizedValue);
 
+    this.pointerStartX = Number.isFinite(event.clientX) ? event.clientX : undefined;
+    this.pointerStartY = Number.isFinite(event.clientY) ? event.clientY : undefined;
+    this.pointerDragExceededSlop = false;
+    this.suppressNextClick = false;
+
     const raw = this.getRawNormalized(event, target);
     const normalized = this.gestureTracker.jumpToRaw(raw);
     this.setNormalizedValue(normalized);
@@ -315,6 +333,22 @@ export class TeaTimerDial extends LitElement {
     }
 
     event.preventDefault();
+
+    if (
+      !this.pointerDragExceededSlop &&
+      this.pointerStartX !== undefined &&
+      this.pointerStartY !== undefined &&
+      Number.isFinite(event.clientX) &&
+      Number.isFinite(event.clientY)
+    ) {
+      const dx = event.clientX - this.pointerStartX;
+      const dy = event.clientY - this.pointerStartY;
+      if (Math.hypot(dx, dy) >= POINTER_DRAG_SLOP_PX) {
+        this.pointerDragExceededSlop = true;
+        this.suppressNextClick = true;
+      }
+    }
+
     const raw = this.getRawNormalized(event, target);
     const normalized = this.gestureTracker.updateFromRaw(raw);
     this.setNormalizedValue(normalized);
@@ -335,6 +369,14 @@ export class TeaTimerDial extends LitElement {
     this.setPointerActive(false);
     this.gestureTracker.setNormalized(this.normalizedValue);
 
+    const dragged = this.pointerDragExceededSlop;
+    this.pointerStartX = undefined;
+    this.pointerStartY = undefined;
+    this.pointerDragExceededSlop = false;
+    if (!dragged) {
+      this.suppressNextClick = false;
+    }
+
     const finalValue = normalizeDurationSeconds(
       this.normalizedToValue(this.normalizedValue),
       this.bounds,
@@ -347,6 +389,16 @@ export class TeaTimerDial extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  private handleRootClick(event: MouseEvent): void {
+    if (!this.suppressNextClick) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.suppressNextClick = false;
   }
 
   private handleKeyDown(event: KeyboardEvent): void {

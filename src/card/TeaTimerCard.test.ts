@@ -191,6 +191,55 @@ describe("TeaTimerCard", () => {
     handler._handleExtendAction();
   }
 
+  function createPointerEvent(
+    target: HTMLElement,
+    overrides: Partial<{ pointerId: number; clientX: number; clientY: number; button: number }> = {},
+  ): PointerEvent {
+    return {
+      button: overrides.button ?? 0,
+      pointerId: overrides.pointerId ?? 1,
+      clientX: overrides.clientX ?? 100,
+      clientY: overrides.clientY ?? 100,
+      currentTarget: target,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as PointerEvent;
+  }
+
+  function stubPointerInteractions(root: HTMLElement) {
+    const captured = new Set<number>();
+    Object.defineProperty(root, "setPointerCapture", {
+      configurable: true,
+      value: vi.fn((pointerId: number) => {
+        captured.add(pointerId);
+      }),
+    });
+    Object.defineProperty(root, "releasePointerCapture", {
+      configurable: true,
+      value: vi.fn((pointerId: number) => {
+        captured.delete(pointerId);
+      }),
+    });
+    Object.defineProperty(root, "hasPointerCapture", {
+      configurable: true,
+      value: (pointerId: number) => captured.has(pointerId),
+    });
+    Object.defineProperty(root, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 200,
+        right: 200,
+        bottom: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    });
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
@@ -236,6 +285,100 @@ describe("TeaTimerCard", () => {
 
     const after = getDisplayDuration(card);
     expect(after).toBe(150);
+  });
+
+  it("does not start the timer after dragging the dial while idle", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle", presets: [] });
+
+    const idleState: MachineTimerViewState = {
+      status: "idle",
+      durationSeconds: 240,
+      remainingSeconds: 240,
+    };
+
+    setTimerState(card, idleState);
+    await card.updateComplete;
+
+    const dial = card.shadowRoot?.querySelector("tea-timer-dial") as TeaTimerDial | null;
+    expect(dial).toBeTruthy();
+    await dial?.updateComplete;
+
+    const root = dial?.shadowRoot?.querySelector<HTMLElement>(".dial-root");
+    expect(root).toBeTruthy();
+    if (!dial || !root) {
+      throw new Error("dial not ready");
+    }
+
+    stubPointerInteractions(root);
+
+    const handlers = dial as unknown as {
+      rootPointerDownHandler(event: PointerEvent): void;
+      pointerMoveHandler(event: PointerEvent): void;
+      pointerEndHandler(event: PointerEvent): void;
+    };
+
+    handlers.rootPointerDownHandler(createPointerEvent(root, { clientX: 90, clientY: 90 }));
+    handlers.pointerMoveHandler(createPointerEvent(root, { clientX: 150, clientY: 90 }));
+    handlers.pointerEndHandler(createPointerEvent(root, { clientX: 150, clientY: 90 }));
+
+    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true });
+    root.dispatchEvent(clickEvent);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(startTimerMock).not.toHaveBeenCalled();
+  });
+
+  it("starts the timer when a dial tap stays within the drag slop", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle", presets: [] });
+
+    const idleState: MachineTimerViewState = {
+      status: "idle",
+      durationSeconds: 240,
+      remainingSeconds: 240,
+    };
+
+    setTimerState(card, idleState);
+    await card.updateComplete;
+
+    const dial = card.shadowRoot?.querySelector("tea-timer-dial") as TeaTimerDial | null;
+    expect(dial).toBeTruthy();
+    await dial?.updateComplete;
+
+    const root = dial?.shadowRoot?.querySelector<HTMLElement>(".dial-root");
+    expect(root).toBeTruthy();
+    if (!dial || !root) {
+      throw new Error("dial not ready");
+    }
+
+    stubPointerInteractions(root);
+
+    const handlers = dial as unknown as {
+      rootPointerDownHandler(event: PointerEvent): void;
+      pointerMoveHandler(event: PointerEvent): void;
+      pointerEndHandler(event: PointerEvent): void;
+    };
+
+    handlers.rootPointerDownHandler(createPointerEvent(root, { clientX: 100, clientY: 100 }));
+    handlers.pointerMoveHandler(createPointerEvent(root, { clientX: 104, clientY: 100 }));
+    handlers.pointerEndHandler(createPointerEvent(root, { clientX: 104, clientY: 100 }));
+
+    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true });
+    root.dispatchEvent(clickEvent);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(startTimerMock).toHaveBeenCalledTimes(1);
   });
 
   it("updates the dial value text immediately when idle input occurs", () => {

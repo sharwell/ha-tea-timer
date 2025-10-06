@@ -55,12 +55,12 @@ npm ci
   - `timer.finished` triggers a five-second overlay before settling back to Idle.
 - When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
 - Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy. The countdown pauses while disconnected and resumes after a successful resync.
-- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration. Running taps restart the timer by calling `timer.start` again with the desired duration (no client-side cancel). The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state.
+- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration. Running taps restart the timer by calling `timer.start` again with the desired duration (no client-side cancel). Dial drags never trigger these service calls—releasing after an adjustment leaves the timer idle until you explicitly tap/click/press Enter. The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state.
 - The connection status is monitored in real time. If the Home Assistant WebSocket disconnects the card freezes the countdown, surfaces a “Disconnected” banner, and disables interactions until the link is restored and a fresh state snapshot is fetched.
 
 ### Dial duration configuration
 
-- The circular dial is interactive only while the timer is Idle. Dragging or using the keyboard updates the local `selectedDurationSeconds` field shown in the time text; no Home Assistant service calls are made yet.
+- The circular dial is interactive only while the timer is Idle. Dragging or using the keyboard updates the local `selectedDurationSeconds` field shown in the time text; no Home Assistant service calls are made yet, and releasing after a drag never starts the brew on its own.
 - Duration selection is bounded and rounded with optional card options:
   - `minDurationSeconds` (default `15` seconds)
   - `maxDurationSeconds` (default `1200` seconds / 20 minutes)
