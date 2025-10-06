@@ -5,7 +5,13 @@ import { STRINGS } from "../strings";
 export interface TeaTimerPresetDefinition {
   label: string;
   durationSeconds: number;
+  icon?: string;
+  color?: string;
 }
+
+export type LayoutDensityOption = "auto" | "compact" | "regular";
+
+export type ThemeTokensOverride = Record<string, string>;
 
 export interface TeaTimerCardConfig {
   type: string;
@@ -23,6 +29,8 @@ export interface TeaTimerCardConfig {
   plusButtonIncrementS?: number;
   maxExtendS?: number;
   showPauseResume?: boolean;
+  layoutDensity?: LayoutDensityOption;
+  themeTokens?: ThemeTokensOverride;
 }
 
 export interface TeaTimerConfig {
@@ -40,6 +48,8 @@ export interface TeaTimerConfig {
   plusButtonIncrementSeconds: number;
   maxExtendSeconds?: number;
   showPauseResume: boolean;
+  layoutDensity: LayoutDensityOption;
+  themeTokens?: ThemeTokensOverride;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -92,6 +102,8 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
       const preset = item as Record<string, unknown>;
       const label = preset.label;
       const durationSeconds = preset.durationSeconds;
+      const icon = typeof preset.icon === "string" ? preset.icon.trim() || undefined : undefined;
+      const color = typeof preset.color === "string" ? preset.color.trim() || undefined : undefined;
 
       if (typeof label !== "string" || typeof durationSeconds !== "number") {
         errors.push(`${STRINGS.validation.presetInvalid} (index ${index})`);
@@ -103,7 +115,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
         return;
       }
 
-      presets.push({ label, durationSeconds });
+      presets.push({ label, durationSeconds, icon, color });
     });
 
     if (presets.length > 8) {
@@ -172,6 +184,29 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
   const showPlusButton = raw.showPlusButton !== false;
   const showPauseResume = raw.showPauseResume !== false;
 
+  let layoutDensity: LayoutDensityOption = "auto";
+  if (typeof raw.layoutDensity === "string") {
+    if (raw.layoutDensity === "auto" || raw.layoutDensity === "compact" || raw.layoutDensity === "regular") {
+      layoutDensity = raw.layoutDensity;
+    } else {
+      errors.push(STRINGS.validation.reservedOption("layoutDensity"));
+    }
+  }
+
+  let themeTokens: ThemeTokensOverride | undefined;
+  if (raw.themeTokens !== undefined) {
+    if (typeof raw.themeTokens === "object" && raw.themeTokens !== null && !Array.isArray(raw.themeTokens)) {
+      themeTokens = {};
+      for (const [key, value] of Object.entries(raw.themeTokens)) {
+        if (typeof value === "string") {
+          themeTokens[key] = value;
+        }
+      }
+    } else {
+      errors.push(STRINGS.validation.reservedOption("themeTokens"));
+    }
+  }
+
   let plusButtonIncrementSeconds = DEFAULT_PLUS_BUTTON_INCREMENT_SECONDS;
   if (typeof raw.plusButtonIncrementS === "number" && Number.isFinite(raw.plusButtonIncrementS)) {
     const rounded = Math.round(raw.plusButtonIncrementS);
@@ -238,6 +273,8 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     plusButtonIncrementSeconds,
     maxExtendSeconds,
     showPauseResume,
+    layoutDensity,
+    themeTokens,
   };
 
   return { config, errors };

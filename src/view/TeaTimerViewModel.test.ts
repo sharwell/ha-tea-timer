@@ -28,6 +28,8 @@ const config: TeaTimerConfig = {
   plusButtonIncrementSeconds: 60,
   maxExtendSeconds: undefined,
   showPauseResume: true,
+  layoutDensity: "auto",
+  themeTokens: undefined,
 };
 
 describe("createTeaTimerViewModel", () => {

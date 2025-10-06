@@ -76,6 +76,14 @@ npm ci
 - Entity-unavailable errors surface via `role="alert"` without stealing focus. Toasts for other errors remain polite live regions.
 - Reduced-motion preferences disable dial and spinner animations, and forced-colors/high-contrast modes fall back to system colors for primary controls.
 
+### Layout & Theme
+
+- `layoutDensity` lets you opt into compact or regular mode. The default (`"auto"`) uses the deterministic rules defined in [`src/layout/responsive.ts`](src/layout/responsive.ts) to pick the right density for the available width/height.
+- Compact mode scales the dial, thins the progress ring, and relocates the remaining time text to the header when the dial would drop below 160px.
+- The `themeTokens` object exposes CSS variables (`--ttc-bg`, `--ttc-fg`, `--ttc-accent`, etc.) so you can align the card with your dashboard theme without writing custom CSS.
+- Each preset can now include `icon` and `color` values. Colors pass through the WCAG-aware helper in [`src/theme/colors.ts`](src/theme/colors.ts) to guarantee 4.5:1 contrast; if a color can’t meet the threshold the card falls back to the neutral chip background.
+- See [Layout & Theme](docs/layout-and-theme.md) for the full list of tokens, breakpoints, and configuration examples.
+
 ### Troubleshooting
 
 - **Entity unavailable**: Verify the `entity` option matches an existing Home Assistant timer (e.g., `timer.tea_timer_kitchen`). The card will display the configured entity id to help diagnose typos.

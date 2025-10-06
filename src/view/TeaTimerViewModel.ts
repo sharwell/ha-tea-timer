@@ -12,6 +12,8 @@ export interface TeaTimerPresetViewModel {
   label: string;
   durationLabel: string;
   durationSeconds: number;
+  icon?: string;
+  color?: string;
 }
 
 export interface TeaTimerDialViewModel {
@@ -124,6 +126,8 @@ function createPresetViewModels(
       label: preset.label,
       durationSeconds,
       durationLabel: formatDurationSeconds(durationSeconds),
+      icon: preset.icon,
+      color: preset.color,
     };
   });
 }

@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Responsive layout density engine with automatic dial sizing and header time fallback for ultra-narrow cards.
+- CSS-variable theming support, including per-preset icons/colors with WCAG-aware contrast checks.
 - Pause/Resume controls for running brews, with accessible announcements, a frozen progress arc, and
   automatic fallback to an `input_text` helper when `timer.pause` is unavailable. Resuming via
   `timer.start` (without a duration) keeps remaining time authoritative across devices.

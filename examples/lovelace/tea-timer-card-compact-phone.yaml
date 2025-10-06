@@ -1,0 +1,20 @@
+# Compact density tuned for narrow phone dashboards
+- type: custom:tea-timer-card
+  title: Phone Brew Bar
+  entity: timer.phone_brew
+  layoutDensity: compact
+  presets:
+    - label: Matcha
+      durationSeconds: 90
+      icon: mdi:leaf
+      color: "#0d9488"
+    - label: Black Tea
+      durationSeconds: 240
+      icon: mdi:cup
+      color: "#7c3aed"
+    - label: Herbal
+      durationSeconds: 300
+      icon: mdi:flower-tulip
+      color: "#be123c"
+  showPauseResume: true
+  showPlusButton: false

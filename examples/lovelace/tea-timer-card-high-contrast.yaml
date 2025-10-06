@@ -1,0 +1,23 @@
+# High-contrast theme for accessibility testing
+- type: custom:tea-timer-card
+  title: High Contrast Brew
+  entity: timer.accessible_brew
+  layoutDensity: auto
+  themeTokens:
+    --ttc-bg: "#000000"
+    --ttc-fg: "#ffffff"
+    --ttc-accent: "#22c55e"
+    --ttc-dial-track: "#525252"
+    --ttc-dial-progress: "#22c55e"
+    --ttc-chip-bg: "#171717"
+    --ttc-chip-fg: "#f5f5f5"
+    --ttc-chip-selected-bg: "#22c55e"
+    --ttc-chip-selected-fg: "#000000"
+    --ttc-focus-ring: "#f97316"
+  presets:
+    - label: Morning Blend
+      durationSeconds: 180
+    - label: Afternoon Steep
+      durationSeconds: 240
+      icon: mdi:clock-outline
+      color: "#22c55e"

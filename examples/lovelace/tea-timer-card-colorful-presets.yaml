@@ -1,0 +1,23 @@
+# Demonstrates per-preset icons and WCAG-aware colors
+- type: custom:tea-timer-card
+  title: Colorful Presets
+  entity: timer.colorful_brew
+  themeTokens:
+    --ttc-bg: "#0f172a"
+    --ttc-fg: "#f8fafc"
+    --ttc-accent: "#38bdf8"
+    --ttc-chip-selected-bg: "#38bdf8"
+    --ttc-chip-selected-fg: "#0f172a"
+  presets:
+    - label: Jasmine
+      durationSeconds: 150
+      icon: mdi:flower
+      color: "#f59e0b"
+    - label: Oolong
+      durationSeconds: 210
+      icon: mdi:tea
+      color: "#06b6d4"
+    - label: Rooibos
+      durationSeconds: 300
+      icon: mdi:leaf-circle
+      color: "#f43f5e"
