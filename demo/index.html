@@ -199,6 +199,9 @@
         const states = {};
         let durationSeconds = initialDurationSeconds;
         let current = createEntity(entityId, "idle", durationSeconds, durationSeconds);
+        let finishTimerHandle;
+        let timerEndTimestamp;
+        let pausedRemainingSeconds;
         let shouldFailCall = false;
         states[entityId] = current;
 
@@ -213,12 +216,55 @@
           });
         }
 
+        function clearFinishTimer() {
+          if (finishTimerHandle !== undefined) {
+            clearTimeout(finishTimerHandle);
+            finishTimerHandle = undefined;
+          }
+        }
+
+        function scheduleFinish(secondsRemaining) {
+          clearFinishTimer();
+          if (secondsRemaining <= 0) {
+            Promise.resolve().then(() => environment.emitFinished());
+            return;
+          }
+
+          finishTimerHandle = setTimeout(() => {
+            finishTimerHandle = undefined;
+            environment.emitFinished();
+          }, secondsRemaining * 1000);
+        }
+
+        function getRemainingSeconds() {
+          if (current.state === "paused") {
+            return pausedRemainingSeconds ?? durationSeconds;
+          }
+
+          if (current.state === "active") {
+            if (typeof timerEndTimestamp === "number") {
+              return Math.max(0, Math.ceil((timerEndTimestamp - Date.now()) / 1000));
+            }
+            return durationSeconds;
+          }
+
+          return durationSeconds;
+        }
+
         Object.assign(environment, {
           connection,
           hass: {
             locale: { language: "en" },
             states,
             connection,
+            services: {
+              timer: {
+                start: {},
+                cancel: {},
+                change: {},
+                pause: {},
+              },
+            },
             async callService(domain, service, data) {
               if (shouldFailCall) {
                 shouldFailCall = false;
@@ -230,9 +276,21 @@
               }
 
               if (service === "start") {
-                const runDuration = Math.max(1, Number(data?.duration ?? durationSeconds));
+                const hasDuration = data && data.duration !== undefined;
+                const requestedDuration = hasDuration ? Number(data.duration) : undefined;
+                const isResume = !hasDuration && current.state === "paused";
+
+                if (isResume) {
+                  const resumeSeconds = getRemainingSeconds();
+                  environment.setRunning(resumeSeconds, true);
+                  connection.emit("timer.restarted", { entity_id: entityId });
+                  return undefined;
+                }
+
+                const runDuration = Math.max(1, Number.isFinite(requestedDuration) ? Number(requestedDuration) : durationSeconds);
                 durationSeconds = runDuration;
-                environment.setRunning(runDuration);
+                environment.setRunning(runDuration, true, runDuration);
+                connection.emit("timer.started", { entity_id: entityId });
                 return undefined;
               }
 
@@ -241,23 +299,65 @@
                 return undefined;
               }
 
+               if (service === "pause") {
+                 const remaining = getRemainingSeconds();
+                 environment.setPaused(remaining);
+                 connection.emit("timer.paused", { entity_id: entityId });
+                 return undefined;
+               }
+
+               if (service === "change") {
+                 const deltaSeconds = Number(data?.duration ?? 0);
+                 if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) {
+                   return undefined;
+                 }
+
+                 const updated = Math.max(0, getRemainingSeconds() + deltaSeconds);
+                 if (current.state === "paused") {
+                   environment.setPaused(updated);
+                 } else if (current.state === "active") {
+                   environment.setRunning(updated, true);
+                 }
+                 return undefined;
+               }
+
               return undefined;
             },
           },
           setIdle() {
+            clearFinishTimer();
+            pausedRemainingSeconds = undefined;
+            timerEndTimestamp = undefined;
             emitState(createEntity(entityId, "idle", durationSeconds, durationSeconds));
           },
-          setRunning(remainingSeconds, includeRemaining = true) {
-            const remaining = includeRemaining ? remainingSeconds : undefined;
+          setRunning(remainingSeconds, includeRemaining = true, totalDurationSeconds = durationSeconds) {
+            const safeTotal = Math.max(1, Math.round(totalDurationSeconds));
+            const safeRemaining = Math.max(0, Math.round(remainingSeconds ?? safeTotal));
+            durationSeconds = safeTotal;
+            pausedRemainingSeconds = undefined;
+            timerEndTimestamp = Date.now() + safeRemaining * 1000;
+            const remaining = includeRemaining ? safeRemaining : undefined;
             const entity = createEntity(entityId, "active", durationSeconds, remaining);
-            if (!includeRemaining && remainingSeconds !== undefined) {
-              const lastChanged = new Date(Date.now() - (durationSeconds - remainingSeconds) * 1000).toISOString();
+            if (!includeRemaining && safeRemaining <= durationSeconds) {
+              const startTime = Date.now() - (durationSeconds - safeRemaining) * 1000;
+              const lastChanged = new Date(startTime).toISOString();
               entity.last_changed = lastChanged;
               entity.last_updated = lastChanged;
             }
             emitState(entity);
+            scheduleFinish(safeRemaining);
+          },
+          setPaused(remainingSeconds) {
+            const safeRemaining = Math.max(0, Math.round(remainingSeconds ?? getRemainingSeconds()));
+            pausedRemainingSeconds = safeRemaining;
+            timerEndTimestamp = undefined;
+            clearFinishTimer();
+            emitState(createEntity(entityId, "paused", durationSeconds, safeRemaining));
           },
           setUnavailable() {
+            clearFinishTimer();
+            pausedRemainingSeconds = undefined;
+            timerEndTimestamp = undefined;
             const now = new Date().toISOString();
             emitState({
               entity_id: entityId,
@@ -268,6 +368,9 @@
             });
           },
           emitFinished() {
+            clearFinishTimer();
+            pausedRemainingSeconds = undefined;
+            timerEndTimestamp = undefined;
             connection.emit("timer.finished", {
               entity_id: entityId,
             });
@@ -362,8 +465,8 @@
         .catch(() => {});
 
       document.getElementById("btn-idle").addEventListener("click", () => environment.setIdle());
-      document.getElementById("btn-run").addEventListener("click", () => environment.setRunning(150));
-      document.getElementById("btn-estimate").addEventListener("click", () => environment.setRunning(120, false));
+      document.getElementById("btn-run").addEventListener("click", () => environment.setRunning(150, true, 150));
+      document.getElementById("btn-estimate").addEventListener("click", () => environment.setRunning(120, false, 240));
       document.getElementById("btn-finish").addEventListener("click", () => environment.emitFinished());
       document.getElementById("btn-unavailable").addEventListener("click", () => environment.setUnavailable());
       document.getElementById("btn-disconnect").addEventListener("click", () => environment.disconnect());
