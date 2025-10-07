@@ -37,6 +37,19 @@ const HELPERS: Record<string, string> = {
   finishedAutoIdleMs: "Delay before returning to idle after the finished overlay appears. Defaults to 5000 ms.",
 };
 
+const DOCUMENTATION_LINKS = [
+  {
+    label: "Quick start guide",
+    href: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/getting-started.md",
+    ariaLabel: "Open the quick start guide in a new tab",
+  },
+  {
+    label: "Automate on timer.finished",
+    href: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/automations/finished.md",
+    ariaLabel: "Open the automate on timer.finished guide in a new tab",
+  },
+] as const;
+
 @customElement("tea-timer-card-editor")
 export class TeaTimerCardEditor
   extends LitElement
@@ -134,6 +147,26 @@ export class TeaTimerCardEditor
     .advanced-content {
       margin-top: 12px;
     }
+
+    .editor-help {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--divider-color, #bdbdbd);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .editor-help-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .editor-help a {
+      color: var(--primary-color);
+    }
   `;
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -197,6 +230,24 @@ export class TeaTimerCardEditor
           ></ha-form>
         </div>
       </details>
+
+      <footer class="editor-help">
+        <span id="documentation-links-heading">Documentation</span>
+        <div class="editor-help-links" aria-labelledby="documentation-links-heading">
+          ${DOCUMENTATION_LINKS.map(
+            (link) => html`
+              <a
+                href=${link.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="${link.ariaLabel} (opens in new tab)"
+              >
+                ${link.label}
+              </a>
+            `,
+          )}
+        </div>
+      </footer>
     `;
   }
 
