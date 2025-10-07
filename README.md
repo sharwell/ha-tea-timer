@@ -67,7 +67,8 @@ npm ci
   - `maxDurationSeconds` (default `1200` seconds / 20 minutes)
   - `stepSeconds` (default `5` seconds)
 - Values are clamped within the configured range and rounded to the nearest step. Crossing the 12‑o’clock boundary is smoothed so the value continues naturally.
-- Accessibility: the dial exposes `role="slider"` with `aria-valuemin`, `aria-valuemax`, and `aria-valuenow`. Keyboard controls mirror the pointer interactions (`←`/`↓` decrease by `stepSeconds`, `→`/`↑` increase by `stepSeconds`, `PageDown`/`PageUp` adjust by 30 seconds). Right and Left follow the current text direction so RTL locales nudge in the expected direction. When running or paused, the slider reports `aria-readonly="true"` and `aria-disabled="true"` so screen readers announce the locked state.
+  - Accessibility: the dial exposes `role="slider"` with `aria-valuemin`, `aria-valuemax`, and `aria-valuenow`. Keyboard controls mirror the pointer interactions (`←`/`↓` decrease by `stepSeconds`, `→`/`↑` increase by `stepSeconds`, `PageDown`/`PageUp` adjust by 30 seconds). Right and Left follow the current text direction so RTL locales nudge in the expected direction. When running or paused, the slider reports `aria-readonly="true"` and `aria-disabled="true"` so screen readers announce the locked state.
+- The **Custom duration** indicator fades in when you leave a preset, but the preset row keeps its height reserved so drag or keyboard tweaks never shift surrounding controls.
 
 ### Accessibility
 

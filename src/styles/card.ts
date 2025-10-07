@@ -186,12 +186,12 @@ export const cardStyles = css`
     cursor: progress;
   }
 
-  .interaction .presets {
-    order: 1;
-  }
-
   .interaction .dial-wrapper {
     order: 0;
+  }
+
+  .interaction .presets-section {
+    order: 1;
   }
 
   .estimation {
@@ -199,6 +199,11 @@ export const cardStyles = css`
     color: var(--warning-color, #a86a13);
     text-align: center;
     margin: 8px 0 0;
+  }
+
+  .presets-section {
+    display: flex;
+    flex-direction: column;
   }
 
   .presets {
@@ -253,10 +258,27 @@ export const cardStyles = css`
   }
 
   .preset-custom {
-    display: inline-block;
+    display: block;
     margin-top: 4px;
     font-size: 0.8rem;
+    line-height: 1.4;
+    min-height: calc(0.8rem * 1.4);
     color: var(--secondary-text-color, #52606d);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 120ms ease;
+  }
+
+  .preset-custom-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .preset-custom {
+      transition: none;
+    }
   }
 
   .primary-action {

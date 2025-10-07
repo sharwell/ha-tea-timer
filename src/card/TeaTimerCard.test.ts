@@ -151,6 +151,46 @@ describe("TeaTimerCard", () => {
     handler._onDialInput(new CustomEvent("dial-input", { detail: { value } }));
   }
 
+  function measurePresetRowHeight(card: TeaTimerCard): number {
+    const shadow = card.shadowRoot;
+    if (!shadow) {
+      throw new Error("card shadow root missing");
+    }
+
+    const row = shadow.querySelector<HTMLElement>(".presets-section");
+    if (!row) {
+      throw new Error("preset section not found");
+    }
+
+    Object.defineProperty(row, "getBoundingClientRect", {
+      configurable: true,
+      value: () => {
+        const indicator = row.querySelector(".preset-custom");
+        const hasIndicator = !!indicator;
+        const baseHeight = 56;
+        const indicatorHeight = hasIndicator ? 20 : 0;
+        const height = baseHeight + indicatorHeight;
+        return {
+          x: 0,
+          y: 0,
+          width: 320,
+          height,
+          top: 0,
+          left: 0,
+          right: 320,
+          bottom: height,
+          toJSON: () => ({}),
+        } as DOMRect;
+      },
+    });
+
+    return row.getBoundingClientRect().height;
+  }
+
+  function getPresetIndicator(card: TeaTimerCard): HTMLElement | null {
+    return card.shadowRoot?.querySelector<HTMLElement>(".preset-custom") ?? null;
+  }
+
   function pointerSelectPreset(card: TeaTimerCard, presetId: number) {
     const handler = card as unknown as {
       _onPresetPointerDown(event: PointerEvent, presetId: number): void;
@@ -1560,7 +1600,147 @@ describe("TeaTimerCard", () => {
     const container = document.createElement("div");
     render(presetsTemplate as TemplateResult, container);
     const customLabel = container.querySelector(".preset-custom");
-    expect(customLabel?.textContent).toBe(STRINGS.presetsCustomLabel);
+    expect(customLabel?.textContent?.trim()).toBe(STRINGS.presetsCustomLabel);
+  });
+
+  describe("custom preset layout", () => {
+    it("keeps preset row height stable while toggling custom via dial drag", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.kettle",
+        presets: [
+          { label: "Green", durationSeconds: 120 },
+          { label: "Black", durationSeconds: 240 },
+        ],
+      });
+      card.hass = createHass();
+
+      setTimerState(card, {
+        status: "idle",
+        durationSeconds: 120,
+        remainingSeconds: 120,
+      });
+
+      await card.updateComplete;
+
+      const baseHeight = measurePresetRowHeight(card);
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+
+      triggerDialInput(card, 195);
+      await card.updateComplete;
+
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      const customHeight = measurePresetRowHeight(card);
+      expect(customHeight).toBe(baseHeight);
+
+      triggerDialInput(card, 240);
+      await card.updateComplete;
+
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      const restoredHeight = measurePresetRowHeight(card);
+      expect(restoredHeight).toBe(baseHeight);
+
+      card.remove();
+    });
+
+    it("keeps preset row height stable while toggling custom via keyboard adjustments", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.kettle",
+        presets: [
+          { label: "Green", durationSeconds: 120 },
+          { label: "Black", durationSeconds: 240 },
+        ],
+      });
+      card.hass = createHass();
+
+      setTimerState(card, {
+        status: "idle",
+        durationSeconds: 240,
+        remainingSeconds: 240,
+      });
+
+      await card.updateComplete;
+
+      const dial = card.shadowRoot?.querySelector("tea-timer-dial");
+      expect(dial).not.toBeNull();
+      const baselineHeight = measurePresetRowHeight(card);
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+
+      dial?.dispatchEvent(
+        new CustomEvent("dial-input", {
+          detail: { value: 270 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await card.updateComplete;
+
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      const customHeight = measurePresetRowHeight(card);
+      expect(customHeight).toBe(baselineHeight);
+
+      dial?.dispatchEvent(
+        new CustomEvent("dial-input", {
+          detail: { value: 240 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await card.updateComplete;
+
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      const restoredHeight = measurePresetRowHeight(card);
+      expect(restoredHeight).toBe(baselineHeight);
+
+      card.remove();
+    });
+
+    it("keeps preset row height stable in RTL with wrapped labels", async () => {
+      const card = createCard();
+      card.setAttribute("dir", "rtl");
+      document.body.appendChild(card);
+      card.setConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.kettle",
+        presets: [
+          { label: "Very Long Jasmine & Chrysanthemum Blend", durationSeconds: 180 },
+          { label: "Another Exceptionally Long Label", durationSeconds: 240 },
+        ],
+      });
+      card.hass = createHass();
+
+      setTimerState(card, {
+        status: "idle",
+        durationSeconds: 180,
+        remainingSeconds: 180,
+      });
+
+      await card.updateComplete;
+
+      const baseHeight = measurePresetRowHeight(card);
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+
+      triggerDialInput(card, 255);
+      await card.updateComplete;
+
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      const customHeight = measurePresetRowHeight(card);
+      expect(customHeight).toBe(baseHeight);
+
+      triggerDialInput(card, 180);
+      await card.updateComplete;
+
+      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      const restoredHeight = measurePresetRowHeight(card);
+      expect(restoredHeight).toBe(baseHeight);
+
+      card.remove();
+    });
   });
 
   it("highlights the preset when the dial snaps to a preset duration", () => {
