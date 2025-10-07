@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <title>Tea Timer Card Preview</title>
     <script type="module" src="../src/index.ts"></script>
+    <script type="module">
+      if (import.meta.env.DEV) {
+        import("./debug-overlay.ts");
+      }
+    </script>
     <style>
       body {
         margin: 0;
