@@ -186,12 +186,12 @@ export const cardStyles = css`
     cursor: progress;
   }
 
-  .interaction .presets {
-    order: 1;
-  }
-
   .interaction .dial-wrapper {
     order: 0;
+  }
+
+  .interaction .presets-section {
+    order: 1;
   }
 
   .estimation {
