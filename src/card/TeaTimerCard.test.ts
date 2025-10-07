@@ -1665,6 +1665,147 @@ describe("TeaTimerCard", () => {
     expect(emptyState?.textContent).toBe(STRINGS.presetsMissing);
   });
 
+  describe("entity error surface", () => {
+    it("renders a consolidated message when the entity is missing", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      setTimerState(
+        card,
+        { status: "unavailable" },
+        {
+          connectionStatus: "connected",
+          uiState: { kind: "Error", reason: "EntityConfigMissing" },
+          entityId: undefined,
+        },
+      );
+
+      await card.updateComplete;
+
+      const shadow = card.shadowRoot as ShadowRoot;
+      const alerts = shadow.querySelectorAll('[role="alert"]');
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.textContent?.trim()).toBe(STRINGS.entityErrorMissing);
+      expect(shadow.querySelector(".entity-error")?.textContent?.trim()).toBe(
+        STRINGS.entityErrorMissing,
+      );
+      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".primary-action")).toBeNull();
+      expect(shadow.querySelector(".empty-state")).toBeNull();
+    });
+
+    it("indicates when the configured entity is not a timer", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      const entityId = "sensor.not_a_timer";
+      setTimerState(
+        card,
+        { status: "unavailable" },
+        {
+          connectionStatus: "connected",
+          uiState: { kind: "Error", reason: "EntityWrongDomain", detail: entityId },
+          entityId,
+        },
+      );
+
+      await card.updateComplete;
+
+      const shadow = card.shadowRoot as ShadowRoot;
+      const message = shadow.querySelector(".entity-error")?.textContent ?? "";
+      expect(message).toContain(entityId);
+      expect(message.trim()).toBe(STRINGS.entityErrorInvalid(entityId));
+      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelectorAll('[role="alert"]').length).toBe(1);
+    });
+
+    it("describes when the timer entity is unavailable", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      const entityId = "timer.kitchen";
+      card.setConfig({ type: "custom:tea-timer-card", entity: entityId });
+
+      setTimerState(
+        card,
+        { status: "unavailable" },
+        {
+          connectionStatus: "connected",
+          uiState: { kind: "Error", reason: "EntityUnavailable", detail: entityId },
+          entityId,
+        },
+      );
+
+      await card.updateComplete;
+
+      const shadow = card.shadowRoot as ShadowRoot;
+      const message = shadow.querySelector(".entity-error")?.textContent?.trim();
+      expect(message).toBe(STRINGS.entityErrorUnavailable(entityId));
+      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelectorAll('[role="alert"]').length).toBe(1);
+    });
+
+    it("suppresses entity errors while disconnected", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      setTimerState(
+        card,
+        { status: "unavailable" },
+        {
+          connectionStatus: "disconnected",
+          uiState: { kind: "Error", reason: "Disconnected" },
+        },
+      );
+
+      await card.updateComplete;
+
+      const shadow = card.shadowRoot as ShadowRoot;
+      expect(shadow.querySelector(".entity-error")).toBeNull();
+      const banner = shadow.querySelector(".state-banner");
+      expect(banner?.textContent?.trim()).toBe(STRINGS.disconnectedMessage);
+      expect(shadow.querySelectorAll('[role="alert"]').length).toBe(0);
+    });
+
+    it("restores interaction controls once the entity recovers", async () => {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+
+      setTimerState(
+        card,
+        { status: "unavailable" },
+        {
+          connectionStatus: "connected",
+          uiState: { kind: "Error", reason: "EntityNotFound", detail: "timer.missing" },
+          entityId: "timer.missing",
+        },
+      );
+
+      await card.updateComplete;
+      const shadow = card.shadowRoot as ShadowRoot;
+      expect(shadow.querySelector(".interaction")).toBeNull();
+
+      setTimerState(
+        card,
+        { status: "idle", durationSeconds: 180, remainingSeconds: 180 },
+        {
+          connectionStatus: "connected",
+          uiState: "Idle",
+          entityId: "timer.kettle",
+        },
+      );
+
+      await card.updateComplete;
+
+      expect(shadow.querySelector(".entity-error")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      expect(shadow.querySelectorAll('[role="alert"]').length).toBe(0);
+    });
+  });
+
   it("does not render preview banners or inline documentation links", async () => {
     const card = createCard();
     document.body.appendChild(card);
