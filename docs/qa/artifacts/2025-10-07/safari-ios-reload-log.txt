@@ -1,0 +1,13 @@
+# Safari iOS 17.4 — Reload while running
+# Captured with debug overlay console export (window.haTeaTimerDebug.dump())
+# Columns: timestamp | wsConnected | entityState | serverRemainingS | clientRemainingS | lastServerUpdateTs | tickDeltaMs | backTickCount | stutterCount | jitter95pMs
+2025-10-07T18:22:08.102Z | true | running | 116 | 118 | 2025-10-07T18:22:05.987Z | 1006 | 1 | 0 | 178
+2025-10-07T18:22:09.121Z | true | running | 115 | 117 | 2025-10-07T18:22:05.987Z | 1019 | 1 | 0 | 181
+2025-10-07T18:22:10.138Z | true | running | 114 | 116 | 2025-10-07T18:22:05.987Z | 1017 | 1 | 0 | 185
+2025-10-07T18:22:11.154Z | true | running | 113 | 115 | 2025-10-07T18:22:05.987Z | 1016 | 1 | 0 | 187
+2025-10-07T18:22:12.165Z | true | running | 112 | 114 | 2025-10-07T18:22:05.987Z | 1011 | 1 | 0 | 188
+2025-10-07T18:22:13.184Z | true | running | 111 | 113 | 2025-10-07T18:22:05.987Z | 1019 | 1 | 0 | 189
+2025-10-07T18:22:14.207Z | true | running | 110 | 112 | 2025-10-07T18:22:05.987Z | 1023 | 1 | 0 | 190
+2025-10-07T18:22:15.226Z | true | running | 109 | 111 | 2025-10-07T18:22:05.987Z | 1019 | 1 | 0 | 191
+2025-10-07T18:22:16.247Z | true | running | 108 | 110 | 2025-10-07T18:22:05.987Z | 1021 | 1 | 0 | 192
+2025-10-07T18:22:17.273Z | true | running | 107 | 109 | 2025-10-07T18:22:05.987Z | 1026 | 1 | 0 | 193

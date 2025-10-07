@@ -1,0 +1,7 @@
+# Home Assistant iOS webview — Start jitter
+# Captured with debug overlay console export (window.haTeaTimerDebug.dump())
+2025-10-07T17:04:55.487Z | true | idle | 0 | 0 | 2025-10-07T17:04:55.112Z | - | 0 | 0 | 0
+2025-10-07T17:04:55.993Z | true | running | 179 | 184 | 2025-10-07T17:04:55.612Z | 501 | 0 | 0 | 96
+2025-10-07T17:04:56.502Z | true | running | 178 | 183 | 2025-10-07T17:04:55.612Z | 509 | 0 | 0 | 102
+2025-10-07T17:04:57.014Z | true | running | 177 | 182 | 2025-10-07T17:04:55.612Z | 512 | 0 | 0 | 109
+2025-10-07T17:04:57.523Z | true | running | 176 | 181 | 2025-10-07T17:04:55.612Z | 509 | 0 | 0 | 112

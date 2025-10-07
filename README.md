@@ -2,7 +2,7 @@
 
 Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the perfect cup. The project is currently in a preview state while core functionality is being implemented.
 
-> **Latest release:** [Tea Timer Card v0.1.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0) — our minimum viable deliverable (MVD). See the [QA matrix](docs/qa-matrix.md) for tested platforms and the [release checklist](docs/release-checklist.md) for the gates we run before publishing.
+> **Latest release:** [Tea Timer Card v0.1.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0) — our minimum viable deliverable (MVD). See the [QA matrix](docs/qa-matrix.md) for tested platforms, the [countdown reproduction matrix](docs/qa/countdown-repro-matrix.md) for evidence gathered during #52, and the [release checklist](docs/release-checklist.md) for the gates we run before publishing.
 
 ## Getting Started
 
