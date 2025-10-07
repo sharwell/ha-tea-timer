@@ -23,7 +23,11 @@ export interface TeaTimerEditorPresetFormData {
 export interface TeaTimerEditorBaseFormData {
   title?: string;
   entity?: string;
-  defaultPreset?: string;
+}
+
+export interface TeaTimerEditorDefaultPresetData {
+  value?: string | number;
+  index?: number;
 }
 
 export interface TeaTimerEditorAdvancedFormData {
@@ -39,12 +43,12 @@ export interface TeaTimerEditorFormData {
   base: TeaTimerEditorBaseFormData;
   presets: TeaTimerEditorPresetFormData[];
   advanced: TeaTimerEditorAdvancedFormData;
+  defaultPreset: TeaTimerEditorDefaultPresetData;
 }
 
 export const BASE_FORM_SCHEMA: readonly HaFormSchema[] = [
   { name: "title", selector: { text: {} } },
   { name: "entity", selector: { entity: { domain: "timer" } } },
-  { name: "defaultPreset", selector: { text: {} } },
 ] as const;
 
 export const PRESET_FORM_SCHEMA: readonly HaFormSchema[] = [
@@ -130,12 +134,6 @@ export function createEditorFormData(
   const base: TeaTimerEditorBaseFormData = {
     title: typeof cardConfig.title === "string" ? cardConfig.title : "",
     entity: typeof cardConfig.entity === "string" ? cardConfig.entity : "",
-    defaultPreset:
-      typeof cardConfig.defaultPreset === "string"
-        ? cardConfig.defaultPreset
-        : typeof cardConfig.defaultPreset === "number"
-          ? String(cardConfig.defaultPreset)
-          : "",
   };
 
   const advanced: TeaTimerEditorAdvancedFormData = {
@@ -169,7 +167,36 @@ export function createEditorFormData(
     presets.push({});
   }
 
-  return { base, presets, advanced };
+  const defaultPresetValue =
+    typeof cardConfig.defaultPreset === "string" || typeof cardConfig.defaultPreset === "number"
+      ? cardConfig.defaultPreset
+      : undefined;
+
+  let defaultPresetIndex: number | undefined;
+  if (Array.isArray(cardConfig.presets) && defaultPresetValue !== undefined) {
+    if (typeof defaultPresetValue === "string") {
+      const matchedIndex = cardConfig.presets.findIndex((preset) => preset?.label === defaultPresetValue);
+      if (matchedIndex >= 0) {
+        defaultPresetIndex = matchedIndex;
+      }
+    } else if (
+      Number.isInteger(defaultPresetValue) &&
+      defaultPresetValue >= 0 &&
+      defaultPresetValue < cardConfig.presets.length
+    ) {
+      defaultPresetIndex = defaultPresetValue;
+    }
+  }
+
+  return {
+    base,
+    presets,
+    advanced,
+    defaultPreset: {
+      value: defaultPresetValue,
+      index: defaultPresetIndex,
+    },
+  };
 }
 
 export function createConfigFromEditorFormData(
@@ -194,9 +221,14 @@ export function createConfigFromEditorFormData(
     delete result.entity;
   }
 
-  if (base.defaultPreset && base.defaultPreset.trim().length) {
-    const trimmed = base.defaultPreset.trim();
-    if (options.defaultPresetWasNumber && /^-?\d+$/.test(trimmed)) {
+  const defaultPresetValue = formData.defaultPreset?.value;
+  if (typeof defaultPresetValue === "number") {
+    result.defaultPreset = defaultPresetValue;
+  } else if (typeof defaultPresetValue === "string") {
+    const trimmed = defaultPresetValue.trim();
+    if (!trimmed.length) {
+      delete result.defaultPreset;
+    } else if (options.defaultPresetWasNumber && /^-?\d+$/.test(trimmed)) {
       result.defaultPreset = Number(trimmed);
     } else {
       result.defaultPreset = trimmed;

@@ -18,7 +18,6 @@ import {
 const LABELS: Record<string, string> = {
   title: "Title",
   entity: "Timer entity",
-  defaultPreset: "Default preset",
   label: "Label",
   duration: "Duration",
   minDurationSeconds: "Minimum duration (seconds)",
@@ -30,13 +29,12 @@ const LABELS: Record<string, string> = {
 };
 
 const HELPERS: Record<string, string> = {
-  defaultPreset: "Optional label or index applied when the card loads.",
   confirmRestart: "Ask for confirmation when resuming a completed brew.",
   disableClockSkewEstimator: "Bypass network clock drift smoothing (advanced).",
-  minDurationSeconds: "Lower bound for the dial when dragging presets.",
-  maxDurationSeconds: "Upper bound for the dial when dragging presets.",
-  stepSeconds: "Dial increments when adjusting custom times.",
-  finishedAutoIdleMs: "Delay before returning to idle after the finished overlay appears.",
+  minDurationSeconds: "Lower bound for the dial when dragging presets. Defaults to 15 seconds.",
+  maxDurationSeconds: "Upper bound for the dial when dragging presets. Defaults to 1200 seconds.",
+  stepSeconds: "Dial increments when adjusting custom times. Defaults to 5 seconds.",
+  finishedAutoIdleMs: "Delay before returning to idle after the finished overlay appears. Defaults to 5000 ms.",
 };
 
 @customElement("tea-timer-card-editor")
@@ -75,6 +73,18 @@ export class TeaTimerCardEditor
       display: flex;
       flex-direction: column;
       gap: 8px;
+    }
+
+    .default-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    .default-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
     }
 
     button {
@@ -134,6 +144,7 @@ export class TeaTimerCardEditor
     base: {},
     presets: [{}],
     advanced: {},
+    defaultPreset: {},
   };
 
   private _defaultPresetWasNumber = false;
@@ -146,6 +157,7 @@ export class TeaTimerCardEditor
       base: { ...data.base },
       presets: data.presets.map((preset) => ({ ...preset })),
       advanced: { ...data.advanced },
+      defaultPreset: { ...data.defaultPreset },
     };
   }
 
@@ -156,6 +168,7 @@ export class TeaTimerCardEditor
 
     return html`
       <ha-form
+        .hass=${this.hass}
         .data=${this._formData.base}
         .schema=${BASE_FORM_SCHEMA}
         .computeLabel=${this._computeLabel}
@@ -175,6 +188,7 @@ export class TeaTimerCardEditor
         <summary>Advanced options</summary>
         <div class="advanced-content">
           <ha-form
+            .hass=${this.hass}
             .data=${this._formData.advanced}
             .schema=${ADVANCED_FORM_SCHEMA}
             .computeLabel=${this._computeLabel}
@@ -190,6 +204,7 @@ export class TeaTimerCardEditor
     return html`
       <div class="preset-row">
         <ha-form
+          .hass=${this.hass}
           .data=${preset}
           .schema=${PRESET_FORM_SCHEMA}
           .computeLabel=${this._computeLabel}
@@ -198,6 +213,15 @@ export class TeaTimerCardEditor
             this._handlePresetChanged(index, event)}
         ></ha-form>
         <div class="preset-actions">
+          <label class="default-toggle">
+            <input
+              type="checkbox"
+              .checked=${this._formData.defaultPreset.index === index}
+              @change=${(event: Event) => this._handleDefaultPresetToggle(index, event)}
+              aria-label="Toggle default preset"
+            />
+            Default preset
+          </label>
           <button type="button" @click=${() => this._handleRemovePreset(index)} aria-label="Remove preset">
             Remove
           </button>
@@ -212,7 +236,7 @@ export class TeaTimerCardEditor
 
   private _handleBaseChanged = (event: CustomEvent<{ value: TeaTimerEditorBaseFormData }>) => {
     event.stopPropagation();
-    this._updateForm({ base: { ...event.detail.value } });
+    this._updateForm({ base: { ...this._formData.base, ...event.detail.value } });
   };
 
   private _handleAdvancedChanged = (event: CustomEvent<{ value: TeaTimerEditorAdvancedFormData }>) => {
@@ -223,9 +247,18 @@ export class TeaTimerCardEditor
   private _handlePresetChanged(index: number, event: CustomEvent<{ value: TeaTimerEditorPresetFormData }>) {
     event.stopPropagation();
     const presets = this._formData.presets.map((preset, presetIndex) =>
-      presetIndex === index ? { ...event.detail.value } : preset,
+      presetIndex === index ? { ...event.detail.value } : { ...preset },
     );
-    this._updateForm({ presets });
+
+    const updates: Partial<TeaTimerEditorFormData> = { presets };
+
+    if (this._formData.defaultPreset.index === index) {
+      const value = this._computeDefaultPresetValue(presets[index], index);
+      this._defaultPresetWasNumber = typeof value === "number";
+      updates.defaultPreset = { value, index };
+    }
+
+    this._updateForm(updates);
   }
 
   private _handleAddPreset = () => {
@@ -238,7 +271,90 @@ export class TeaTimerCardEditor
     if (!presets.length) {
       presets.push({});
     }
-    this._updateForm({ presets });
+    const defaultPreset = this._recomputeDefaultPreset(presets, index);
+    const updates: Partial<TeaTimerEditorFormData> = { presets };
+    if (defaultPreset.index !== undefined) {
+      updates.defaultPreset = defaultPreset;
+    } else if (this._formData.defaultPreset.index !== undefined) {
+      updates.defaultPreset = {};
+    }
+    this._updateForm(updates);
+  }
+
+  private _handleDefaultPresetToggle(index: number, event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) {
+      return;
+    }
+
+    const updates: Partial<TeaTimerEditorFormData> = {};
+    if (input.checked) {
+      const preset = this._formData.presets[index];
+      const value = this._computeDefaultPresetValue(preset, index);
+      this._defaultPresetWasNumber = typeof value === "number";
+      updates.defaultPreset = { value, index };
+    } else {
+      this._defaultPresetWasNumber = false;
+      updates.defaultPreset = {};
+    }
+
+    this._updateForm(updates);
+  }
+
+  private _computeDefaultPresetValue(preset: TeaTimerEditorPresetFormData, index: number): string | number {
+    if (this._defaultPresetWasNumber) {
+      return index;
+    }
+
+    const label = typeof preset.label === "string" ? preset.label.trim() : "";
+    if (label.length) {
+      return label;
+    }
+
+    return index;
+  }
+
+  private _recomputeDefaultPreset(
+    presets: TeaTimerEditorPresetFormData[],
+    removedIndex?: number,
+  ): TeaTimerEditorFormData["defaultPreset"] {
+    const current = this._formData.defaultPreset;
+    if (current.value === undefined) {
+      this._defaultPresetWasNumber = false;
+      return {};
+    }
+
+    if (typeof current.value === "number") {
+      if (removedIndex !== undefined) {
+        if (current.value === removedIndex) {
+          this._defaultPresetWasNumber = false;
+          return {};
+        }
+        const adjusted = current.value > removedIndex ? current.value - 1 : current.value;
+        if (adjusted < 0 || adjusted >= presets.length) {
+          this._defaultPresetWasNumber = false;
+          return {};
+        }
+        this._defaultPresetWasNumber = true;
+        return { value: adjusted, index: adjusted };
+      }
+
+      if (current.value < 0 || current.value >= presets.length) {
+        this._defaultPresetWasNumber = false;
+        return {};
+      }
+      this._defaultPresetWasNumber = true;
+      return { value: current.value, index: current.value };
+    }
+
+    const matchedIndex = presets.findIndex((preset) => preset.label === current.value);
+    if (matchedIndex >= 0) {
+      this._defaultPresetWasNumber = false;
+      return { value: current.value, index: matchedIndex };
+    }
+
+    this._defaultPresetWasNumber = false;
+    return {};
   }
 
   private _updateForm(update: Partial<TeaTimerEditorFormData>) {
@@ -248,8 +364,11 @@ export class TeaTimerCardEditor
 
     const nextFormData: TeaTimerEditorFormData = {
       base: update.base ? { ...update.base } : { ...this._formData.base },
-      presets: update.presets ? update.presets.map((preset) => ({ ...preset })) : this._formData.presets.map((preset) => ({ ...preset })),
+      presets: update.presets
+        ? update.presets.map((preset) => ({ ...preset }))
+        : this._formData.presets.map((preset) => ({ ...preset })),
       advanced: update.advanced ? { ...update.advanced } : { ...this._formData.advanced },
+      defaultPreset: update.defaultPreset ? { ...update.defaultPreset } : { ...this._formData.defaultPreset },
     };
 
     this._formData = nextFormData;

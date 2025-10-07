@@ -13,11 +13,7 @@ import {
 
 describe("config-form", () => {
   it("exposes schemas for core fields", () => {
-    expect(BASE_FORM_SCHEMA.map((field) => field.name)).toEqual([
-      "title",
-      "entity",
-      "defaultPreset",
-    ]);
+    expect(BASE_FORM_SCHEMA.map((field) => field.name)).toEqual(["title", "entity"]);
 
     expect(PRESET_FORM_SCHEMA.map((field) => field.name)).toEqual(["label", "duration"]);
 
@@ -68,7 +64,6 @@ describe("config-form", () => {
     expect(form.base).toEqual({
       title: "Evening Brew",
       entity: "timer.tea_time",
-      defaultPreset: "Green",
     });
     expect(form.presets).toEqual([
       { label: "Green", duration: { minutes: 2 } },
@@ -82,6 +77,7 @@ describe("config-form", () => {
       finishedAutoIdleMs: 2000,
       disableClockSkewEstimator: true,
     });
+    expect(form.defaultPreset).toEqual({ value: "Green", index: 0 });
   });
 
   it("builds config from form data while preserving extras", () => {
@@ -96,7 +92,6 @@ describe("config-form", () => {
       base: {
         title: "Morning Tea",
         entity: "timer.morning",
-        defaultPreset: "1",
       },
       presets: [
         { label: "Green", duration: { minutes: 2 } },
@@ -110,6 +105,7 @@ describe("config-form", () => {
         finishedAutoIdleMs: 1500,
         disableClockSkewEstimator: true,
       },
+      defaultPreset: { value: 1, index: 1 },
     };
 
     const config = createConfigFromEditorFormData(formData, original, { defaultPresetWasNumber: true });
@@ -131,5 +127,25 @@ describe("config-form", () => {
       showPauseResume: false,
       unexpected: "keep-me",
     });
+  });
+
+  it("omits default preset when none selected", () => {
+    const original: TeaTimerCardConfig & Record<string, unknown> = {
+      type: "custom:tea-timer-card",
+      defaultPreset: "Keep",
+    };
+
+    const formData: TeaTimerEditorFormData = {
+      base: {
+        title: "Untitled",
+        entity: "timer.test",
+      },
+      presets: [{ label: "A", duration: { seconds: 30 } }],
+      advanced: {},
+      defaultPreset: {},
+    };
+
+    const config = createConfigFromEditorFormData(formData, original);
+    expect(config.defaultPreset).toBeUndefined();
   });
 });
