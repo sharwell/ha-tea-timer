@@ -72,7 +72,24 @@
         background: white;
       }
 
+      .layout-debug {
+        margin-top: 24px;
+        padding: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        background: white;
+        display: grid;
+        gap: 8px;
+      }
+
       .service-log .toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      .layout-debug .toggle {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -82,6 +99,15 @@
       .service-log input[type="checkbox"] {
         width: 18px;
         height: 18px;
+      }
+
+      .layout-debug input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+      }
+
+      .layout-debug output {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
       }
 
       .service-log ol {
@@ -189,6 +215,13 @@
       </label>
       <ol id="service-log" reversed hidden></ol>
     </section>
+    <section class="layout-debug" aria-label="Layout measurements">
+      <label class="toggle">
+        <input type="checkbox" id="toggle-row-height" />
+        Show preset row height (px)
+      </label>
+      <output id="preset-row-height" for="toggle-row-height" hidden>--</output>
+    </section>
     <section class="automation" aria-label="Demo automation log">
       <h2>Automation listener</h2>
       <p>
@@ -205,6 +238,10 @@
       const serviceLogToggle = document.getElementById("toggle-service-log");
       const MAX_SERVICE_LOG_ENTRIES = 12;
       let serviceLogEnabled = false;
+      const rowHeightToggle = document.getElementById("toggle-row-height");
+      const rowHeightOutput = document.getElementById("preset-row-height");
+      let rowHeightObserver;
+      let rowHeightMutationObserver;
 
       function updateServiceLogVisibility() {
         if (!serviceLogList) {
@@ -624,6 +661,102 @@
       const baseEntityId =
         typeof (baseConfig?.entity ?? undefined) === "string" ? baseConfig?.entity : undefined;
 
+      function clearRowHeightDebugObservers() {
+        if (rowHeightObserver) {
+          rowHeightObserver.disconnect();
+          rowHeightObserver = undefined;
+        }
+        if (rowHeightMutationObserver) {
+          rowHeightMutationObserver.disconnect();
+          rowHeightMutationObserver = undefined;
+        }
+      }
+
+      function updateRowHeightOutput() {
+        if (!(rowHeightToggle instanceof HTMLInputElement) || !rowHeightToggle.checked) {
+          return;
+        }
+        if (!(rowHeightOutput instanceof HTMLOutputElement)) {
+          return;
+        }
+
+        const row = demoCard?.shadowRoot?.querySelector(".presets-section");
+        if (!row) {
+          rowHeightOutput.textContent = "--";
+          return;
+        }
+
+        const rect = row.getBoundingClientRect();
+        rowHeightOutput.textContent = `${Math.round(rect.height)} px`;
+      }
+
+      function watchPresetRowHeight() {
+        if (!(rowHeightToggle instanceof HTMLInputElement) || !rowHeightToggle.checked) {
+          return;
+        }
+        if (!(rowHeightOutput instanceof HTMLOutputElement)) {
+          return;
+        }
+
+        const row = demoCard?.shadowRoot?.querySelector(".presets-section");
+        if (!row) {
+          updateRowHeightOutput();
+          return;
+        }
+
+        if (rowHeightObserver) {
+          rowHeightObserver.disconnect();
+          rowHeightObserver = undefined;
+        }
+
+        if (typeof ResizeObserver === "function") {
+          rowHeightObserver = new ResizeObserver(() => updateRowHeightOutput());
+          rowHeightObserver.observe(row);
+        }
+
+        updateRowHeightOutput();
+      }
+
+      function ensureRowHeightMutationObserver() {
+        if (!(rowHeightToggle instanceof HTMLInputElement) || !rowHeightToggle.checked) {
+          return;
+        }
+        if (!demoCard?.shadowRoot || typeof MutationObserver !== "function") {
+          return;
+        }
+        if (rowHeightMutationObserver) {
+          return;
+        }
+
+        rowHeightMutationObserver = new MutationObserver(() => watchPresetRowHeight());
+        rowHeightMutationObserver.observe(demoCard.shadowRoot, { childList: true, subtree: true });
+      }
+
+      function enableRowHeightDebug() {
+        if (!(rowHeightToggle instanceof HTMLInputElement) || !(rowHeightOutput instanceof HTMLOutputElement)) {
+          return;
+        }
+        rowHeightOutput.hidden = false;
+        ensureRowHeightMutationObserver();
+        watchPresetRowHeight();
+      }
+
+      if (rowHeightToggle instanceof HTMLInputElement && rowHeightOutput instanceof HTMLOutputElement) {
+        rowHeightOutput.hidden = true;
+        rowHeightToggle.addEventListener("change", () => {
+          if (rowHeightToggle.checked) {
+            enableRowHeightDebug();
+          } else {
+            rowHeightOutput.hidden = true;
+            rowHeightOutput.textContent = "--";
+            clearRowHeightDebugObservers();
+          }
+        });
+        if (rowHeightToggle.checked) {
+          enableRowHeightDebug();
+        }
+      }
+
       function cloneConfig(config) {
         return JSON.parse(JSON.stringify(config));
       }
@@ -634,6 +767,12 @@
         }
         demoCard.setConfig(config);
         demoCard.hass = environment.hass;
+        if (rowHeightToggle instanceof HTMLInputElement && rowHeightToggle.checked) {
+          demoCard.updateComplete.then(() => {
+            watchPresetRowHeight();
+            ensureRowHeightMutationObserver();
+          });
+        }
       }
 
       function clearDemoErrors() {

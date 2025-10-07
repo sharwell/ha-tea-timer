@@ -1,4 +1,5 @@
 import { html, LitElement, nothing } from "lit";
+import { classMap } from "lit/directives/class-map.js";
 import { createRef, ref } from "lit/directives/ref.js";
 import { property, query, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
@@ -702,44 +703,53 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const isCustom = this._viewModel.ui.isCustomDuration;
 
     return html`
-      <div class="presets" role="group" aria-label=${STRINGS.presetsGroupLabel}>
-        ${this._viewModel.ui.presets.map((preset) => {
-          const isSelected = !isCustom && selectedId === preset.id;
-          const isQueued = queuedId === preset.id;
-          const classNames = [
-            "preset-chip",
-            isSelected ? "preset-selected" : "",
-            isQueued ? "preset-queued" : "",
-          ]
-            .filter((name) => name)
-            .join(" ");
-          const ariaPressed = isSelected ? "true" : "false";
-          const ariaLabel = `${preset.label} ${preset.durationLabel}`;
-          return html`
-            <button
-              type="button"
-              class=${classNames}
-              role="button"
-              aria-pressed=${ariaPressed}
-              aria-disabled=${presetsDisabled ? "true" : "false"}
-              ?disabled=${presetsDisabled}
-              aria-label=${ariaLabel}
-              data-selected=${isSelected ? "true" : "false"}
-              data-queued=${isQueued ? "true" : "false"}
-              @pointerdown=${(event: PointerEvent) =>
-                this._onPresetPointerDown(event, preset.id)}
-              @keydown=${(event: KeyboardEvent) => this._onPresetKeyDown(event, preset.id)}
-              @click=${(event: MouseEvent) => this._onPresetClick(event, preset.id)}
-            >
-              <span class="preset-label">${preset.label}</span>
-              <span class="preset-duration">${preset.durationLabel}</span>
-            </button>
-          `;
-        })}
+      <div class="presets-section">
+        <div class="presets" role="group" aria-label=${STRINGS.presetsGroupLabel}>
+          ${this._viewModel.ui.presets.map((preset) => {
+            const isSelected = !isCustom && selectedId === preset.id;
+            const isQueued = queuedId === preset.id;
+            const classNames = [
+              "preset-chip",
+              isSelected ? "preset-selected" : "",
+              isQueued ? "preset-queued" : "",
+            ]
+              .filter((name) => name)
+              .join(" ");
+            const ariaPressed = isSelected ? "true" : "false";
+            const ariaLabel = `${preset.label} ${preset.durationLabel}`;
+            return html`
+              <button
+                type="button"
+                class=${classNames}
+                role="button"
+                aria-pressed=${ariaPressed}
+                aria-disabled=${presetsDisabled ? "true" : "false"}
+                ?disabled=${presetsDisabled}
+                aria-label=${ariaLabel}
+                data-selected=${isSelected ? "true" : "false"}
+                data-queued=${isQueued ? "true" : "false"}
+                @pointerdown=${(event: PointerEvent) =>
+                  this._onPresetPointerDown(event, preset.id)}
+                @keydown=${(event: KeyboardEvent) => this._onPresetKeyDown(event, preset.id)}
+                @click=${(event: MouseEvent) => this._onPresetClick(event, preset.id)}
+              >
+                <span class="preset-label">${preset.label}</span>
+                <span class="preset-duration">${preset.durationLabel}</span>
+              </button>
+            `;
+          })}
+        </div>
+        <span
+          class=${classMap({
+            "preset-custom": true,
+            "preset-custom-hidden": !isCustom,
+          })}
+          role="note"
+          aria-hidden=${isCustom ? nothing : "true"}
+        >
+          ${STRINGS.presetsCustomLabel}
+        </span>
       </div>
-      ${isCustom
-        ? html`<span class="preset-custom" role="note">${STRINGS.presetsCustomLabel}</span>`
-        : nothing}
     `;
   }
 

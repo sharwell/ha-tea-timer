@@ -47,6 +47,16 @@ issues.
 - **Fix:** After dragging to the desired time, tap/click the card (or press **Enter**/**Space**) to
   call `timer.start`.
 
+## Custom duration indicator shifts the layout
+
+- **Symptom:** The preset chip row jumps taller/shorter while you scrub the dial or use the
+  keyboard near preset boundaries.
+- **Diagnosis:** Current builds reserve space for the **Custom duration** badge at all times, so
+  the dial and controls stay put. Layout changes usually mean an older bundle is still cached or
+  custom styling is overriding `.preset-custom`.
+- **Fix:** Refresh the browser to pick up the latest card build, or remove conflicting theme CSS.
+  The included demo also exposes a toggle to watch the preset row height for regression testing.
+
 ## Countdown drift after reconnect
 
 - **Symptom:** Remaining time briefly jumps forward/backward when the connection restores.
