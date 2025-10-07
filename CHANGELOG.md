@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
   `timer.change` service when available, and falls back to a seamless `timer.start` restart when the
   change would exceed the native cap or the service is missing. Configurable increment and optional
   per-brew cap keep automations authoritative while preventing visual reset.
+- Native Lovelace Visual Editor support, including card picker registration and a presets-aware form
+  for configuring timers without editing YAML. (#43)
 
 ### Changed
 - Hide the dial handle while the timer is running or paused to reinforce the locked state. (#34)
@@ -23,6 +25,7 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 - Document pause/resume flows, helper setup, restore caveats, near-finish races, and update the Lovelace
   examples to include a pause/resume configuration alongside the extend button guidance.
+- Add a Visual Editor quick-start guide outlining the picker flow and available form fields.
 
 ## [0.1.0] - 2025-10-03
 

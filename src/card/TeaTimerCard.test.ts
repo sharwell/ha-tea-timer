@@ -69,6 +69,23 @@ describe("TeaTimerCard", () => {
     customElements.define(tagName, TeaTimerCard);
   }
 
+  it("provides a stub config", () => {
+    const stub = TeaTimerCard.getStubConfig();
+    expect(stub.type).toBe("custom:tea-timer-card");
+    expect(Array.isArray(stub.presets)).toBe(true);
+    expect(stub.presets?.length).toBeGreaterThan(0);
+  });
+
+  it("validates configuration via assertConfig", () => {
+    expect(() =>
+      TeaTimerCard.assertConfig({
+        type: "custom:tea-timer-card",
+        entity: "timer.tea",
+        presets: [{ label: "Test", durationSeconds: -5 }],
+      }),
+    ).toThrow();
+  });
+
   function createCard(): TeaTimerCard {
     const element = document.createElement(tagName);
     if (!(element instanceof TeaTimerCard)) {

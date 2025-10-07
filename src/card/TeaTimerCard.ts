@@ -3,7 +3,7 @@ import { createRef, ref } from "lit/directives/ref.js";
 import { property, query, state } from "lit/decorators.js";
 import { baseStyles } from "../styles/base";
 import { cardStyles } from "../styles/card";
-import { parseTeaTimerConfig, TeaTimerConfig } from "../model/config";
+import { parseTeaTimerConfig, TeaTimerCardConfig, TeaTimerConfig } from "../model/config";
 import {
   applyPresetSelection,
   applyQueuedPreset,
@@ -53,6 +53,31 @@ type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
+
+  public static async getConfigElement() {
+    await import("../editor/tea-timer-card-editor");
+    return document.createElement("tea-timer-card-editor");
+  }
+
+  public static getStubConfig(): TeaTimerCardConfig {
+    return {
+      type: "custom:tea-timer-card",
+      title: "Tea Timer",
+      entity: "timer.example_tea",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+        { label: "Herbal", durationSeconds: 300 },
+      ],
+    };
+  }
+
+  public static assertConfig(config: TeaTimerCardConfig): void {
+    const { errors } = parseTeaTimerConfig(config);
+    if (errors.length) {
+      throw new Error(errors.join("\n"));
+    }
+  }
 
   private _hass?: HomeAssistant;
 

@@ -118,10 +118,16 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
     stepSeconds: 10
     confirmRestart: true # optional—require confirmation before restarting a running timer
     finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
-    disableClockSkewEstimator: true # optional—seed countdowns from the local clock instead of HA timestamps
-    ```
+   disableClockSkewEstimator: true # optional—seed countdowns from the local clock instead of HA timestamps
+   ```
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
+
+#### Configure with the Lovelace Visual Editor
+
+- When editing a dashboard, choose **Add card → Tea Timer** to open the guided form. The picker filters the entity selector to `timer` helpers and seeds the preview with sample presets so you can see the dial immediately.
+- The editor mirrors the YAML options above: title, timer entity, default preset, and preset rows with a duration selector. Expand **Advanced options** to edit dial bounds, confirm-before-restart, the finished overlay delay, and the clock skew estimator toggle.
+- Switch between **Visual** and **YAML** modes at any time—unknown keys are preserved so you can maintain manual tweaks. See [Configure with the Visual Editor](docs/visual-editor.md) for screenshots and step-by-step guidance.
 
 #### Pause/Resume compatibility helper (optional)
 
@@ -145,6 +151,7 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
 - [State & actions](docs/state-and-actions.md)
 - [Automate on `timer.finished`](docs/automations/finished.md)
 - [Multi-instance & sync](docs/multi-instance-and-sync.md)
+- [Configure with the Visual Editor](docs/visual-editor.md)
 - [Accessibility & reduced motion](docs/accessibility-and-reduced-motion.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Frequently asked questions](docs/faq.md)
