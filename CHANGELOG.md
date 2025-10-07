@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Hide the dial handle while the timer is running or paused to reinforce the locked state. (#34)
+- Clean up preliminary UI; docs via Editor Help (#44)
 
 ### Fixed
 - Prevent idle dial drags from triggering `timer.start`; releasing a drag now leaves the timer idle

@@ -2,11 +2,6 @@ export interface StringTable {
   cardTitleFallback: string;
   emptyState: string;
   missingEntity: string;
-  draftNote: string;
-  gettingStartedLabel: string;
-  gettingStartedUrl: string;
-  finishAutomationLabel: string;
-  finishAutomationUrl: string;
   presetsGroupLabel: string;
   presetsMissing: string;
   presetsCustomLabel: string;
@@ -103,11 +98,6 @@ export const STRINGS: StringTable = {
   cardTitleFallback: "Tea Timer",
   emptyState: "Configure an entity and presets to get started.",
   missingEntity: "Timer entity not configured.",
-  draftNote: "This is a preview of the Tea Timer Card. Functionality will be enabled in upcoming updates.",
-  gettingStartedLabel: "Getting Started",
-  gettingStartedUrl: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/getting-started.md",
-  finishAutomationLabel: "Automate timer finish",
-  finishAutomationUrl: "https://github.com/sharwell/ha-tea-timer/blob/main/docs/automations/finished.md",
   presetsGroupLabel: "Presets",
   presetsMissing: "Add at least one preset to start brewing.",
   presetsCustomLabel: "Custom duration",

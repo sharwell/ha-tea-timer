@@ -308,23 +308,6 @@ export const cardStyles = css`
     color: var(--secondary-text-color, #52606d);
   }
 
-  .note {
-    font-size: 0.75rem;
-    color: var(--secondary-text-color, #52606d);
-    margin: 0;
-  }
-
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .help {
-    font-size: 0.85rem;
-  }
-
   .errors {
     margin: 0 0 12px;
     padding: 12px;

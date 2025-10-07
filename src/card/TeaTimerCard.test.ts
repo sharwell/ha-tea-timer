@@ -1665,18 +1665,22 @@ describe("TeaTimerCard", () => {
     expect(emptyState?.textContent).toBe(STRINGS.presetsMissing);
   });
 
-  it("renders support links for setup and automations", () => {
+  it("does not render preview banners or inline documentation links", async () => {
     const card = createCard();
+    document.body.appendChild(card);
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
     setTimerState(card, { status: "idle" });
 
-    const linksTemplate = (card as unknown as { _renderSupportLinks(): TemplateResult })._renderSupportLinks();
-    const container = document.createElement("div");
-    render(linksTemplate, container);
-    const links = Array.from(container.querySelectorAll<HTMLAnchorElement>(".links .help"));
-    expect(links.length).toBe(2);
-    const labels = links.map((link) => link.textContent?.trim());
-    expect(labels).toEqual([STRINGS.gettingStartedLabel, STRINGS.finishAutomationLabel]);
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot;
+    expect(shadow?.querySelector(".note")).toBeNull();
+    const textContent = shadow?.textContent ?? "";
+    expect(textContent).not.toContain("This is a preview of the Tea Timer Card");
+    expect(textContent).not.toContain("Getting Started");
+    expect(textContent).not.toContain("Automate timer finish");
+    expect(textContent).not.toContain("Quick start guide");
+    expect(textContent).not.toContain("Automate on timer.finished");
   });
 
   it("pauses via helper when native pause is unavailable", async () => {

@@ -259,8 +259,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         </div>
         ${state ? this._renderPrimaryAction(state) : nothing}
         <div class="sr-only" role="status" aria-live="polite">${this._ariaAnnouncement}</div>
-        <p class="note">${STRINGS.draftNote}</p>
-        ${this._renderSupportLinks()}
         ${this._renderPendingOverlay(state)}
         ${this._confirmRestartVisible ? this._renderRestartConfirm() : nothing}
         ${this._renderToast()}
@@ -284,19 +282,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._scheduleApplyDialDisplay("first-updated");
-  }
-
-  private _renderSupportLinks() {
-    return html`
-      <div class="links">
-        <a class="help" href=${STRINGS.gettingStartedUrl} target="_blank" rel="noreferrer">
-          ${STRINGS.gettingStartedLabel}
-        </a>
-        <a class="help" href=${STRINGS.finishAutomationUrl} target="_blank" rel="noreferrer">
-          ${STRINGS.finishAutomationLabel}
-        </a>
-      </div>
-    `;
   }
 
   private _announce(message: string | undefined): void {
