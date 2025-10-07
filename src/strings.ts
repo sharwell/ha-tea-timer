@@ -22,7 +22,9 @@ export interface StringTable {
   dialBlockedTooltip: string;
   disconnectedMessage: string;
   disconnectedReconnectingMessage: string;
-  entityUnavailableBanner: (entityId: string) => string;
+  entityErrorMissing: string;
+  entityErrorInvalid: (entityId?: string) => string;
+  entityErrorUnavailable: (entityId?: string) => string;
   serviceFailureMessage: string;
   durationSpeech: {
     hour: (value: number) => string;
@@ -120,10 +122,15 @@ export const STRINGS: StringTable = {
   disconnectedMessage:
     "Disconnected from Home Assistant. Controls are paused until the link returns.",
   disconnectedReconnectingMessage: "Connection lost—trying to reconnect to Home Assistant…",
-  entityUnavailableBanner: (entityId: string) =>
-    "Timer entity " +
-    entityId +
-    " is unavailable. Open Home Assistant to re-enable it.",
+  entityErrorMissing: "This card isn’t set up yet. Add a timer entity in the card settings.",
+  entityErrorInvalid: (entityId?: string) =>
+    entityId
+      ? `The configured entity ${entityId} isn’t a timer (or doesn’t exist). Choose a timer.* entity.`
+      : "The configured entity isn’t a timer (or doesn’t exist). Choose a timer.* entity.",
+  entityErrorUnavailable: (entityId?: string) =>
+    entityId
+      ? `The timer entity ${entityId} is unavailable. Check that the helper exists and the entity_id is correct.`
+      : "The timer entity is unavailable. Check that the helper exists and the entity_id is correct.",
   serviceFailureMessage:
     "Couldn't complete the timer action. Check your Home Assistant connection and try again.",
   durationSpeech: {

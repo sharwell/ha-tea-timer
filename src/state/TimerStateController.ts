@@ -20,7 +20,17 @@ export type TimerUiState =
   | "Running"
   | "Paused"
   | { kind: "FinishedTransient"; untilTs: number }
-  | { kind: "Error"; reason: "Disconnected" | "EntityUnavailable" | "ServiceFailure"; detail?: string };
+  | {
+      kind: "Error";
+      reason:
+        | "Disconnected"
+        | "EntityConfigMissing"
+        | "EntityWrongDomain"
+        | "EntityNotFound"
+        | "EntityUnavailable"
+        | "ServiceFailure";
+      detail?: string;
+    };
 
 export interface InFlightAction {
   kind: "start" | "restart";
@@ -511,15 +521,13 @@ export class TimerStateController implements ReactiveController {
     let uiState: TimerUiState;
     if (connectionStatus !== "connected") {
       uiState = { kind: "Error", reason: "Disconnected" };
-    } else if (this.serviceErrorDetail) {
-      uiState = { kind: "Error", reason: "ServiceFailure", detail: this.serviceErrorDetail };
-    } else if (entityState.status === "unavailable") {
-      uiState = {
-        kind: "Error",
-        reason: "EntityUnavailable",
-        detail: this.entityId,
-      };
-    } else if (entityState.status === "finished") {
+    } else {
+      const entityError = this.computeEntityError(entityState);
+      if (entityError) {
+        uiState = entityError;
+      } else if (this.serviceErrorDetail) {
+        uiState = { kind: "Error", reason: "ServiceFailure", detail: this.serviceErrorDetail };
+      } else if (entityState.status === "finished") {
       const until = entityState.finishedUntilTs ?? now;
       uiState = { kind: "FinishedTransient", untilTs: until };
     } else if (entityState.status === "running") {
@@ -528,6 +536,7 @@ export class TimerStateController implements ReactiveController {
       uiState = "Paused";
     } else {
       uiState = "Idle";
+    }
     }
 
     let serverRemainingSecAtT0 = this.serverRemainingSecAtT0;
@@ -573,6 +582,31 @@ export class TimerStateController implements ReactiveController {
     };
 
     return this.currentState;
+  }
+
+  private computeEntityError(
+    entityState: TimerEntityState,
+  ): Extract<TimerUiState, { kind: "Error" }> | undefined {
+    if (!this.entityId) {
+      return { kind: "Error", reason: "EntityConfigMissing" };
+    }
+
+    const entityId = this.entityId;
+    const [domain] = entityId.split(".");
+    if (domain !== "timer") {
+      return { kind: "Error", reason: "EntityWrongDomain", detail: entityId };
+    }
+
+    const entity = this.hass?.states?.[entityId];
+    if (!entity) {
+      return { kind: "Error", reason: "EntityNotFound", detail: entityId };
+    }
+
+    if (entityState.status === "unavailable") {
+      return { kind: "Error", reason: "EntityUnavailable", detail: entityId };
+    }
+
+    return undefined;
   }
 
   private computeConnectionStatus(): ConnectionStatus {

@@ -308,6 +308,20 @@ export const cardStyles = css`
     color: var(--secondary-text-color, #52606d);
   }
 
+  .entity-error {
+    margin: 16px 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(191, 26, 47, 0.12);
+    color: #8a1c1c;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .entity-error-message {
+    margin: 0;
+  }
+
   .errors {
     margin: 0 0 12px;
     padding: 12px;

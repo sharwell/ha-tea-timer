@@ -50,6 +50,7 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const EXTEND_COALESCE_DELAY_MS = 200;
 
 type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
+type EntityErrorInfo = { message: string; entityId?: string };
 
 export class TeaTimerCard extends LitElement implements LovelaceCard {
   static styles = [baseStyles, cardStyles];
@@ -238,6 +239,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   protected render() {
     const pendingAction = this._viewModel?.ui.pendingAction ?? "none";
     const state = this._timerState ?? this._timerStateController.state;
+    const entityErrorInfo = state ? this._getEntityErrorInfo(state.uiState) : undefined;
+    const showInteractive = !!state && !entityErrorInfo;
     const hasPending = pendingAction !== "none" || !!state?.inFlightAction;
     return html`
       ${this._renderErrors()}
@@ -248,16 +251,28 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onCardClick}
       >
         ${this._renderHeader()}
-        ${this._renderSubtitle()}
+        ${showInteractive ? this._renderSubtitle() : nothing}
         ${state ? this._renderStatusPill(state) : nothing}
         ${state ? this._renderStateBanner(state) : nothing}
-        <div class="interaction">
-          ${state ? this._renderPresets(state) : this._renderPresets(undefined)}
-          ${state ? this._renderDial(state) : this._renderDial(undefined)}
-          ${state ? this._renderExtendControls(state) : nothing}
-          ${state ? this._renderPauseResumeControls(state) : nothing}
-        </div>
-        ${state ? this._renderPrimaryAction(state) : nothing}
+        ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
+        ${showInteractive
+          ? html`
+              <div class="interaction">
+                ${this._renderPresets(state)}
+                ${this._renderDial(state)}
+                ${this._renderExtendControls(state)}
+                ${this._renderPauseResumeControls(state)}
+              </div>
+              ${this._renderPrimaryAction(state)}
+            `
+          : !state
+            ? html`
+                <div class="interaction">
+                  ${this._renderPresets(undefined)}
+                  ${this._renderDial(undefined)}
+                </div>
+              `
+            : nothing}
         <div class="sr-only" role="status" aria-live="polite">${this._ariaAnnouncement}</div>
         ${this._renderPendingOverlay(state)}
         ${this._confirmRestartVisible ? this._renderRestartConfirm() : nothing}
@@ -392,7 +407,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const pendingAction = this._viewModel.ui.pendingAction;
     const connectionOk = state.connectionStatus === "connected";
     const hassReady = !!this._hass && !!this._config.entity;
-    const hasError = this._isUiError(state.uiState, "EntityUnavailable") || this._isUiError(state.uiState, "ServiceFailure");
+    const hasError = this._isEntityUiError(state.uiState) || this._isUiError(state.uiState, "ServiceFailure");
     const disabled = pendingAction !== "none" || !connectionOk || !hassReady || hasError;
     const busy = this._extendInFlightSeconds > 0 || this._extendServicePromise !== undefined;
     const incrementLabel = this._viewModel.ui.extendIncrementLabel;
@@ -472,7 +487,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return true;
     }
 
-    if (this._isUiError(state.uiState, "EntityUnavailable")) {
+    if (this._isEntityUiError(state.uiState)) {
       return true;
     }
 
@@ -1045,6 +1060,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private _renderEntityError(info: EntityErrorInfo) {
+    return html`
+      <div class="entity-error" role="alert" aria-live="assertive">
+        <p class="entity-error-message">${info.message}</p>
+      </div>
+    `;
+  }
+
   private _renderStatusPill(state: TimerViewState) {
     const label = this._getStatusLabel(state);
     const className = this._getStatusClass(state);
@@ -1077,31 +1100,31 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return { message, tone: "warn", live: "polite", role: "status" };
     }
 
-    if (this._isUiError(uiState, "EntityUnavailable")) {
-      const entity = state.entityId ?? this._config?.entity;
-      if (!entity) {
-        return {
-          message: STRINGS.missingEntity,
-          tone: "error",
-          live: "assertive",
-          role: "alert",
-        };
-      }
-
-      return {
-        message: STRINGS.entityUnavailableBanner(entity),
-        tone: "error",
-        live: "assertive",
-        role: "alert",
-      };
-    }
-
     if (this._isUiError(uiState, "ServiceFailure")) {
       const message = uiState.detail ?? STRINGS.serviceFailureMessage;
       return { message, tone: "error", live: "polite", role: "status" };
     }
 
     return null;
+  }
+
+  private _getEntityErrorInfo(uiState: TimerUiState): EntityErrorInfo | undefined {
+    if (!this._isUiError(uiState)) {
+      return undefined;
+    }
+
+    switch (uiState.reason) {
+      case "EntityConfigMissing":
+        return { message: STRINGS.entityErrorMissing };
+      case "EntityWrongDomain":
+        return { message: STRINGS.entityErrorInvalid(uiState.detail) };
+      case "EntityNotFound":
+        return { message: STRINGS.entityErrorInvalid(uiState.detail) };
+      case "EntityUnavailable":
+        return { message: STRINGS.entityErrorUnavailable(uiState.detail) };
+      default:
+        return undefined;
+    }
   }
 
   private readonly _onExtendClick = (event: Event) => {
@@ -1724,9 +1747,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _getSecondaryDialLabel(state: TimerViewState): string {
     const uiState = state.uiState;
-    if (this._isUiError(uiState, "EntityUnavailable")) {
+    if (this._isEntityUiError(uiState)) {
       const entity = state.entityId ?? this._config?.entity;
-      return entity ? STRINGS.entityUnavailableWithId(entity) : STRINGS.statusUnavailable;
+      if (uiState.reason === "EntityUnavailable" && entity) {
+        return STRINGS.entityUnavailableWithId(entity);
+      }
+      return STRINGS.statusUnavailable;
     }
 
     if (this._isUiError(uiState, "Disconnected")) {
@@ -1762,6 +1788,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           return state.connectionStatus === "reconnecting"
             ? STRINGS.statusReconnecting
             : STRINGS.statusDisconnected;
+        case "EntityConfigMissing":
+        case "EntityWrongDomain":
+        case "EntityNotFound":
         case "EntityUnavailable":
           return STRINGS.statusUnavailable;
         case "ServiceFailure":
@@ -1803,7 +1832,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (uiState.reason === "Disconnected") {
         return "status-pill status-disconnected";
       }
-      if (uiState.reason === "EntityUnavailable") {
+      if (
+        uiState.reason === "EntityUnavailable" ||
+        uiState.reason === "EntityConfigMissing" ||
+        uiState.reason === "EntityWrongDomain" ||
+        uiState.reason === "EntityNotFound"
+      ) {
         return "status-pill status-unavailable";
       }
       if (uiState.reason === "ServiceFailure") {
@@ -1840,6 +1874,24 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return uiState.reason === reason;
   }
 
+  private _isEntityUiError(
+    uiState: TimerUiState,
+  ): uiState is Extract<TimerUiState, { kind: "Error" }> {
+    if (!this._isUiError(uiState)) {
+      return false;
+    }
+
+    switch (uiState.reason) {
+      case "EntityConfigMissing":
+      case "EntityWrongDomain":
+      case "EntityNotFound":
+      case "EntityUnavailable":
+        return true;
+      default:
+        return false;
+    }
+  }
+
   private _canInteract(state: TimerViewState | undefined): boolean {
     if (!state) {
       return false;
@@ -1849,7 +1901,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return false;
     }
 
-    if (this._isUiError(state.uiState, "EntityUnavailable")) {
+    if (this._isEntityUiError(state.uiState)) {
       return false;
     }
 

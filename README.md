@@ -48,7 +48,7 @@ npm ci
 
 ### How state sync works
 
-- Each card instance binds to a Home Assistant `timer` entity specified by the required `entity` option.
+- Each card instance binds to a Home Assistant `timer` entity specified by the required `entity` option. When the configured entity is missing, mis-typed, or unavailable, the card surfaces a single high-priority alert and hides the dial and presets until the timer is healthy again.
 - The card derives a normalized `TimerViewState` from the entity’s attributes (`state`, `duration`, `remaining`, `last_changed`).
 - WebSocket subscriptions mirror Home Assistant updates:
   - `state_changed` keeps the card synchronized with the entity’s state.
@@ -57,6 +57,7 @@ npm ci
 - Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy. The countdown pauses while disconnected and resumes after a successful resync.
 - Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration. Running taps restart the timer by calling `timer.start` again with the desired duration (no client-side cancel). Dial drags never trigger these service calls—releasing after an adjustment leaves the timer idle until you explicitly tap/click/press Enter. The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state. While running or paused, the dial presents a read-only progress indicator—the handle hides and the slider leaves the tab order to reinforce that the duration cannot be changed mid-brew.
 - The connection status is monitored in real time. If the Home Assistant WebSocket disconnects the card freezes the countdown, surfaces a “Disconnected” banner, and disables interactions until the link is restored and a fresh state snapshot is fetched.
+- Entity errors and connection status follow a clear precedence: the existing “Disconnected” banner wins whenever the WebSocket is offline, otherwise a consolidated entity alert appears (for missing/wrong-domain/unknown/unavailable entities), and only when both are clear do preset hints or secondary notices render.
 
 ### Dial duration configuration
 
@@ -73,12 +74,12 @@ npm ci
 - Preset chips and the primary Start/Restart button sit in the tab order (chips left-to-right followed by the main action). Each control exposes an accessible name that includes the preset label and its formatted duration.
 - The timer status is announced through a polite live region. Start, restart, finish, and remaining-time updates are throttled (30s ≥2:00, 10s ≥1:00, 5s ≥0:20, 1s <0:10) to avoid overwhelming assistive tech.
 - Queuing a new preset while the timer runs surfaces a single “Next preset selected …” announcement; clearing the queue suppresses stale messages.
-- Entity-unavailable errors surface via `role="alert"` without stealing focus. Toasts for other errors remain polite live regions.
+- Entity errors surface via a single `role="alert"` region without stealing focus. Toasts for service failures remain polite live regions so screen readers receive exactly one high-priority announcement at a time.
 - Reduced-motion preferences disable dial and spinner animations, and forced-colors/high-contrast modes fall back to system colors for primary controls.
 
 ### Troubleshooting
 
-- **Entity unavailable**: Verify the `entity` option matches an existing Home Assistant timer (e.g., `timer.tea_timer_kitchen`). The card will display the configured entity id to help diagnose typos.
+- **Entity missing/unavailable**: Follow the card’s alert message. “This card isn’t set up yet…” means the `entity` option is blank; open the editor and select a `timer.*` helper. “The configured entity … isn’t a timer” indicates the id does not start with `timer.`; pick a timer helper instead of a sensor/light. “The timer entity … is unavailable” points to a disabled or renamed helper—re-enable it in Home Assistant and verify the `entity_id` matches.
 - **Disconnected banner**: If you see “Disconnected from Home Assistant,” check that your browser still has a WebSocket path to the server. The card freezes the countdown and disables the dial until it reconnects and replays the latest entity state.
 - **No live updates**: Ensure the Home Assistant WebSocket connection is available. The card falls back to the latest `hass` object update but real-time updates rely on the connection being online.
 - **Estimated remaining time**: If Home Assistant does not provide `remaining`, the card estimates the value. When the estimate drifts more than ~2 seconds, a note appears until Home Assistant reports an authoritative value.

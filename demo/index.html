@@ -174,6 +174,10 @@
       <button type="button" id="btn-pause">Set paused (1:30)</button>
       <button type="button" id="btn-finish">Emit finished event</button>
       <button type="button" id="btn-unavailable">Mark unavailable</button>
+      <button type="button" id="btn-missing-entity">Simulate missing entity</button>
+      <button type="button" id="btn-wrong-domain">Simulate wrong domain</button>
+      <button type="button" id="btn-unknown-entity">Simulate unknown id</button>
+      <button type="button" id="btn-reset-entity">Restore timer entity</button>
       <button type="button" id="btn-disconnect">Disconnect</button>
       <button type="button" id="btn-reconnect">Reconnect</button>
       <button type="button" id="btn-fail-service">Fail next service call</button>
@@ -615,6 +619,87 @@
         card.hass = environment.hass;
       });
 
+      const demoCard = cards[0] ?? null;
+      const baseConfig = demoCard ? JSON.parse(JSON.stringify(configs[0])) : null;
+      const baseEntityId =
+        typeof (baseConfig?.entity ?? undefined) === "string" ? baseConfig?.entity : undefined;
+
+      function cloneConfig(config) {
+        return JSON.parse(JSON.stringify(config));
+      }
+
+      function applyDemoConfig(config) {
+        if (!demoCard) {
+          return;
+        }
+        demoCard.setConfig(config);
+        demoCard.hass = environment.hass;
+      }
+
+      function clearDemoErrors() {
+        if (!demoCard) {
+          return;
+        }
+        demoCard._errors = [];
+      }
+
+      function bindDemoEntity(entityId) {
+        if (!demoCard) {
+          return;
+        }
+        const controller = demoCard._timerStateController;
+        if (controller) {
+          controller.setEntityId(entityId);
+        }
+      }
+
+      function simulateMissingEntity() {
+        if (!demoCard || !baseConfig) {
+          return;
+        }
+        const config = cloneConfig(baseConfig);
+        delete config.entity;
+        applyDemoConfig(config);
+        clearDemoErrors();
+        bindDemoEntity(undefined);
+      }
+
+      function simulateWrongDomain() {
+        if (!demoCard || !baseConfig) {
+          return;
+        }
+        const entityId = "sensor.demo_timer";
+        const config = { ...cloneConfig(baseConfig), entity: entityId };
+        applyDemoConfig(config);
+        clearDemoErrors();
+        bindDemoEntity(entityId);
+      }
+
+      function simulateUnknownEntity() {
+        if (!demoCard || !baseConfig) {
+          return;
+        }
+        const entityId = "timer.demo_missing";
+        const config = { ...cloneConfig(baseConfig), entity: entityId };
+        applyDemoConfig(config);
+        clearDemoErrors();
+        if (environment.hass?.states) {
+          delete environment.hass.states[entityId];
+        }
+        bindDemoEntity(entityId);
+      }
+
+      function restoreDemoEntity() {
+        if (!demoCard || !baseConfig) {
+          return;
+        }
+        const config = cloneConfig(baseConfig);
+        applyDemoConfig(config);
+        clearDemoErrors();
+        bindDemoEntity(baseEntityId);
+        environment.setIdle();
+      }
+
       function updatePreviewDial(state) {
         if (!previewDial || typeof previewDial.setProgressFraction !== "function") {
           return;
@@ -705,6 +790,10 @@
       document.getElementById("btn-pause").addEventListener("click", () => environment.setPaused(90));
       document.getElementById("btn-finish").addEventListener("click", () => environment.emitFinished());
       document.getElementById("btn-unavailable").addEventListener("click", () => environment.setUnavailable());
+      document.getElementById("btn-missing-entity").addEventListener("click", () => simulateMissingEntity());
+      document.getElementById("btn-wrong-domain").addEventListener("click", () => simulateWrongDomain());
+      document.getElementById("btn-unknown-entity").addEventListener("click", () => simulateUnknownEntity());
+      document.getElementById("btn-reset-entity").addEventListener("click", () => restoreDemoEntity());
       document.getElementById("btn-disconnect").addEventListener("click", () => environment.disconnect());
       document.getElementById("btn-reconnect").addEventListener("click", () => environment.reconnect());
       document.getElementById("btn-fail-service").addEventListener("click", () => environment.failNextServiceCall());

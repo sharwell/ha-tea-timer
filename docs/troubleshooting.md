@@ -3,15 +3,17 @@
 Something not working as expected? Use this checklist to diagnose the most common Tea Timer Card
 issues.
 
-## Missing or incorrect entity id
+## Entity missing or unavailable
 
-- **Symptom:** Card shows “Entity not found” or displays the wrong timer.
+- **Symptom:** Card shows one of the consolidated entity alerts:
+  - “This card isn’t set up yet. Add a timer entity in the card settings.”
+  - “The configured entity … isn’t a timer (or doesn’t exist). Choose a `timer.*` entity.”
+  - “The timer entity … is unavailable. Check that the helper exists and the `entity_id` is correct.”
 - **Diagnosis:**
-  1. Open **Settings → Devices & services → Helpers** and confirm the timer helper exists.
-  2. Copy the exact entity id (for example `timer.kitchen_tea`).
-  3. Inspect the Lovelace configuration and verify the `entity` value matches.
-- **Fix:** Update the card configuration and reload the dashboard. The card reconnects automatically
-  when the entity id is corrected.
+  1. If the message says the card isn’t set up, edit the Lovelace card and choose a timer helper (`timer.*`).
+  2. If it mentions the entity isn’t a timer, confirm the configured id starts with `timer.` instead of `sensor.` or another domain.
+  3. If it calls out an unavailable timer, open **Settings → Devices & services → Helpers** and ensure the helper is enabled and retains the shown `entity_id`.
+- **Fix:** Update the configuration or helper based on the guidance above. The card hides the dial and presets until the entity reports a healthy state, then resumes normal operation automatically.
 
 ## WebSocket disconnected
 
