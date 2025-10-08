@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Runtime-toggle debug overlay & structured logs for diagnosing baseline seeds and drift corrections. (#53)
 - Pause/Resume controls for running brews, with accessible announcements, a frozen progress arc, and
   automatic fallback to an `input_text` helper when `timer.pause` is unavailable. Resuming via
   `timer.start` (without a duration) keeps remaining time authoritative across devices.
