@@ -22,13 +22,13 @@ When enabled, a fixed overlay renders with these fields updated at most once per
 
 Structured logs are written only while the `logs` mode is active. Each baseline seed emits
 
-```
+```json
 { evt:"seed", ts_iso, seedSource, serverRemaining, estimatedRemaining, baselineEndMs, lastServerUpdate, entityId }
 ```
 
 and any Home Assistant correction that shifts the predicted end time by more than 750ms emits
 
-```
+```json
 { evt:"server_correction", ts_iso, delta_ms, serverRemaining, baselineEndMs, lastServerUpdate, entityId }
 ```
 
@@ -46,7 +46,7 @@ captured list.
 
 A representative test run after enabling the runtime diagnostics support:
 
-```
+```bash
 $ CI=1 npm test
  Test Files  14 passed (14)
       Tests  150 passed (150)

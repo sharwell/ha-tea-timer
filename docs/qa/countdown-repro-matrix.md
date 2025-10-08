@@ -4,7 +4,7 @@ Issue [#52](https://github.com/sharwell/ha-tea-timer/issues/52) tracks evidence 
 
 ## Measurement formulas
 
-The debug overlay (see [`demo/debug-overlay.ts`](../../demo/debug-overlay.ts)) exposes `window.haTeaTimerDebug` for sampling and export. Each measurement is computed from those samples:
+The debug overlay (see [`demo/debug-tools.ts`](../../demo/debug-tools.ts)) exposes `window.haTeaTimerDebug` for sampling and export. Each measurement is computed from those samples:
 
 - **Reload delta (`reload_delta_s`)** — `abs(firstClientRemainingAfterReload - firstServerRemainingAfterResubscribe)`.
 - **Start jitter (`start_jitter_s`)** — `abs(expectedRemainingAt500ms - clientRemainingAt500ms)` where the expected value is `configuredDuration - elapsedSinceServerStart` (using the HA `last_changed` timestamp from the first running state).
