@@ -716,7 +716,9 @@ describe("TeaTimerCard", () => {
       "_syncDisplayDuration",
     );
     const updateSpy = vi.spyOn(
-      card as unknown as { _updateRunningTickState(state: ControllerTimerViewState): void },
+      card as unknown as {
+        _updateRunningTickState(state: ControllerTimerViewState, previous?: ControllerTimerViewState): void;
+      },
       "_updateRunningTickState",
     );
 
@@ -730,7 +732,9 @@ describe("TeaTimerCard", () => {
 
       const expectedState = toControllerState(card, runningState);
       expect(syncSpy).toHaveBeenCalledWith(expectedState);
-      expect(updateSpy).toHaveBeenCalledWith(expectedState);
+      expect(updateSpy).toHaveBeenCalled();
+      const [stateArg] = updateSpy.mock.calls[0];
+      expect(stateArg).toEqual(expectedState);
       expect(updateSpy.mock.invocationCallOrder[0]).toBeLessThan(syncSpy.mock.invocationCallOrder[0]);
     } finally {
       syncSpy.mockRestore();

@@ -4,11 +4,7 @@
     <meta charset="utf-8" />
     <title>Tea Timer Card Preview</title>
     <script type="module" src="../src/index.ts"></script>
-    <script type="module">
-      if (import.meta.env.DEV) {
-        import("./debug-overlay.ts");
-      }
-    </script>
+    <script type="module" src="./debug-tools.ts"></script>
     <style>
       body {
         margin: 0;
@@ -168,6 +164,62 @@
         gap: 8px;
         font-variant-numeric: tabular-nums;
       }
+
+      .diagnostics {
+        margin-top: 24px;
+        padding: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        background: white;
+        display: grid;
+        gap: 12px;
+      }
+
+      .diagnostics h2 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .diagnostics .debug-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .diagnostics .debug-buttons button {
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        background: white;
+        cursor: pointer;
+      }
+
+      .diagnostics .debug-buttons button:active {
+        transform: translateY(1px);
+      }
+
+      .diagnostics output {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      .debug-log-list {
+        margin: 0;
+        padding-left: 20px;
+        display: grid;
+        gap: 6px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 0.9rem;
+        max-height: 160px;
+        overflow: auto;
+      }
+
+      .debug-log-list li {
+        word-break: break-word;
+      }
+
+      .debug-log-list[hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -235,6 +287,25 @@
         approximate delay until the card overlay reports "Done".
       </p>
       <ol id="automation-log" reversed></ol>
+    </section>
+    <section class="diagnostics" aria-label="Diagnostics controls">
+      <h2>Diagnostics overlay & logs</h2>
+      <div class="debug-buttons">
+        <button type="button" data-debug-mode="1">Overlay + Logs</button>
+        <button type="button" data-debug-mode="overlay">Overlay only</button>
+        <button type="button" data-debug-mode="logs">Logs only</button>
+        <button type="button" data-debug-mode="0">Disable</button>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="toggle-debug-capture" checked />
+        Mirror debug logs below (patches <code>console.info</code>)
+      </label>
+      <p>
+        Current mode:
+        <output id="debug-mode-status" aria-live="polite">off</output>
+      </p>
+      <button type="button" id="clear-debug-logs">Clear captured logs</button>
+      <ol id="debug-log-list" class="debug-log-list" reversed hidden aria-live="polite"></ol>
     </section>
     <script type="module">
       const READY_STATES = { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 };

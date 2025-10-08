@@ -45,6 +45,12 @@ import {
   supportsTimerPause,
 } from "../ha/services/timer";
 import { TimerAnnouncer } from "./TimerAnnouncer";
+import {
+  reportDebugSeed,
+  reportDebugTick,
+  reportServerCorrection,
+  type DebugSeedSource,
+} from "../debug";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -156,6 +162,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _lastServerSyncMs?: number;
 
+  private _debugSeedSource?: DebugSeedSource;
+
+  private _debugHasSeededBaseline = false;
+
+  private _debugPendingSeedSource?: DebugSeedSource;
+
   private _applyDialRaf?: number;
   private _dialResizeObserver?: ResizeObserver;
   private _lastDialSignature?: string;
@@ -222,7 +234,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     } else {
       this._viewModel = undefined;
     }
-    this._updateRunningTickState(state);
+    this._updateRunningTickState(state, this._previousTimerState);
     this._syncDisplayDuration(state);
     this._previousTimerState = state;
     this._timerStateController.setEntityId(this._config?.entity);
@@ -580,30 +592,46 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       throw new Error("unsupported");
     }
 
+    const previousPendingSeed = this._debugPendingSeedSource;
+    this._debugPendingSeedSource = "resume";
+
     if (this._pauseCapability === "native") {
-      await resumeTimer(this._hass, this._config.entity);
-      return;
+      try {
+        await resumeTimer(this._hass, this._config.entity);
+        return;
+      } catch (error) {
+        this._debugPendingSeedSource = previousPendingSeed;
+        throw error;
+      }
     }
 
     if (this._pauseCapability !== "compat" || !this._pauseHelperEntityId) {
+      this._debugPendingSeedSource = previousPendingSeed;
       throw new Error("unsupported");
     }
 
     const helperState = this._hass.states?.[this._pauseHelperEntityId];
     if (!helperState) {
+      this._debugPendingSeedSource = previousPendingSeed;
       throw new Error("helper-missing");
     }
 
     const remaining = this._getPauseRemainingSeconds(state);
     if (remaining === undefined || remaining <= 0) {
+      this._debugPendingSeedSource = previousPendingSeed;
       throw new Error("remaining-unknown");
     }
 
-    await startTimer(this._hass, this._config.entity, Math.max(1, Math.round(remaining)));
-    await this._hass.callService("input_text", "set_value", {
-      entity_id: this._pauseHelperEntityId,
-      value: "",
-    });
+    try {
+      await startTimer(this._hass, this._config.entity, Math.max(1, Math.round(remaining)));
+      await this._hass.callService("input_text", "set_value", {
+        entity_id: this._pauseHelperEntityId,
+        value: "",
+      });
+    } catch (error) {
+      this._debugPendingSeedSource = previousPendingSeed;
+      throw error;
+    }
   }
 
   private _handlePauseResumeFailure(action: "pause" | "resume", error: unknown): void {
@@ -1299,6 +1327,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    const previousPendingSeed = this._debugPendingSeedSource;
+    this._debugPendingSeedSource = "start";
     this._viewModel = setViewModelError(this._viewModel, undefined);
     this._clearErrorTimer();
     this._viewModel = setPendingAction(this._viewModel, "start", registered.ts);
@@ -1307,6 +1337,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     try {
       await startTimer(this._hass, this._config.entity, durationSeconds);
     } catch {
+      this._debugPendingSeedSource = previousPendingSeed;
       this._timerStateController.reportActionFailure(registered.gen, STRINGS.toastStartFailed);
       this._viewModel = clearPendingAction(this._viewModel);
       this._viewModel = setViewModelError(this._viewModel, {
@@ -1335,12 +1366,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    const previousPendingSeed = this._debugPendingSeedSource;
+    this._debugPendingSeedSource = "start";
     this._viewModel = setPendingAction(this._viewModel, "restart", registered.ts);
     this._announceAction("restart", durationSeconds);
 
     try {
       await restartTimer(this._hass, this._config.entity, durationSeconds);
     } catch {
+      this._debugPendingSeedSource = previousPendingSeed;
       this._timerStateController.reportActionFailure(registered.gen, STRINGS.toastRestartFailed);
       this._viewModel = clearPendingAction(this._viewModel);
       this._viewModel = setViewModelError(this._viewModel, {
@@ -2091,8 +2125,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._handleAnnouncements(state, previousState, previousViewModel);
+    this._updateRunningTickState(state, previousState);
     this._previousTimerState = state;
-    this._updateRunningTickState(state);
     this._syncDisplayDuration(state);
     this._scheduleApplyDialDisplay("state-change");
   }
@@ -2280,22 +2314,25 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._updateProgressAnimationState(state);
   }
 
-  private _updateRunningTickState(state: TimerViewState): void {
+  private _updateRunningTickState(state: TimerViewState, previousState?: TimerViewState): void {
     if (state.connectionStatus !== "connected") {
       this._cancelRunningTick();
       this._updateProgressAnimationState(state);
+      this._debugPublishTick(state);
       return;
     }
 
     if (state.status === "paused") {
       this._cancelRunningTick();
+      let candidate: number | undefined;
       if (state.remainingSeconds !== undefined) {
-        const candidate = Math.max(0, Math.floor(state.remainingSeconds));
+        candidate = Math.max(0, Math.floor(state.remainingSeconds));
         this._serverRemainingSeconds = candidate;
         this._lastServerSyncMs = undefined;
         this._setDisplayDurationSeconds(candidate);
       }
       this._updateProgressAnimationState(state);
+      this._debugPublishTick(state, candidate ?? this._displayDurationSeconds);
       return;
     }
 
@@ -2304,6 +2341,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._serverRemainingSeconds = undefined;
       this._lastServerSyncMs = undefined;
       this._updateProgressAnimationState(state);
+      this._debugPublishTick(state);
       return;
     }
 
@@ -2317,8 +2355,24 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         candidate === this._serverRemainingSeconds;
 
       if (!looksLikeDurationEcho) {
+        const now = Date.now();
+        if (this._serverRemainingSeconds !== undefined && this._lastServerSyncMs !== undefined) {
+          const elapsedSeconds = Math.floor(Math.max(0, now - this._lastServerSyncMs) / 1000);
+          const predicted = Math.max(0, Math.floor(this._serverRemainingSeconds) - elapsedSeconds);
+          const deltaMs = (candidate - predicted) * 1000;
+          if (Math.abs(deltaMs) > 750) {
+            reportServerCorrection({
+              deltaMs,
+              serverRemaining: candidate,
+              baselineEndMs: now + candidate * 1000,
+              lastServerUpdate: this._debugFormatTimestamp(state.lastChangedTs),
+              entityId: state.entityId ?? this._config?.entity,
+            });
+          }
+        }
         this._serverRemainingSeconds = candidate;
-        this._lastServerSyncMs = Date.now();
+        this._lastServerSyncMs = now;
+        this._debugHandleSeed(state, previousState, "server", candidate, candidate);
       }
     }
 
@@ -2329,9 +2383,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       display > 0 &&
       (this._serverRemainingSeconds === undefined || this._lastServerSyncMs === undefined)
     ) {
-      this._serverRemainingSeconds = Math.max(0, Math.floor(display));
+      const clamped = Math.max(0, Math.floor(display));
+      this._serverRemainingSeconds = clamped;
       this._lastServerSyncMs = Date.now();
+      this._debugHandleSeed(state, previousState, "fallback", clamped, display);
     }
+
+    this._debugPublishTick(state, display);
 
     if (display !== undefined && display > 0) {
       this._scheduleRunningTick();
@@ -2340,6 +2398,90 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._updateProgressAnimationState(state);
+  }
+
+  private _debugHandleSeed(
+    state: TimerViewState,
+    previousState: TimerViewState | undefined,
+    kind: "server" | "fallback",
+    serverRemaining: number,
+    estimatedRemaining?: number,
+  ): void {
+    const seedSource = this._debugDetermineSeedSource(state, previousState, kind);
+    this._debugSeedSource = seedSource;
+    this._debugHasSeededBaseline = true;
+    const baselineEndMs =
+      this._lastServerSyncMs !== undefined ? this._lastServerSyncMs + serverRemaining * 1000 : undefined;
+    const lastServerUpdate = this._debugFormatTimestamp(state.lastChangedTs);
+    const entityId = state.entityId ?? this._config?.entity;
+    const payload = {
+      seedSource,
+      serverRemaining,
+      estimatedRemaining: estimatedRemaining ?? this._displayDurationSeconds,
+      baselineEndMs,
+      lastServerUpdate,
+      entityId,
+    } as const;
+    reportDebugSeed(payload);
+    reportDebugTick(payload);
+  }
+
+  private _debugPublishTick(state: TimerViewState, estimatedRemaining?: number): void {
+    const serverRemaining = this._serverRemainingSeconds;
+    const baselineEndMs =
+      serverRemaining !== undefined && this._lastServerSyncMs !== undefined
+        ? this._lastServerSyncMs + serverRemaining * 1000
+        : undefined;
+    const lastServerUpdate = this._debugFormatTimestamp(state.lastChangedTs);
+    const entityId = state.entityId ?? this._config?.entity;
+    reportDebugTick({
+      seedSource: this._debugSeedSource,
+      serverRemaining,
+      estimatedRemaining: estimatedRemaining ?? this._displayDurationSeconds,
+      baselineEndMs,
+      lastServerUpdate,
+      entityId,
+    });
+  }
+
+  private _debugDetermineSeedSource(
+    state: TimerViewState,
+    previousState: TimerViewState | undefined,
+    kind: "server" | "fallback",
+  ): DebugSeedSource {
+    if (this._debugPendingSeedSource) {
+      const pending = this._debugPendingSeedSource;
+      this._debugPendingSeedSource = undefined;
+      return pending;
+    }
+
+    if (kind === "server" && state.remainingIsEstimated) {
+      return "estimated_last_changed";
+    }
+
+    if (previousState?.status === "paused" && state.status === "running") {
+      return "resume";
+    }
+
+    if (!this._debugHasSeededBaseline) {
+      return "reload";
+    }
+
+    return "server_remaining";
+  }
+
+  private _debugFormatTimestamp(value: number | undefined): string | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    const date = new Date(value);
+    const time = date.getTime();
+    if (!Number.isFinite(time)) {
+      return undefined;
+    }
+
+    return date.toISOString();
   }
 
   private _applyRunningDisplay(state: TimerViewState): number | undefined {
