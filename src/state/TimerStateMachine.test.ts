@@ -82,9 +82,55 @@ describe("normalizeTimerEntity", () => {
 
     // finishes_at is 90s after server now -> 90 seconds remaining
     expect(state.status).toBe("running");
-    expect(state.remainingSeconds).toBeGreaterThanOrEqual(89);
-    expect(state.remainingSeconds).toBeLessThanOrEqual(90);
+    expect(state.remainingSeconds).toBeCloseTo(90, 5);
     expect(state.remainingIsEstimated).toBe(false);
+  });
+
+  it("prefers the remaining attribute when finishes_at disagrees", () => {
+    const now = Date.now();
+    const serverNow = now;
+    const finishesAt = new Date(serverNow + 30_000).toISOString();
+    const entity = createEntity({
+      state: "active",
+      duration: "0:05:00",
+      remaining: "0:02:30",
+      finishesAt,
+    });
+
+    const state = normalizeTimerEntity(entity, now, { serverNow });
+
+    expect(state.status).toBe("running");
+    expect(state.remainingSeconds).toBe(150);
+    expect(state.remainingIsEstimated).toBe(false);
+  });
+
+  it("clamps reported remaining above the configured duration", () => {
+    const now = Date.now();
+    const entity = createEntity({
+      state: "active",
+      duration: "0:02:00",
+      remaining: "0:05:00",
+    });
+
+    const state = normalizeTimerEntity(entity, now);
+
+    expect(state.status).toBe("running");
+    expect(state.remainingSeconds).toBe(120);
+  });
+
+  it("clamps computed remaining to zero when elapsed exceeds duration", () => {
+    const now = Date.now();
+    const entity = createEntity({
+      state: "active",
+      duration: "0:01:00",
+      lastChangedOffsetMs: 300_000,
+    });
+
+    const state = normalizeTimerEntity(entity, now);
+
+    expect(state.status).toBe("running");
+    expect(state.remainingSeconds).toBe(0);
+    expect(state.remainingIsEstimated).toBe(true);
   });
 
   it("maps paused entity to paused state", () => {

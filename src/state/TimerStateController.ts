@@ -44,6 +44,7 @@ export type TimerViewState = TimerEntityState & {
   inFlightAction?: InFlightAction;
   serverRemainingSecAtT0?: number;
   clientMonotonicT0?: number;
+  baselineEndMs?: number;
   actionGeneration: number;
   entityId?: string;
 };
@@ -113,6 +114,8 @@ export class TimerStateController implements ReactiveController {
   private serverRemainingSecAtT0?: number;
 
   private clientMonotonicT0?: number;
+
+  private baselineEndMs?: number;
 
   private previousEntityState?: TimerEntityState;
 
@@ -541,19 +544,17 @@ export class TimerStateController implements ReactiveController {
 
     let serverRemainingSecAtT0 = this.serverRemainingSecAtT0;
     let clientMonotonicT0 = this.clientMonotonicT0;
+    let baselineEndMs = this.baselineEndMs;
 
     if (connectionStatus !== "connected") {
       clientMonotonicT0 = undefined;
+      baselineEndMs = undefined;
     } else if (entityState.status === "running") {
-      if (entityState.remainingSeconds !== undefined) {
-        serverRemainingSecAtT0 = Math.max(0, Math.floor(entityState.remainingSeconds));
-        clientMonotonicT0 = this.monotonicNow();
-      } else if (serverRemainingSecAtT0 === undefined) {
-        const fallback = entityState.durationSeconds;
-        if (fallback !== undefined) {
-          serverRemainingSecAtT0 = Math.max(0, Math.floor(fallback));
-          clientMonotonicT0 = this.monotonicNow();
-        }
+      const seed = this.seedRunningBaseline(entityState, now);
+      if (seed) {
+        serverRemainingSecAtT0 = seed.remainingSeconds;
+        clientMonotonicT0 = seed.monotonicT0;
+        baselineEndMs = seed.baselineEndMs;
       }
     } else if (entityState.status === "paused") {
       if (entityState.remainingSeconds !== undefined) {
@@ -562,13 +563,16 @@ export class TimerStateController implements ReactiveController {
         serverRemainingSecAtT0 = undefined;
       }
       clientMonotonicT0 = undefined;
+      baselineEndMs = undefined;
     } else {
       serverRemainingSecAtT0 = undefined;
       clientMonotonicT0 = undefined;
+      baselineEndMs = undefined;
     }
 
     this.serverRemainingSecAtT0 = serverRemainingSecAtT0;
     this.clientMonotonicT0 = clientMonotonicT0;
+    this.baselineEndMs = baselineEndMs;
 
     this.currentState = {
       ...entityState,
@@ -577,11 +581,56 @@ export class TimerStateController implements ReactiveController {
       inFlightAction: this.inFlightAction,
       serverRemainingSecAtT0,
       clientMonotonicT0,
+      baselineEndMs,
       actionGeneration: this.actionGeneration,
       entityId: this.entityId,
     };
 
     return this.currentState;
+  }
+
+  private seedRunningBaseline(
+    entityState: TimerEntityState,
+    wallNow: number,
+  ):
+    | {
+        remainingSeconds: number;
+        monotonicT0: number;
+        baselineEndMs: number;
+      }
+    | undefined {
+    let remainingSeconds = entityState.remainingSeconds;
+
+    if (remainingSeconds === undefined) {
+      const durationSeconds = entityState.durationSeconds;
+      const lastChanged = entityState.lastChangedTs;
+      if (durationSeconds !== undefined && lastChanged !== undefined) {
+        const elapsedMs = Math.max(0, wallNow - lastChanged);
+        const elapsedSeconds = elapsedMs / 1000;
+        const computed = durationSeconds - elapsedSeconds;
+        const clamped = Math.min(durationSeconds, Math.max(0, computed));
+        remainingSeconds = clamped;
+      }
+    }
+
+    if (remainingSeconds === undefined) {
+      return undefined;
+    }
+
+    const durationLimit = entityState.durationSeconds;
+    if (durationLimit !== undefined) {
+      const maxRemaining = Math.max(0, durationLimit);
+      remainingSeconds = Math.min(maxRemaining, Math.max(0, remainingSeconds));
+    } else {
+      remainingSeconds = Math.max(0, remainingSeconds);
+    }
+
+    const monotonicT0 = this.monotonicNow();
+    return {
+      remainingSeconds,
+      monotonicT0,
+      baselineEndMs: monotonicT0 + remainingSeconds * 1000,
+    };
   }
 
   private computeEntityError(
