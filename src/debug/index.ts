@@ -1,5 +1,10 @@
 import { RuntimeDebugManager } from "./manager";
-import type { DebugCorrectionPayload, DebugOverlaySample, DebugSeedPayload } from "./types";
+import type {
+  DebugCorrectionPayload,
+  DebugOverlaySample,
+  DebugSeedPayload,
+  DebugStartOutlierPayload,
+} from "./types";
 
 const manager = new RuntimeDebugManager();
 
@@ -15,6 +20,10 @@ export function reportDebugTick(payload: DebugOverlaySample): void {
 
 export function reportServerCorrection(payload: DebugCorrectionPayload): void {
   manager.reportServerCorrection(payload);
+}
+
+export function reportStartOutlier(payload: DebugStartOutlierPayload): void {
+  manager.reportStartOutlier(payload);
 }
 
 export function enableTeaTimerDebug(mode?: string): void {

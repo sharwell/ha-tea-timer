@@ -27,3 +27,12 @@ export interface DebugCorrectionPayload {
 }
 
 export interface DebugOverlaySample extends DebugSnapshotBase {}
+
+export interface DebugStartOutlierPayload {
+  requestedDurationS: number;
+  firstComputedS: number;
+  deltaS: number;
+  intentTsIso: string;
+  nowMs: number;
+  entityId?: string;
+}

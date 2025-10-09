@@ -1,4 +1,8 @@
-import type { DebugCorrectionPayload, DebugSeedPayload } from "./types";
+import type {
+  DebugCorrectionPayload,
+  DebugSeedPayload,
+  DebugStartOutlierPayload,
+} from "./types";
 
 function anonymizeEntityId(entityId: string | undefined): string | undefined {
   if (!entityId) {
@@ -20,9 +24,9 @@ function anonymizeEntityId(entityId: string | undefined): string | undefined {
 }
 
 export class StructuredLogger {
-  private readonly console: Pick<Console, "info">;
+  private readonly console: Pick<Console, "info" | "warn">;
 
-  constructor(targetConsole: Pick<Console, "info"> = console) {
+  constructor(targetConsole: Pick<Console, "info" | "warn"> = console) {
     this.console = targetConsole;
   }
 
@@ -56,6 +60,24 @@ export class StructuredLogger {
         serverRemaining: payload.serverRemaining,
         baselineEndMs: payload.baselineEndMs,
         lastServerUpdate: payload.lastServerUpdate,
+        entityId: anonymizedEntity,
+      },
+    );
+  }
+
+  public logStartOutlier(payload: DebugStartOutlierPayload): void {
+    const tsIso = new Date().toISOString();
+    const anonymizedEntity = anonymizeEntityId(payload.entityId);
+    this.console.warn(
+      "[ha-tea-timer][debug]",
+      {
+        evt: "start_outlier",
+        ts_iso: tsIso,
+        requestedDurationS: payload.requestedDurationS,
+        firstComputedS: payload.firstComputedS,
+        deltaS: payload.deltaS,
+        intentTsIso: payload.intentTsIso,
+        nowMs: payload.nowMs,
         entityId: anonymizedEntity,
       },
     );
