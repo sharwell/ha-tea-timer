@@ -114,17 +114,43 @@ describe("TeaTimerCard", () => {
     state: MachineTimerViewState,
     overrides: Partial<ControllerTimerViewState> = {},
   ): ControllerTimerViewState {
+    const mergedOverrides: Partial<ControllerTimerViewState> = { ...overrides };
+    const effectiveStatus = (mergedOverrides.status ?? state.status) as MachineTimerViewState["status"];
+    if (effectiveStatus === "running") {
+      const existingRemaining =
+        mergedOverrides.serverRemainingSecAtT0 ??
+        mergedOverrides.remainingSeconds ??
+        state.remainingSeconds;
+      if (existingRemaining !== undefined) {
+        const monotonicNow =
+          mergedOverrides.clientMonotonicT0 ??
+          (typeof performance !== "undefined" && typeof performance.now === "function"
+            ? performance.now()
+            : Date.now());
+        if (mergedOverrides.serverRemainingSecAtT0 === undefined) {
+          mergedOverrides.serverRemainingSecAtT0 = existingRemaining;
+        }
+        if (mergedOverrides.clientMonotonicT0 === undefined) {
+          mergedOverrides.clientMonotonicT0 = monotonicNow;
+        }
+        if (mergedOverrides.baselineEndMs === undefined) {
+          mergedOverrides.baselineEndMs = monotonicNow + existingRemaining * 1000;
+        }
+      }
+    }
+
     const entity = overrides.entityId ?? (card as unknown as { _config?: { entity?: string } })._config?.entity;
 
     return {
       ...state,
-      ...overrides,
-      connectionStatus: overrides.connectionStatus ?? "connected",
-      uiState: overrides.uiState ?? deriveUiState((overrides.status ?? state.status) as MachineTimerViewState["status"]),
-      inFlightAction: overrides.inFlightAction,
-      serverRemainingSecAtT0: overrides.serverRemainingSecAtT0,
-      clientMonotonicT0: overrides.clientMonotonicT0,
-      actionGeneration: overrides.actionGeneration ?? 0,
+      ...mergedOverrides,
+      connectionStatus: mergedOverrides.connectionStatus ?? "connected",
+      uiState: mergedOverrides.uiState ?? deriveUiState(effectiveStatus),
+      inFlightAction: mergedOverrides.inFlightAction,
+      serverRemainingSecAtT0: mergedOverrides.serverRemainingSecAtT0,
+      clientMonotonicT0: mergedOverrides.clientMonotonicT0,
+      baselineEndMs: mergedOverrides.baselineEndMs,
+      actionGeneration: mergedOverrides.actionGeneration ?? 0,
       entityId: entity,
     };
   }
@@ -241,6 +267,13 @@ describe("TeaTimerCard", () => {
       services: {},
       callService: vi.fn().mockResolvedValue(undefined),
     } as unknown as HomeAssistant;
+  }
+
+  function mockPerformanceNowToDateNow(): MockInstance | undefined {
+    if (typeof performance !== "undefined" && typeof performance.now === "function") {
+      return vi.spyOn(performance, "now").mockImplementation(() => Date.now());
+    }
+    return undefined;
   }
 
   function triggerExtend(card: TeaTimerCard) {
@@ -550,6 +583,7 @@ describe("TeaTimerCard", () => {
   it("ticks the running display once per second while counting down", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -571,6 +605,7 @@ describe("TeaTimerCard", () => {
       vi.advanceTimersByTime(1000);
       expect(getDisplayDuration(card)).toBe(123);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -579,6 +614,7 @@ describe("TeaTimerCard", () => {
   it("continues ticking when Home Assistant omits remaining seconds", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -607,6 +643,7 @@ describe("TeaTimerCard", () => {
       vi.advanceTimersByTime(1000);
       expect(getDisplayDuration(card)).toBe(178);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -615,6 +652,7 @@ describe("TeaTimerCard", () => {
   it("starts ticking immediately when the first running state omits remaining", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -635,6 +673,7 @@ describe("TeaTimerCard", () => {
       vi.advanceTimersByTime(1000);
       expect(getDisplayDuration(card)).toBe(238);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -643,6 +682,7 @@ describe("TeaTimerCard", () => {
   it("continues ticking when running updates arrive more than once per second", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -666,6 +706,7 @@ describe("TeaTimerCard", () => {
 
       expect(getDisplayDuration(card)).toBe(179);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -674,6 +715,7 @@ describe("TeaTimerCard", () => {
   it("ignores duration echo updates while running", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -702,6 +744,7 @@ describe("TeaTimerCard", () => {
       vi.advanceTimersByTime(1000);
       expect(getDisplayDuration(card)).toBe(178);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -742,9 +785,65 @@ describe("TeaTimerCard", () => {
     }
   });
 
+  it("does not call Home Assistant services when seeding a running baseline", () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    const hass = createHass();
+    card.hass = hass;
+
+    const remaining = 200;
+    const seedMonotonic = 5_000;
+    const baselineEnd = seedMonotonic + remaining * 1000;
+
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 400,
+      remainingSeconds: remaining,
+    };
+
+    setTimerState(card, runningState, {
+      serverRemainingSecAtT0: remaining,
+      clientMonotonicT0: seedMonotonic,
+      baselineEndMs: baselineEnd,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(hass.callService)).not.toHaveBeenCalled();
+  });
+
+  it("ignores dial bounds while restoring a running baseline", () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      dialBounds: { min: 600, max: 900, step: 30 },
+    });
+
+    const remaining = 180;
+    const seedMonotonic =
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+    const baselineEnd = seedMonotonic + remaining * 1000;
+    const runningState: TimerViewState = {
+      status: "running",
+      durationSeconds: 480,
+      remainingSeconds: remaining,
+    };
+
+    setTimerState(card, runningState, {
+      serverRemainingSecAtT0: remaining,
+      clientMonotonicT0: seedMonotonic,
+      baselineEndMs: baselineEnd,
+    });
+
+    expect(getDisplayDuration(card)).toBe(remaining);
+  });
+
   it("resynchronizes the running display when the server sends updates", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -771,6 +870,7 @@ describe("TeaTimerCard", () => {
       setTimerState(card, resyncedState);
       expect(getDisplayDuration(card)).toBe(160);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -787,12 +887,14 @@ describe("TeaTimerCard", () => {
         displaySeconds?: number,
       ): number | undefined;
       _serverRemainingSeconds?: number;
-      _lastServerSyncMs?: number;
+      _lastServerSyncMonotonicMs?: number;
+      _serverBaselineEndMonotonicMs?: number;
     };
 
-    const start = Date.now();
+    const start = 1000;
     internals._serverRemainingSeconds = 300;
-    internals._lastServerSyncMs = start;
+    internals._lastServerSyncMonotonicMs = start;
+    internals._serverBaselineEndMonotonicMs = start + 300_000;
 
     const running: MachineTimerViewState = { status: "running", durationSeconds: 300 };
 
@@ -810,6 +912,7 @@ describe("TeaTimerCard", () => {
   it("applies elapsed time after long pauses in ticking", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -827,6 +930,7 @@ describe("TeaTimerCard", () => {
       vi.advanceTimersByTime(10000);
       expect(getDisplayDuration(card)).toBe(80);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -1080,6 +1184,7 @@ describe("TeaTimerCard", () => {
 
   it("uses timer.change when supported and within the original duration", async () => {
     vi.useFakeTimers();
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -1106,6 +1211,7 @@ describe("TeaTimerCard", () => {
       expect(changeTimerMock).toHaveBeenCalledWith(card.hass, "timer.tea", 30);
       expect(restartTimer).not.toHaveBeenCalled();
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -1113,6 +1219,7 @@ describe("TeaTimerCard", () => {
 
   it("announces extend additions with the updated remaining time", async () => {
     vi.useFakeTimers();
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -1150,6 +1257,7 @@ describe("TeaTimerCard", () => {
 
       expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.tea", 180);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -1157,6 +1265,7 @@ describe("TeaTimerCard", () => {
 
   it("falls back to restart when timer.change would exceed the cap", async () => {
     vi.useFakeTimers();
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -1183,6 +1292,7 @@ describe("TeaTimerCard", () => {
       expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.tea", 350);
       expect(changeTimer).not.toHaveBeenCalled();
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -1190,6 +1300,7 @@ describe("TeaTimerCard", () => {
 
   it("coalesces rapid extend taps into a single restart", async () => {
     vi.useFakeTimers();
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -1218,6 +1329,7 @@ describe("TeaTimerCard", () => {
       expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.tea", 330);
       expect(changeTimer).not.toHaveBeenCalled();
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }
@@ -1225,6 +1337,7 @@ describe("TeaTimerCard", () => {
 
   it("respects the maxExtendS cap and announces the limit", async () => {
     vi.useFakeTimers();
+    const perfSpy = mockPerformanceNowToDateNow();
 
     try {
       const card = createCard();
@@ -1262,6 +1375,7 @@ describe("TeaTimerCard", () => {
       expect(internals._ariaAnnouncement).toContain(STRINGS.ariaExtendCapReached);
       expect(internals._extendAccumulatedSeconds).toBe(60);
     } finally {
+      perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }

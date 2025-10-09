@@ -80,22 +80,33 @@ function normalizeEntity(
     let remainingIsEstimated = false;
     let estimationDriftSeconds: number | undefined;
 
-    if (state === "active" && finishesAt !== undefined) {
-      const remainingMs = finishesAt - effectiveServerNow;
-      remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-      remainingIsEstimated = false;
+    if (remainingSeconds === undefined) {
+      if (state === "active" && finishesAt !== undefined) {
+        const remainingMs = Math.max(0, finishesAt - effectiveServerNow);
+        remainingSeconds = remainingMs / 1000;
+      }
+
+      if (remainingSeconds === undefined && durationSeconds !== undefined && lastChangedTs !== undefined) {
+        const elapsedMs = Math.max(0, effectiveServerNow - lastChangedTs);
+        const elapsedSeconds = elapsedMs / 1000;
+        const computedRemaining = durationSeconds - elapsedSeconds;
+        const clampedRemaining = Math.min(durationSeconds, Math.max(0, computedRemaining));
+        remainingSeconds = clampedRemaining;
+        remainingIsEstimated = true;
+
+        const driftSeconds = Math.max(0, Math.floor(elapsedSeconds - durationSeconds));
+        if (driftSeconds > 0) {
+          estimationDriftSeconds = driftSeconds;
+        }
+      }
     }
 
-    if (remainingSeconds === undefined && durationSeconds !== undefined && lastChangedTs !== undefined) {
-      const elapsedMs = Math.max(0, effectiveServerNow - lastChangedTs);
-      const elapsedSeconds = Math.floor(elapsedMs / 1000);
-      const computedRemaining = Math.max(0, durationSeconds - elapsedSeconds);
-      remainingSeconds = computedRemaining;
-      remainingIsEstimated = true;
-
-      const driftSeconds = Math.max(0, Math.floor(elapsedSeconds - durationSeconds));
-      if (driftSeconds > 0) {
-        estimationDriftSeconds = driftSeconds;
+    if (remainingSeconds !== undefined) {
+      if (durationSeconds !== undefined) {
+        const maxRemaining = Math.max(0, durationSeconds);
+        remainingSeconds = Math.min(maxRemaining, Math.max(0, remainingSeconds));
+      } else {
+        remainingSeconds = Math.max(0, remainingSeconds);
       }
     }
     const status: TimerStatus = state === "paused" ? "paused" : "running";
