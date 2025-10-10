@@ -52,6 +52,14 @@ import {
   reportStartOutlier,
   type DebugSeedSource,
 } from "../debug";
+import {
+  displaySeconds as monotonicDisplaySeconds,
+  nowMs as monotonicNow,
+  remainingMs as monotonicRemainingMs,
+  seedBaseline as seedMonotonicBaseline,
+  type MonotonicCountdownState,
+  VISUAL_CORRECTION_THRESHOLD_MS,
+} from "../time/monotonic";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -178,13 +186,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private readonly _primaryLabelRef = createRef<HTMLSpanElement>();
 
-  private _runningTickTimer?: number;
-  private _nextRunningTickDueMs?: number;
-
   private _serverRemainingSeconds?: number;
-
-  private _serverBaselineEndMonotonicMs?: number;
-
   private _lastServerSyncMonotonicMs?: number;
 
   private _pendingStartSeed?: PendingStartSeed;
@@ -204,6 +206,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _progressAnimationHandle?: number;
 
+  private _countdownAnimationHandle?: number;
+
   private _lastProgressUpdateMs?: number;
 
   private _prefersReducedMotion = false;
@@ -217,6 +221,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _extendRunTotalSeconds?: number;
 
   private _extendServicePromise?: Promise<void>;
+
+  private readonly _monotonicCountdown: MonotonicCountdownState = {};
 
   private _extendInFlightSeconds = 0;
 
@@ -1378,7 +1384,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (
-      this._serverBaselineEndMonotonicMs !== undefined &&
+      this._monotonicCountdown.baselineEndMs !== undefined &&
       this._lastServerSyncMonotonicMs !== undefined &&
       this._serverRemainingSeconds !== undefined
     ) {
@@ -1387,7 +1393,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     this._serverRemainingSeconds = pending.requestedSeconds;
     this._lastServerSyncMonotonicMs = pending.monotonicSeedMs;
-    this._serverBaselineEndMonotonicMs = pending.baselineEndMonotonicMs;
+    seedMonotonicBaseline(this._monotonicCountdown, pending.baselineEndMonotonicMs, {
+      allowIncrease: true,
+    });
     this._startClamp = {
       requestedSeconds: pending.requestedSeconds,
       intentIso: pending.intentIso,
@@ -1627,10 +1635,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const remainingSeconds = Math.max(0, nextRemaining);
     this._serverRemainingSeconds = Math.max(0, Math.floor(remainingSeconds));
     this._lastServerSyncMonotonicMs = nowMonotonic;
-    this._serverBaselineEndMonotonicMs = nowMonotonic + remainingSeconds * 1000;
+    seedMonotonicBaseline(this._monotonicCountdown, nowMonotonic + remainingSeconds * 1000, {
+      allowIncrease: true,
+    });
     this._setDisplayDurationSeconds(Math.max(0, Math.floor(remainingSeconds)));
     this._announceExtend(increment, nextRemaining);
-    this._scheduleRunningTick();
+    this._startCountdownAnimation();
 
     if (this._extendCoalesceTimer !== undefined) {
       clearTimeout(this._extendCoalesceTimer);
@@ -1728,7 +1738,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       });
       this._serverRemainingSeconds = next;
       this._lastServerSyncMonotonicMs = undefined;
-      this._serverBaselineEndMonotonicMs = undefined;
+      seedMonotonicBaseline(this._monotonicCountdown, undefined);
       this._setDisplayDurationSeconds(next);
       this._announceExtend(increment, next);
     } catch (error) {
@@ -1785,7 +1795,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._extendPendingRestartGeneration = undefined;
     this._serverRemainingSeconds = undefined;
     this._lastServerSyncMonotonicMs = undefined;
-    this._serverBaselineEndMonotonicMs = undefined;
+    seedMonotonicBaseline(this._monotonicCountdown, undefined);
     if (this._extendCoalesceTimer !== undefined) {
       clearTimeout(this._extendCoalesceTimer);
       this._extendCoalesceTimer = undefined;
@@ -1811,14 +1821,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return this._displayDurationSeconds ?? state.remainingSeconds;
     }
 
-    if (
-      this._serverRemainingSeconds !== undefined &&
-      this._lastServerSyncMonotonicMs !== undefined &&
-      this._serverBaselineEndMonotonicMs !== undefined
-    ) {
-      const elapsedMs = Math.max(0, this._monotonicNow() - this._lastServerSyncMonotonicMs);
-      const elapsedSeconds = Math.floor(elapsedMs / 1000);
-      return Math.max(0, Math.floor(this._serverRemainingSeconds) - elapsedSeconds);
+    if (this._monotonicCountdown.baselineEndMs !== undefined) {
+      const remaining = monotonicRemainingMs(this._monotonicCountdown);
+      if (remaining !== undefined) {
+        return Math.floor(remaining / 1000);
+      }
     }
 
     if (this._displayDurationSeconds !== undefined) {
@@ -2370,7 +2377,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     this._clearDialTooltipTimer();
     this._clearErrorTimer();
-    this._cancelRunningTick();
+    this._stopCountdownAnimation();
     this._cancelProgressAnimation();
     this._detachReducedMotionListener();
     this._lastProgressUpdateMs = undefined;
@@ -2512,9 +2519,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _updateRunningTickState(state: TimerViewState, previousState?: TimerViewState): void {
     if (state.connectionStatus !== "connected") {
-      this._cancelRunningTick();
-      this._serverBaselineEndMonotonicMs = undefined;
+      this._stopCountdownAnimation();
+      this._serverRemainingSeconds = undefined;
       this._lastServerSyncMonotonicMs = undefined;
+      seedMonotonicBaseline(this._monotonicCountdown, undefined);
       this._pendingStartSeed = undefined;
       this._startClamp = undefined;
       this._updateProgressAnimationState(state);
@@ -2523,13 +2531,13 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status === "paused") {
-      this._cancelRunningTick();
+      this._stopCountdownAnimation();
       let candidate: number | undefined;
       if (state.remainingSeconds !== undefined) {
         candidate = Math.max(0, Math.floor(state.remainingSeconds));
         this._serverRemainingSeconds = candidate;
         this._lastServerSyncMonotonicMs = undefined;
-        this._serverBaselineEndMonotonicMs = undefined;
+        seedMonotonicBaseline(this._monotonicCountdown, undefined);
         this._setDisplayDurationSeconds(candidate);
       }
       this._pendingStartSeed = undefined;
@@ -2540,10 +2548,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status !== "running") {
-      this._cancelRunningTick();
+      this._stopCountdownAnimation();
       this._serverRemainingSeconds = undefined;
       this._lastServerSyncMonotonicMs = undefined;
-      this._serverBaselineEndMonotonicMs = undefined;
+      seedMonotonicBaseline(this._monotonicCountdown, undefined);
       this._pendingStartSeed = undefined;
       this._startClamp = undefined;
       this._updateProgressAnimationState(state);
@@ -2577,7 +2585,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       );
 
       if (baselineEnd !== undefined && seedStartMonotonic !== undefined) {
-        const hasBaseline = this._serverBaselineEndMonotonicMs !== undefined;
+        const previousBaseline = this._monotonicCountdown.baselineEndMs;
+        const hasBaseline = previousBaseline !== undefined;
         const looksLikeDurationEcho =
           hasBaseline &&
           state.durationSeconds !== undefined &&
@@ -2604,33 +2613,42 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
           this._serverRemainingSeconds = candidateRemaining;
           this._lastServerSyncMonotonicMs = seedStartMonotonic;
-          this._serverBaselineEndMonotonicMs = baselineEnd;
+          const baselineDeltaMs = previousBaseline !== undefined ? baselineEnd - previousBaseline : undefined;
+          const isMaterialChange = previousState?.status !== "running" || !this._debugHasSeededBaseline;
+          // Corrections above 0.75s remain logged for #53, but the display only
+          // jumps upward for material changes or larger corrections per #56.
+          const allowIncrease =
+            isMaterialChange ||
+            baselineDeltaMs === undefined ||
+            baselineDeltaMs <= 0 ||
+            baselineDeltaMs >= VISUAL_CORRECTION_THRESHOLD_MS;
+
+          seedMonotonicBaseline(this._monotonicCountdown, baselineEnd, { allowIncrease });
           this._debugHandleSeed(state, previousState, "server", candidateInt, candidateRemaining);
         }
       }
     }
 
-    const display = this._applyRunningDisplay(state);
+    const display = this._applyRunningDisplay(state, nowMonotonic);
 
     if (
       display !== undefined &&
       display > 0 &&
       (this._serverRemainingSeconds === undefined || this._lastServerSyncMonotonicMs === undefined)
     ) {
-      const now = this._monotonicNow();
       const clamped = Math.max(0, display);
       this._serverRemainingSeconds = clamped;
-      this._lastServerSyncMonotonicMs = now;
-      this._serverBaselineEndMonotonicMs = now + clamped * 1000;
+      this._lastServerSyncMonotonicMs = nowMonotonic;
+      seedMonotonicBaseline(this._monotonicCountdown, nowMonotonic + clamped * 1000, { allowIncrease: true });
       this._debugHandleSeed(state, previousState, "fallback", Math.floor(clamped), display);
     }
 
     this._debugPublishTick(state, display);
 
     if (display !== undefined && display > 0) {
-      this._scheduleRunningTick();
+      this._startCountdownAnimation();
     } else {
-      this._cancelRunningTick();
+      this._stopCountdownAnimation();
     }
 
     this._updateProgressAnimationState(state);
@@ -2647,8 +2665,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     this._debugSeedSource = seedSource;
     this._debugHasSeededBaseline = true;
     const baselineEndMs =
-      this._serverBaselineEndMonotonicMs !== undefined
-        ? this._monotonicToWall(this._serverBaselineEndMonotonicMs)
+      this._monotonicCountdown.baselineEndMs !== undefined
+        ? this._monotonicToWall(this._monotonicCountdown.baselineEndMs)
         : undefined;
     const lastServerUpdate = this._debugFormatTimestamp(state.lastChangedTs);
     const entityId = state.entityId ?? this._config?.entity;
@@ -2667,8 +2685,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _debugPublishTick(state: TimerViewState, estimatedRemaining?: number): void {
     const serverRemaining = this._serverRemainingSeconds;
     const baselineEndMs =
-      serverRemaining !== undefined && this._serverBaselineEndMonotonicMs !== undefined
-        ? this._monotonicToWall(this._serverBaselineEndMonotonicMs)
+      serverRemaining !== undefined && this._monotonicCountdown.baselineEndMs !== undefined
+        ? this._monotonicToWall(this._monotonicCountdown.baselineEndMs)
         : undefined;
     const lastServerUpdate = this._debugFormatTimestamp(state.lastChangedTs);
     const entityId = state.entityId ?? this._config?.entity;
@@ -2726,22 +2744,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return date.toISOString();
   }
 
-  private _applyRunningDisplay(state: TimerViewState): number | undefined {
+  private _applyRunningDisplay(state: TimerViewState, now = this._monotonicNow()): number | undefined {
     if (state.status !== "running") {
       this._startClamp = undefined;
       return undefined;
     }
 
-    const baselineEnd = this._serverBaselineEndMonotonicMs;
-    const syncTs = this._lastServerSyncMonotonicMs;
+    let displaySeconds = monotonicDisplaySeconds(this._monotonicCountdown, now);
 
-    let displaySeconds: number | undefined;
-
-    if (
-      baselineEnd === undefined ||
-      syncTs === undefined ||
-      this._serverRemainingSeconds === undefined
-    ) {
+    if (displaySeconds === undefined) {
       // Seed from the most reliable available source when Home Assistant omits
       // `remaining` while the timer is running.
       const fallback =
@@ -2753,13 +2764,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return undefined;
       }
       displaySeconds = Math.max(0, Math.floor(fallback));
-    } else {
-      const remainingMs = Math.max(0, baselineEnd - this._monotonicNow());
-      displaySeconds = Math.max(0, Math.floor((remainingMs + 1) / 1000));
-    }
-
-    if (displaySeconds === undefined) {
-      return undefined;
     }
 
     const effectiveDisplay = this._applyStartClamp(state, displaySeconds);
@@ -2771,61 +2775,36 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return effectiveDisplay;
   }
 
-  private _scheduleRunningTick(): void {
+  private _startCountdownAnimation(): void {
+    if (this._countdownAnimationHandle !== undefined) {
+      return;
+    }
+
+    this._countdownAnimationHandle = window.requestAnimationFrame(this._handleCountdownFrame);
+  }
+
+  private _stopCountdownAnimation(): void {
+    if (this._countdownAnimationHandle !== undefined) {
+      window.cancelAnimationFrame(this._countdownAnimationHandle);
+      this._countdownAnimationHandle = undefined;
+    }
+  }
+
+  private readonly _handleCountdownFrame = () => {
+    this._countdownAnimationHandle = undefined;
     const state = this._timerState ?? this._timerStateController.state;
     if (!state || state.status !== "running") {
-      this._cancelRunningTick();
+      this._stopCountdownAnimation();
       return;
     }
 
-    if (
-      this._serverRemainingSeconds === undefined ||
-      this._serverRemainingSeconds <= 0 ||
-      this._lastServerSyncMonotonicMs === undefined
-    ) {
-      this._cancelRunningTick();
-      return;
+    const display = this._applyRunningDisplay(state);
+    if (display !== undefined && display > 0) {
+      this._startCountdownAnimation();
+    } else {
+      this._stopCountdownAnimation();
     }
-
-    const now = this._monotonicNow();
-    const elapsedMs = Math.max(0, now - this._lastServerSyncMonotonicMs);
-    const remainder = elapsedMs % 1000;
-    const baseDelay = remainder === 0 ? 1000 : 1000 - remainder;
-    const delay = Math.max(16, baseDelay);
-    const dueMs = now + delay;
-
-    if (
-      this._runningTickTimer !== undefined &&
-      this._nextRunningTickDueMs !== undefined &&
-      this._nextRunningTickDueMs <= dueMs + 4
-    ) {
-      return;
-    }
-
-    this._cancelRunningTick();
-    this._nextRunningTickDueMs = dueMs;
-
-    this._runningTickTimer = window.setTimeout(() => {
-      this._runningTickTimer = undefined;
-      this._nextRunningTickDueMs = undefined;
-      const nextState = this._timerState ?? this._timerStateController.state;
-      if (!nextState || nextState.status !== "running") {
-        return;
-      }
-      const display = this._applyRunningDisplay(nextState);
-      if (display !== undefined && display > 0) {
-        this._scheduleRunningTick();
-      }
-    }, delay);
-  }
-
-  private _cancelRunningTick(): void {
-    if (this._runningTickTimer !== undefined) {
-      clearTimeout(this._runningTickTimer);
-      this._runningTickTimer = undefined;
-    }
-    this._nextRunningTickDueMs = undefined;
-  }
+  };
 
   private _syncDialProgress(
     dialElement: TeaTimerDial | undefined,
@@ -2902,10 +2881,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _monotonicNow(): number {
-    if (typeof performance !== "undefined" && typeof performance.now === "function") {
-      return performance.now();
-    }
-    return Date.now();
+    return monotonicNow();
   }
 
   private _monotonicToWall(monotonicMs: number): number {
