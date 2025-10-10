@@ -9,7 +9,12 @@ import {
   modeIncludesOverlay,
   parseDebugMode,
 } from "./mode";
-import type { DebugCorrectionPayload, DebugOverlaySample, DebugSeedPayload } from "./types";
+import type {
+  DebugCorrectionPayload,
+  DebugOverlaySample,
+  DebugSeedPayload,
+  DebugStartOutlierPayload,
+} from "./types";
 import type { DebugOverlayHandle } from "./overlay";
 
 interface RuntimeDebugManagerOptions {
@@ -141,6 +146,26 @@ export class RuntimeDebugManager {
     }
 
     this.logger.logCorrection(payload);
+  }
+
+  public reportStartOutlier(payload: DebugStartOutlierPayload): void {
+    const logPayload = {
+      evt: "start_outlier" as const,
+      requestedDurationS: payload.requestedDurationS,
+      firstComputedS: payload.firstComputedS,
+      deltaS: payload.deltaS,
+      intentTsIso: payload.intentTsIso,
+      nowMs: payload.nowMs,
+      entityId: payload.entityId,
+    };
+
+    this.console.warn?.("[ha-tea-timer]", logPayload);
+
+    if (!modeIncludesLogs(this.mode)) {
+      return;
+    }
+
+    this.logger.logStartOutlier(payload);
   }
 
   private initializeFromEnvironment(): void {

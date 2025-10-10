@@ -26,6 +26,8 @@ All notable changes to this project will be documented in this file.
   until an explicit tap/click/keyboard activation starts the brew. (#32)
 - Keep the preset chip row height stable while the **Custom duration** badge toggles during dial or
   keyboard adjustments. (#37)
+- Ensure the first running render after start/restart matches the requested duration (±0.25 s) and
+  suppress outlier starts while logging a single warning. (#55)
 
 ### Documentation
 - Document pause/resume flows, helper setup, restore caveats, near-finish races, and update the Lovelace

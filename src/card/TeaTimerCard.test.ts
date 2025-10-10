@@ -25,6 +25,7 @@ import {
   supportsTimerPause,
 } from "../ha/services/timer";
 import type { TeaTimerDial } from "../dial/TeaTimerDial";
+import * as debug from "../debug";
 
 vi.mock("../ha/services/timer", () => ({
   startTimer: vi.fn(),
@@ -870,6 +871,201 @@ describe("TeaTimerCard", () => {
       setTimerState(card, resyncedState);
       expect(getDisplayDuration(card)).toBe(160);
     } finally {
+      perfSpy?.mockRestore();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([15, 240, 1200])(
+    "seeds the first running render to the requested duration (%d s)",
+    (seconds) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+      const perfSpy = mockPerformanceNowToDateNow();
+      startTimerMock.mockResolvedValue(undefined);
+
+      try {
+        const card = createCard();
+        card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+        card.hass = createHass();
+
+        const idleState: TimerViewState = {
+          status: "idle",
+          durationSeconds: seconds,
+          remainingSeconds: seconds,
+        };
+
+        setTimerState(card, idleState);
+
+        invokePrimaryAction(card);
+
+        const runningState: TimerViewState = {
+          status: "running",
+          durationSeconds: seconds,
+        };
+
+        setTimerState(card, runningState);
+
+        expect(getDisplayDuration(card)).toBe(seconds);
+
+        const internals = card as unknown as {
+          _serverBaselineEndMonotonicMs?: number;
+          _lastServerSyncMonotonicMs?: number;
+        };
+
+        expect(internals._serverBaselineEndMonotonicMs).toBeDefined();
+        expect(internals._lastServerSyncMonotonicMs).toBeDefined();
+
+        if (
+          internals._serverBaselineEndMonotonicMs !== undefined &&
+          internals._lastServerSyncMonotonicMs !== undefined
+        ) {
+          expect(
+            internals._serverBaselineEndMonotonicMs - internals._lastServerSyncMonotonicMs,
+          ).toBeCloseTo(seconds * 1000, 0);
+        }
+      } finally {
+        perfSpy?.mockRestore();
+        vi.clearAllTimers();
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it("applies the requested duration when restarting before the first server update", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
+    restartTimerMock.mockResolvedValue(undefined);
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+      card.hass = createHass();
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 180,
+        remainingSeconds: 180,
+      };
+
+      setTimerState(card, runningState);
+
+      const handler = card as unknown as { _restartTimerAction(durationSeconds: number): Promise<void> };
+      await handler._restartTimerAction(480);
+
+      const reseeded: TimerViewState = {
+        status: "running",
+        durationSeconds: 480,
+      };
+
+      setTimerState(card, reseeded);
+
+      expect(getDisplayDuration(card)).toBe(480);
+    } finally {
+      perfSpy?.mockRestore();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("clamps outlier server values on the first running render and logs once", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
+    startTimerMock.mockResolvedValue(undefined);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const outlierSpy = vi.spyOn(debug, "reportStartOutlier");
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+      card.hass = createHass();
+
+      const idleState: TimerViewState = {
+        status: "idle",
+        durationSeconds: 120,
+        remainingSeconds: 120,
+      };
+
+      setTimerState(card, idleState);
+
+      invokePrimaryAction(card);
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 120,
+      };
+
+      setTimerState(card, runningState);
+
+      const outlierState: TimerViewState = {
+        status: "running",
+        durationSeconds: 120,
+        remainingSeconds: 7200,
+      };
+
+      setTimerState(card, outlierState);
+
+      expect(getDisplayDuration(card)).toBe(120);
+      expect(outlierSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      setTimerState(card, { ...outlierState });
+      expect(outlierSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      warnSpy.mockRestore();
+      outlierSpy.mockRestore();
+      perfSpy?.mockRestore();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports server corrections when the authoritative snapshot diverges", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    const perfSpy = mockPerformanceNowToDateNow();
+    const correctionSpy = vi.spyOn(debug, "reportServerCorrection");
+    startTimerMock.mockResolvedValue(undefined);
+
+    try {
+      const card = createCard();
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+      card.hass = createHass();
+
+      const idleState: TimerViewState = {
+        status: "idle",
+        durationSeconds: 300,
+        remainingSeconds: 300,
+      };
+
+      setTimerState(card, idleState);
+
+      invokePrimaryAction(card);
+
+      const runningState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+      };
+
+      setTimerState(card, runningState);
+
+      vi.advanceTimersByTime(5000);
+
+      const correctionState: TimerViewState = {
+        status: "running",
+        durationSeconds: 300,
+        remainingSeconds: 150,
+      };
+
+      setTimerState(card, correctionState);
+
+      expect(correctionSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      correctionSpy.mockRestore();
       perfSpy?.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
@@ -2169,6 +2365,8 @@ describe("TeaTimerCard", () => {
     const internalsBefore = card as unknown as { _pauseCapability?: string };
     expect(internalsBefore._pauseCapability).toBe("compat");
     button?.click();
+    await Promise.resolve();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(startTimerMock).toHaveBeenCalledWith(hass, "timer.kettle", 30);

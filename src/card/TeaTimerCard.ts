@@ -49,12 +49,35 @@ import {
   reportDebugSeed,
   reportDebugTick,
   reportServerCorrection,
+  reportStartOutlier,
   type DebugSeedSource,
 } from "../debug";
 
 const PROGRESS_FRAME_INTERVAL_MS = 250;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const EXTEND_COALESCE_DELAY_MS = 200;
+const START_FIRST_RENDER_TOLERANCE_S = 0.25;
+const START_OUTLIER_MAX_SECONDS = 6 * 60 * 60;
+
+interface PendingStartSeed {
+  requestedSeconds: number;
+  monotonicSeedMs: number;
+  baselineEndMonotonicMs: number;
+  intentWallMs: number;
+  intentIso: string;
+  kind: "start" | "restart";
+  localSeedApplied: boolean;
+  warningIssued: boolean;
+}
+
+interface StartClampState {
+  requestedSeconds: number;
+  intentIso: string;
+  firstComputedSeconds: number;
+  deltaSeconds: number;
+  nowMs: number;
+  remainingFrames: number;
+}
 
 type TimerUiErrorReason = Extract<TimerUiState, { kind: "Error" }>["reason"];
 type EntityErrorInfo = { message: string; entityId?: string };
@@ -163,6 +186,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _serverBaselineEndMonotonicMs?: number;
 
   private _lastServerSyncMonotonicMs?: number;
+
+  private _pendingStartSeed?: PendingStartSeed;
+
+  private _startClamp?: StartClampState;
 
   private _debugSeedSource?: DebugSeedSource;
 
@@ -1315,6 +1342,158 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     return normalizeDurationSeconds(selected, this._config.dialBounds);
   }
 
+  private _seedStartBaseline(kind: "start" | "restart", requestedSeconds: number): void {
+    if (!Number.isFinite(requestedSeconds)) {
+      this._pendingStartSeed = undefined;
+      this._startClamp = undefined;
+      return;
+    }
+
+    const normalized = Math.max(0, requestedSeconds);
+    const monotonicSeed = this._monotonicNow();
+    const wallNow = Date.now();
+    const baselineEndMonotonicMs = monotonicSeed + normalized * 1000;
+
+    this._pendingStartSeed = {
+      requestedSeconds: normalized,
+      monotonicSeedMs: monotonicSeed,
+      baselineEndMonotonicMs,
+      intentWallMs: wallNow,
+      intentIso: new Date(wallNow).toISOString(),
+      kind,
+      localSeedApplied: false,
+      warningIssued: false,
+    };
+    this._startClamp = undefined;
+  }
+
+  private _prepareStartBaseline(state: TimerViewState, previousState: TimerViewState | undefined): void {
+    const pending = this._pendingStartSeed;
+    if (!pending || state.status !== "running") {
+      return;
+    }
+
+    if (pending.localSeedApplied) {
+      return;
+    }
+
+    if (
+      this._serverBaselineEndMonotonicMs !== undefined &&
+      this._lastServerSyncMonotonicMs !== undefined &&
+      this._serverRemainingSeconds !== undefined
+    ) {
+      return;
+    }
+
+    this._serverRemainingSeconds = pending.requestedSeconds;
+    this._lastServerSyncMonotonicMs = pending.monotonicSeedMs;
+    this._serverBaselineEndMonotonicMs = pending.baselineEndMonotonicMs;
+    this._startClamp = {
+      requestedSeconds: pending.requestedSeconds,
+      intentIso: pending.intentIso,
+      firstComputedSeconds: pending.requestedSeconds,
+      deltaSeconds: 0,
+      nowMs: pending.intentWallMs,
+      remainingFrames: 2,
+    };
+    pending.localSeedApplied = true;
+    const displaySeconds = Math.max(0, Math.floor(pending.requestedSeconds));
+    this._debugHandleSeed(state, previousState, "start", displaySeconds, pending.requestedSeconds);
+  }
+
+  private _evaluateStartOutlier(
+    state: TimerViewState,
+    _previousState: TimerViewState | undefined,
+    candidateRemaining: number | undefined,
+    baselineEnd: number | undefined,
+    seedStartMonotonic: number | undefined,
+  ): void {
+    const pending = this._pendingStartSeed;
+    if (!pending || state.status !== "running") {
+      return;
+    }
+
+    if (candidateRemaining === undefined || baselineEnd === undefined || seedStartMonotonic === undefined) {
+      return;
+    }
+
+    const firstComputed = Number.isFinite(candidateRemaining) ? candidateRemaining : Number.NaN;
+    if (!Number.isFinite(firstComputed)) {
+      this._pendingStartSeed = undefined;
+      return;
+    }
+
+    const requested = pending.requestedSeconds;
+    const delta = firstComputed - requested;
+    const isNegative = firstComputed < 0;
+    const isHuge = firstComputed > START_OUTLIER_MAX_SECONDS;
+    const isOutlier = isNegative || isHuge || Math.abs(delta) > START_FIRST_RENDER_TOLERANCE_S;
+
+    if (isOutlier) {
+      const nowMs = Date.now();
+      this._startClamp = {
+        requestedSeconds: requested,
+        intentIso: pending.intentIso,
+        firstComputedSeconds: firstComputed,
+        deltaSeconds: delta,
+        nowMs,
+        remainingFrames: 2,
+      };
+      if (!pending.warningIssued) {
+        this._emitStartOutlierWarning({
+          requestedSeconds: requested,
+          firstComputedSeconds: firstComputed,
+          deltaSeconds: delta,
+          intentIso: pending.intentIso,
+          nowMs,
+          entityId: state.entityId ?? this._config?.entity,
+        });
+        pending.warningIssued = true;
+      }
+    } else {
+      this._startClamp = undefined;
+    }
+
+    this._pendingStartSeed = undefined;
+  }
+
+  private _applyStartClamp(state: TimerViewState, candidate: number): number {
+    const clamp = this._startClamp;
+    if (!clamp || state.status !== "running") {
+      if (clamp && state.status !== "running") {
+        this._startClamp = undefined;
+      }
+      return candidate;
+    }
+
+    const clamped = Math.max(0, Math.floor(clamp.requestedSeconds));
+    if (clamp.remainingFrames > 0) {
+      clamp.remainingFrames -= 1;
+      return clamped;
+    }
+
+    this._startClamp = undefined;
+    return candidate;
+  }
+
+  private _emitStartOutlierWarning(payload: {
+    requestedSeconds: number;
+    firstComputedSeconds: number;
+    deltaSeconds: number;
+    intentIso: string;
+    nowMs: number;
+    entityId?: string;
+  }): void {
+    reportStartOutlier({
+      requestedDurationS: payload.requestedSeconds,
+      firstComputedS: payload.firstComputedSeconds,
+      deltaS: payload.deltaSeconds,
+      intentTsIso: payload.intentIso,
+      nowMs: payload.nowMs,
+      entityId: payload.entityId,
+    });
+  }
+
   private async _startTimerAction(durationSeconds: number): Promise<void> {
     if (!this._viewModel || !this._config?.entity || !this._hass) {
       return;
@@ -1329,6 +1508,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    this._seedStartBaseline("start", durationSeconds);
     const previousPendingSeed = this._debugPendingSeedSource;
     this._debugPendingSeedSource = "start";
     this._viewModel = setViewModelError(this._viewModel, undefined);
@@ -1339,6 +1519,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     try {
       await startTimer(this._hass, this._config.entity, durationSeconds);
     } catch {
+      this._pendingStartSeed = undefined;
+      this._startClamp = undefined;
       this._debugPendingSeedSource = previousPendingSeed;
       this._timerStateController.reportActionFailure(registered.gen, STRINGS.toastStartFailed);
       this._viewModel = clearPendingAction(this._viewModel);
@@ -1368,6 +1550,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    this._seedStartBaseline("restart", durationSeconds);
     const previousPendingSeed = this._debugPendingSeedSource;
     this._debugPendingSeedSource = "start";
     this._viewModel = setPendingAction(this._viewModel, "restart", registered.ts);
@@ -1376,6 +1559,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     try {
       await restartTimer(this._hass, this._config.entity, durationSeconds);
     } catch {
+      this._pendingStartSeed = undefined;
+      this._startClamp = undefined;
       this._debugPendingSeedSource = previousPendingSeed;
       this._timerStateController.reportActionFailure(registered.gen, STRINGS.toastRestartFailed);
       this._viewModel = clearPendingAction(this._viewModel);
@@ -2330,6 +2515,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._cancelRunningTick();
       this._serverBaselineEndMonotonicMs = undefined;
       this._lastServerSyncMonotonicMs = undefined;
+      this._pendingStartSeed = undefined;
+      this._startClamp = undefined;
       this._updateProgressAnimationState(state);
       this._debugPublishTick(state);
       return;
@@ -2345,6 +2532,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         this._serverBaselineEndMonotonicMs = undefined;
         this._setDisplayDurationSeconds(candidate);
       }
+      this._pendingStartSeed = undefined;
+      this._startClamp = undefined;
       this._updateProgressAnimationState(state);
       this._debugPublishTick(state, candidate ?? this._displayDurationSeconds);
       return;
@@ -2355,11 +2544,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       this._serverRemainingSeconds = undefined;
       this._lastServerSyncMonotonicMs = undefined;
       this._serverBaselineEndMonotonicMs = undefined;
+      this._pendingStartSeed = undefined;
+      this._startClamp = undefined;
       this._updateProgressAnimationState(state);
       this._debugPublishTick(state);
       return;
     }
 
+    this._prepareStartBaseline(state, previousState);
     const nowMonotonic = this._monotonicNow();
     const candidateRemaining =
       state.serverRemainingSecAtT0 ??
@@ -2375,6 +2567,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
       const seedStartMonotonic =
         state.clientMonotonicT0 ?? (baselineEnd !== undefined ? baselineEnd - candidateRemaining * 1000 : undefined);
+
+      this._evaluateStartOutlier(
+        state,
+        previousState,
+        candidateRemaining,
+        baselineEnd,
+        seedStartMonotonic,
+      );
 
       if (baselineEnd !== undefined && seedStartMonotonic !== undefined) {
         const hasBaseline = this._serverBaselineEndMonotonicMs !== undefined;
@@ -2439,7 +2639,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _debugHandleSeed(
     state: TimerViewState,
     previousState: TimerViewState | undefined,
-    kind: "server" | "fallback",
+    kind: "server" | "fallback" | "start",
     serverRemaining: number,
     estimatedRemaining?: number,
   ): void {
@@ -2485,12 +2685,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _debugDetermineSeedSource(
     state: TimerViewState,
     previousState: TimerViewState | undefined,
-    kind: "server" | "fallback",
+    kind: "server" | "fallback" | "start",
   ): DebugSeedSource {
     if (this._debugPendingSeedSource) {
       const pending = this._debugPendingSeedSource;
       this._debugPendingSeedSource = undefined;
       return pending;
+    }
+
+    if (kind === "start") {
+      return "start";
     }
 
     if (kind === "server" && state.remainingIsEstimated) {
@@ -2524,11 +2728,14 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _applyRunningDisplay(state: TimerViewState): number | undefined {
     if (state.status !== "running") {
+      this._startClamp = undefined;
       return undefined;
     }
 
     const baselineEnd = this._serverBaselineEndMonotonicMs;
     const syncTs = this._lastServerSyncMonotonicMs;
+
+    let displaySeconds: number | undefined;
 
     if (
       baselineEnd === undefined ||
@@ -2545,23 +2752,23 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       if (fallback === undefined) {
         return undefined;
       }
-      const clamped = Math.max(0, Math.floor(fallback));
-      this._setDisplayDurationSeconds(clamped);
-      const announcement = this._announcer.announceRunning(clamped);
-      if (announcement) {
-        this._announce(announcement);
-      }
-      return clamped;
+      displaySeconds = Math.max(0, Math.floor(fallback));
+    } else {
+      const remainingMs = Math.max(0, baselineEnd - this._monotonicNow());
+      displaySeconds = Math.max(0, Math.floor((remainingMs + 1) / 1000));
     }
 
-    const remainingMs = Math.max(0, baselineEnd - this._monotonicNow());
-    const displaySeconds = Math.max(0, Math.floor((remainingMs + 1) / 1000));
-    this._setDisplayDurationSeconds(displaySeconds);
-    const announcement = this._announcer.announceRunning(displaySeconds);
+    if (displaySeconds === undefined) {
+      return undefined;
+    }
+
+    const effectiveDisplay = this._applyStartClamp(state, displaySeconds);
+    this._setDisplayDurationSeconds(effectiveDisplay);
+    const announcement = this._announcer.announceRunning(effectiveDisplay);
     if (announcement) {
       this._announce(announcement);
     }
-    return displaySeconds;
+    return effectiveDisplay;
   }
 
   private _scheduleRunningTick(): void {

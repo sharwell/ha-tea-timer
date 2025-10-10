@@ -54,7 +54,7 @@ const flushMicrotasks = () => new Promise<void>((resolve) => setTimeout(resolve,
 describe("RuntimeDebugManager", () => {
   it("only logs when logs mode is enabled", () => {
     const infoSpy = vi.fn();
-    const logger = new StructuredLogger({ info: infoSpy } as Pick<Console, "info">);
+    const logger = new StructuredLogger({ info: infoSpy, warn: vi.fn() } as Pick<Console, "info" | "warn">);
     const loadOverlay = vi.fn<[], Promise<DebugOverlayHandle>>().mockResolvedValue({
       update: vi.fn(),
       destroy: vi.fn(),
@@ -92,7 +92,7 @@ describe("RuntimeDebugManager", () => {
 
   it("loads overlay lazily", async () => {
     const infoSpy = vi.fn();
-    const logger = new StructuredLogger({ info: infoSpy } as Pick<Console, "info">);
+    const logger = new StructuredLogger({ info: infoSpy, warn: vi.fn() } as Pick<Console, "info" | "warn">);
     const destroySpy = vi.fn();
     const overlayHandle: DebugOverlayHandle = { update: vi.fn(), destroy: destroySpy };
     let resolveOverlay: ((value: DebugOverlayHandle) => void) | undefined;
@@ -127,7 +127,7 @@ describe("RuntimeDebugManager", () => {
   });
 
   it("merges overlay samples when overlay mode is active", async () => {
-    const logger = new StructuredLogger({ info: vi.fn() } as Pick<Console, "info">);
+    const logger = new StructuredLogger({ info: vi.fn(), warn: vi.fn() } as Pick<Console, "info" | "warn">);
     const updateSpy = vi.fn();
     const overlayHandle: DebugOverlayHandle = { update: updateSpy, destroy: vi.fn() };
     const loadOverlay = vi.fn<[], Promise<DebugOverlayHandle>>().mockResolvedValue(overlayHandle);
@@ -167,5 +167,45 @@ describe("RuntimeDebugManager", () => {
       baselineEndMs: 1_235_000,
       lastServerUpdate: "2024-01-01T00:00:00.000Z",
     });
+  });
+
+  it("logs start outlier warnings via console and debug logger", () => {
+    const warnSpy = vi.fn();
+    const logStartOutlierSpy = vi.fn();
+    const logger = {
+      logSeed: vi.fn(),
+      logCorrection: vi.fn(),
+      logStartOutlier: logStartOutlierSpy,
+    } as unknown as StructuredLogger;
+
+    const manager = new RuntimeDebugManager({ logger, console: { warn: warnSpy } });
+
+    const payload = {
+      requestedDurationS: 240,
+      firstComputedS: 7200,
+      deltaS: 6960,
+      intentTsIso: "2024-01-01T00:00:00.000Z",
+      nowMs: 123,
+      entityId: "timer.test",
+    };
+
+    manager.reportStartOutlier(payload);
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith("[ha-tea-timer]", {
+      evt: "start_outlier",
+      requestedDurationS: 240,
+      firstComputedS: 7200,
+      deltaS: 6960,
+      intentTsIso: "2024-01-01T00:00:00.000Z",
+      nowMs: 123,
+      entityId: "timer.test",
+    });
+    expect(logStartOutlierSpy).not.toHaveBeenCalled();
+
+    manager.enable("logs");
+    manager.reportStartOutlier(payload);
+    expect(logStartOutlierSpy).toHaveBeenCalledTimes(1);
+    expect(logStartOutlierSpy).toHaveBeenLastCalledWith(payload);
   });
 });
