@@ -20,6 +20,9 @@ All notable changes to this project will be documented in this file.
 - Hide the dial handle while the timer is running or paused to reinforce the locked state. (#34)
 - Clean up preliminary UI; docs via Editor Help (#44)
 - Consolidate timer-entity errors into a single alert surface with clear precedence over secondary hints. (#38)
+- Render the running countdown through a monotonic engine driven by `requestAnimationFrame`, holding the visible second on
+  small corrections and allowing increases only for material state changes or large (+≥1.5 s) server updates to eliminate
+  back-ticks. (#56)
 
 ### Fixed
 - Prevent idle dial drags from triggering `timer.start`; releasing a drag now leaves the timer idle

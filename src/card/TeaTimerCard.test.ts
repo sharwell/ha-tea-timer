@@ -277,6 +277,17 @@ describe("TeaTimerCard", () => {
     return undefined;
   }
 
+  async function advanceAndFlush(ms: number): Promise<void> {
+    await vi.advanceTimersByTimeAsync(ms);
+    // Allow the next animation frame to observe the advanced monotonic time.
+    await vi.advanceTimersByTimeAsync(1);
+  }
+
+  function flushCountdown(card: TeaTimerCard): void {
+    const internals = card as unknown as { _handleCountdownFrame(): void };
+    internals._handleCountdownFrame();
+  }
+
   function triggerExtend(card: TeaTimerCard) {
     const handler = card as unknown as { _handleExtendAction(): void };
     handler._handleExtendAction();
@@ -581,7 +592,7 @@ describe("TeaTimerCard", () => {
     expect(display).toBe(180);
   });
 
-  it("ticks the running display once per second while counting down", () => {
+  it("ticks the running display once per second while counting down", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -600,10 +611,12 @@ describe("TeaTimerCard", () => {
 
       expect(getDisplayDuration(card)).toBe(125);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(124);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(123);
     } finally {
       perfSpy?.mockRestore();
@@ -612,7 +625,7 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("continues ticking when Home Assistant omits remaining seconds", () => {
+  it("continues ticking when Home Assistant omits remaining seconds", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -638,10 +651,12 @@ describe("TeaTimerCard", () => {
 
       expect(getDisplayDuration(card)).toBe(180);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(179);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(178);
     } finally {
       perfSpy?.mockRestore();
@@ -650,7 +665,7 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("starts ticking immediately when the first running state omits remaining", () => {
+  it("starts ticking immediately when the first running state omits remaining", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -668,10 +683,12 @@ describe("TeaTimerCard", () => {
 
       expect(getDisplayDuration(card)).toBe(240);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(239);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(238);
     } finally {
       perfSpy?.mockRestore();
@@ -680,7 +697,7 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("continues ticking when running updates arrive more than once per second", () => {
+  it("continues ticking when running updates arrive more than once per second", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -699,11 +716,13 @@ describe("TeaTimerCard", () => {
       expect(getDisplayDuration(card)).toBe(180);
 
       for (let i = 0; i < 10; i++) {
-        vi.advanceTimersByTime(50);
+        await advanceAndFlush(50);
+        flushCountdown(card);
         setTimerState(card, runningState);
       }
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
 
       expect(getDisplayDuration(card)).toBe(179);
     } finally {
@@ -713,7 +732,7 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("ignores duration echo updates while running", () => {
+  it("ignores duration echo updates while running", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -729,7 +748,8 @@ describe("TeaTimerCard", () => {
 
       setTimerState(card, runningState);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(179);
 
       const echoState: TimerViewState = {
@@ -742,7 +762,8 @@ describe("TeaTimerCard", () => {
 
       expect(getDisplayDuration(card)).toBe(179);
 
-      vi.advanceTimersByTime(1000);
+      await advanceAndFlush(1000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(178);
     } finally {
       perfSpy?.mockRestore();
@@ -841,7 +862,7 @@ describe("TeaTimerCard", () => {
     expect(getDisplayDuration(card)).toBe(remaining);
   });
 
-  it("resynchronizes the running display when the server sends updates", () => {
+  it("resynchronizes the running display when the server sends updates", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -859,7 +880,8 @@ describe("TeaTimerCard", () => {
       setTimerState(card, runningState);
       expect(getDisplayDuration(card)).toBe(200);
 
-      vi.advanceTimersByTime(5000);
+      await advanceAndFlush(5000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(195);
 
       const resyncedState: TimerViewState = {
@@ -910,19 +932,19 @@ describe("TeaTimerCard", () => {
         expect(getDisplayDuration(card)).toBe(seconds);
 
         const internals = card as unknown as {
-          _serverBaselineEndMonotonicMs?: number;
+          _monotonicCountdown: { baselineEndMs?: number };
           _lastServerSyncMonotonicMs?: number;
         };
 
-        expect(internals._serverBaselineEndMonotonicMs).toBeDefined();
+        expect(internals._monotonicCountdown.baselineEndMs).toBeDefined();
         expect(internals._lastServerSyncMonotonicMs).toBeDefined();
 
         if (
-          internals._serverBaselineEndMonotonicMs !== undefined &&
+          internals._monotonicCountdown.baselineEndMs !== undefined &&
           internals._lastServerSyncMonotonicMs !== undefined
         ) {
           expect(
-            internals._serverBaselineEndMonotonicMs - internals._lastServerSyncMonotonicMs,
+            internals._monotonicCountdown.baselineEndMs - internals._lastServerSyncMonotonicMs,
           ).toBeCloseTo(seconds * 1000, 0);
         }
       } finally {
@@ -1024,7 +1046,7 @@ describe("TeaTimerCard", () => {
     }
   });
 
-  it("reports server corrections when the authoritative snapshot diverges", () => {
+  it("reports server corrections when the authoritative snapshot diverges", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -1053,7 +1075,8 @@ describe("TeaTimerCard", () => {
 
       setTimerState(card, runningState);
 
-      vi.advanceTimersByTime(5000);
+      await advanceAndFlush(5000);
+      flushCountdown(card);
 
       const correctionState: TimerViewState = {
         status: "running",
@@ -1084,13 +1107,13 @@ describe("TeaTimerCard", () => {
       ): number | undefined;
       _serverRemainingSeconds?: number;
       _lastServerSyncMonotonicMs?: number;
-      _serverBaselineEndMonotonicMs?: number;
+      _monotonicCountdown: { baselineEndMs?: number };
     };
 
     const start = 1000;
     internals._serverRemainingSeconds = 300;
     internals._lastServerSyncMonotonicMs = start;
-    internals._serverBaselineEndMonotonicMs = start + 300_000;
+    internals._monotonicCountdown.baselineEndMs = start + 300_000;
 
     const running: MachineTimerViewState = { status: "running", durationSeconds: 300 };
 
@@ -1105,7 +1128,7 @@ describe("TeaTimerCard", () => {
     expect(internals._computeProgressFraction(finished, halfway)).toBe(0);
   });
 
-  it("applies elapsed time after long pauses in ticking", () => {
+  it("applies elapsed time after long pauses in ticking", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
     const perfSpy = mockPerformanceNowToDateNow();
@@ -1123,7 +1146,8 @@ describe("TeaTimerCard", () => {
       setTimerState(card, runningState);
       expect(getDisplayDuration(card)).toBe(90);
 
-      vi.advanceTimersByTime(10000);
+      await advanceAndFlush(10000);
+      flushCountdown(card);
       expect(getDisplayDuration(card)).toBe(80);
     } finally {
       perfSpy?.mockRestore();

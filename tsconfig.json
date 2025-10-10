@@ -5,6 +5,6 @@
     "noEmit": true,
     "useDefineForClassFields": false
   },
-  "include": ["src", "demo", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  "include": ["src", "demo", "tests", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
   "exclude": ["dist", "node_modules"]
 }
