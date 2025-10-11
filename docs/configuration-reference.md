@@ -86,11 +86,15 @@ provided for the card to load.
 
 ### `disableClockSkewEstimator`
 
-- **Description:** When `false` (default) the card smooths remaining-time estimates between Home
-  Assistant updates. Set to `true` to disable the estimator and rely solely on the browser clock.
+- **Description:** When `false` (default) the card tracks a lower-envelope estimate of the server →
+  client clock offset and applies it to `last_changed`/`finishes_at` math so derived countdowns stay
+  within ~0.5 s once warmed up. Set to `true` to bypass offset tracking and seed from the local
+  clock instead; the card still clamps each fallback seed within ±1 s of the previous baseline so
+  jitter never causes upward ticks.
 - **Default:** `false` (estimator enabled).
-- **Example:** `disableClockSkewEstimator: true` is useful if you run a kiosk that routinely loses
-  WebSocket updates and you prefer the timer to pause instead of estimating.
+- **Example:** `disableClockSkewEstimator: true` is useful on kiosk displays that cannot keep stable
+  network latency—you get predictable, monotone local seeding and Home Assistant updates remain
+  authoritative when they arrive.
 
 ### `showPlusButton`
 

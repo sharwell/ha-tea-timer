@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
   back-ticks. (#56)
 - Quantize the monotonic countdown to integer seconds with a small hysteresis window so visual ticks stay smooth while small
   (<1.5 s) upward corrections are absorbed without momentary increases. (#57)
+- Harden the clock-skew estimator with a lower-envelope offset tracker, bounded local-clock fallback, and clarified configuration semantics. (#58)
 
 ### Fixed
 - Prevent idle dial drags from triggering `timer.start`; releasing a drag now leaves the timer idle

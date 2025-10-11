@@ -53,7 +53,7 @@ npm ci
 - WebSocket subscriptions mirror Home Assistant updates:
   - `state_changed` keeps the card synchronized with the entity’s state.
   - `timer.finished` triggers a five-second overlay before settling back to Idle.
-- When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`, and surfaces a notice if drift exceeds ~2 seconds.
+- When Home Assistant omits `remaining`, the card derives an estimated value using `duration` and `last_changed`. With the skew estimator enabled (default) it tracks a lower-envelope server-to-client offset and applies it to those timestamps so the baseline stays within about 0.5 s once warmed up. Disabling the estimator bypasses offset tracking and falls back to the local clock with a ±1 s safety band so the countdown remains monotone until the next server update; the UI still surfaces a drift notice if Home Assistant stays out of sync for long.
 - Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy. The countdown pauses while disconnected and resumes after a successful resync.
 - A monotonic countdown engine renders directly from that baseline using a monotonic clock. A quantizer rounds the remaining time to integer seconds with a small hysteresis window so the visible value never jumps upward between ticks—only material state changes (start/restart/resume) or large upward corrections (≥1.5 s) can raise the display, eliminating back-ticks after background tabs or jittery frames.
 - Right after a start or restart, the card seeds a monotonic baseline so the first running frame matches the requested duration within ±0.25 s while waiting for Home Assistant’s authoritative snapshot.
@@ -122,7 +122,7 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
     stepSeconds: 10
     confirmRestart: true # optional—require confirmation before restarting a running timer
     finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
-   disableClockSkewEstimator: true # optional—seed countdowns from the local clock instead of HA timestamps
+   disableClockSkewEstimator: true # optional—prefer the local clock with bounded drift instead of estimating skew
    ```
 
    Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
@@ -230,7 +230,7 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
   9.5. `minDurationSeconds`, `maxDurationSeconds`, `stepSeconds` (optional, with MVD defaults).
  9.6. `finishedAutoIdleMs` (default 5000).
   9.7. `confirmRestart` (default false).
-  9.8. `disableClockSkewEstimator` (default false; fallback to the local clock when true).
+  9.8. `disableClockSkewEstimator` (default false; when true the card seeds from the local clock with ±1 s safety bounds instead of tracking server skew).
   9.9. `showPlusButton` (default true; hide the extend chip when false).
   9.10. `plusButtonIncrementS` (default 60; controls the extend increment).
   9.11. `maxExtendS` (optional cap on total extend seconds per brew).

@@ -65,8 +65,8 @@ issues.
   2. If `remaining` is missing, the card estimates it from `duration` and `last_changed` and flags the
      drift when it exceeds two seconds.
 - **Fix:** Allow one or two updates after reconnection—the card re-syncs to the server value. If you
-  prefer to pause instead of estimating, set `disableClockSkewEstimator: true` in the card
-  configuration.
+  prefer to bypass the estimator, set `disableClockSkewEstimator: true`; the card will seed from the
+  local clock with a ±1 s safety band until the next server snapshot arrives.
 
 ## Card unavailable in Lovelace
 

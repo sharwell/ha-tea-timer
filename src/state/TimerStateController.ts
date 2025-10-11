@@ -11,7 +11,7 @@ import type {
   HomeAssistant,
 } from "../types/home-assistant";
 import { TimerStateMachine, TimerViewState as TimerEntityState } from "./TimerStateMachine";
-import { ClockSkewEstimator } from "./ClockSkewEstimator";
+import { ClockSkewEstimator, boundLocalClockBaseline } from "../time/skew";
 
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
 
@@ -142,7 +142,7 @@ export class TimerStateController implements ReactiveController {
       now: this.options.now,
     });
     this.monotonicNow = monotonicNow;
-    this.clockSkew = new ClockSkewEstimator(monotonicNow);
+    this.clockSkew = new ClockSkewEstimator({ monotonicNow });
 
     this.clockSkewEstimatorEnabled =
       this.options.clockSkewEstimatorEnabled !== undefined ? this.options.clockSkewEstimatorEnabled : true;
@@ -600,16 +600,20 @@ export class TimerStateController implements ReactiveController {
       }
     | undefined {
     let remainingSeconds = entityState.remainingSeconds;
+    let derivedFromLastChanged = false;
 
     if (remainingSeconds === undefined) {
       const durationSeconds = entityState.durationSeconds;
       const lastChanged = entityState.lastChangedTs;
       if (durationSeconds !== undefined && lastChanged !== undefined) {
-        const elapsedMs = Math.max(0, wallNow - lastChanged);
+        const elapsedMs = this.clockSkewEstimatorEnabled
+          ? this.clockSkew.elapsedSince(lastChanged, wallNow)
+          : Math.max(0, wallNow - lastChanged);
         const elapsedSeconds = elapsedMs / 1000;
         const computed = durationSeconds - elapsedSeconds;
         const clamped = Math.min(durationSeconds, Math.max(0, computed));
         remainingSeconds = clamped;
+        derivedFromLastChanged = true;
       }
     }
 
@@ -623,6 +627,18 @@ export class TimerStateController implements ReactiveController {
       remainingSeconds = Math.min(maxRemaining, Math.max(0, remainingSeconds));
     } else {
       remainingSeconds = Math.max(0, remainingSeconds);
+    }
+
+    if (
+      derivedFromLastChanged &&
+      !this.clockSkewEstimatorEnabled &&
+      remainingSeconds > 0 &&
+      this.serverRemainingSecAtT0 !== undefined
+    ) {
+      remainingSeconds = boundLocalClockBaseline(
+        remainingSeconds,
+        this.serverRemainingSecAtT0,
+      );
     }
 
     const monotonicT0 = this.monotonicNow();
