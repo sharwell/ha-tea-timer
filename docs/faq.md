@@ -16,7 +16,8 @@ or speaker.
 
 When Home Assistant omits the `remaining` attribute (often during reconnects), the card estimates the
 countdown based on the last known duration. The banner disappears after the next authoritative
-update. If you would rather pause than estimate, set `disableClockSkewEstimator: true`.
+update. If you would rather bypass the estimator, set `disableClockSkewEstimator: true`; the countdown
+will seed from the local clock with a ±1 s safety band until the next server update arrives.
 
 ## Can I run multiple timers on one dashboard?
 

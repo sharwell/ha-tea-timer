@@ -30,7 +30,7 @@ const LABELS: Record<string, string> = {
 
 const HELPERS: Record<string, string> = {
   confirmRestart: "Ask for confirmation when resuming a completed brew.",
-  disableClockSkewEstimator: "Bypass network clock drift smoothing (advanced).",
+  disableClockSkewEstimator: "Seed from the local clock with ±1s bounds instead of estimating skew (advanced).",
   minDurationSeconds: "Lower bound for the dial when dragging presets. Defaults to 15 seconds.",
   maxDurationSeconds: "Upper bound for the dial when dragging presets. Defaults to 1200 seconds.",
   stepSeconds: "Dial increments when adjusting custom times. Defaults to 5 seconds.",
