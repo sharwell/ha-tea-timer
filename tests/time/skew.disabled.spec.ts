@@ -51,4 +51,19 @@ describe("Clock skew estimator — disabled mode safeguards", () => {
     const adjusted = derived > 0 ? boundLocalClockBaseline(derived, previous) : derived;
     expect(adjusted).toBe(0);
   });
+
+  it("returns the raw value when derived time is not finite", () => {
+    const result = boundLocalClockBaseline(Number.NaN, 30);
+    expect(Number.isNaN(result)).toBe(true);
+  });
+
+  it("handles non-finite previous baselines by clamping to zero", () => {
+    const result = boundLocalClockBaseline(12.5, Number.POSITIVE_INFINITY);
+    expect(result).toBeCloseTo(12.5, 5);
+  });
+
+  it("treats negative max shift parameters as zero", () => {
+    const result = boundLocalClockBaseline(28, 30, -5);
+    expect(result).toBe(30);
+  });
 });
