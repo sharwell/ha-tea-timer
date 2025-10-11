@@ -1,3 +1,5 @@
+import { quantizeDisplaySeconds } from "./quantize";
+
 export interface MonotonicCountdownState {
   baselineEndMs?: number;
   /**
@@ -78,7 +80,7 @@ export function displaySeconds(
     return undefined;
   }
 
-  const quantized = Math.max(0, Math.ceil(remaining / 1000));
+  const quantized = quantizeDisplaySeconds(remaining, state.lastDisplaySeconds);
 
   let value = quantized;
   if (state.holdMaxSeconds !== undefined && value > state.holdMaxSeconds) {
