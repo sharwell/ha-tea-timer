@@ -6,10 +6,13 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite dev",
+    "preview": "vite preview --strictPort",
     "start": "vite dev",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test --project=chromium",
+    "e2e:ci": "playwright install --with-deps && playwright test --project=chromium",
     "lint:markdown": "markdownlint \"docs/**/*.md\" README.md",
     "lint:spell": "cspell \"docs/**/*.md\" \"README.md\"",
     "lint:links": "linkinator 'docs/**/*.md' README.md --recurse --silent --skip 'http://localhost:5173/' --skip 'https://hacs.xyz/*' --skip 'https://www.home-assistant.io/*' --skip 'https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0'",
@@ -36,7 +39,9 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.43.1",
     "@testing-library/jest-dom": "^6.4.2",
+    "@types/node": "^20.12.7",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitest/coverage-istanbul": "^1.6.1",
