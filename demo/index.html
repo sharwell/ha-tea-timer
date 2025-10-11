@@ -707,6 +707,7 @@
       }
 
       const cards = Array.from(document.querySelectorAll("tea-timer-card"));
+      const presetDurations = new Map();
       const configs = [
         {
           title: "Kitchen Tea Timer",
@@ -724,8 +725,169 @@
         },
       ];
 
+      (configs[0]?.presets ?? []).forEach((preset) => {
+        presetDurations.set(preset.label, preset.durationSeconds);
+      });
+
       const environment = createDemoEnvironment("timer.kitchen_tea", 240);
       const previewDial = document.getElementById("preview-dial");
+
+      function applyDemoTestHooks() {
+        if (!demoCard?.shadowRoot) {
+          return;
+        }
+
+        const remaining = demoCard.shadowRoot.querySelector('[data-role="dial-primary"]');
+        if (remaining instanceof HTMLElement) {
+          remaining.dataset.testid = "remaining";
+        }
+
+        const actionButton = demoCard.shadowRoot.querySelector(".primary-action");
+        if (actionButton instanceof HTMLElement) {
+          actionButton.dataset.testid = "start";
+        }
+
+        demoCard.shadowRoot
+          .querySelectorAll<HTMLButtonElement>(".presets .preset-chip")
+          .forEach((button) => {
+            const label = button.querySelector(".preset-label")?.textContent?.trim();
+            if (!label) {
+              return;
+            }
+            const duration = presetDurations.get(label);
+            if (!duration) {
+              return;
+            }
+            button.dataset.testid = `preset-${duration}s`;
+          });
+      }
+
+      function parseDurationSeconds(label) {
+        if (typeof label !== "string") {
+          return undefined;
+        }
+        const trimmed = label.trim();
+        if (!trimmed) {
+          return undefined;
+        }
+        if (trimmed.toLowerCase() === "done") {
+          return 0;
+        }
+        const parts = trimmed.split(":").map((part) => Number.parseInt(part, 10));
+        if (parts.some((value) => Number.isNaN(value))) {
+          return undefined;
+        }
+        if (parts.length === 3) {
+          const [hours, minutes, seconds] = parts;
+          return hours * 3600 + minutes * 60 + seconds;
+        }
+        if (parts.length === 2) {
+          const [minutes, seconds] = parts;
+          return minutes * 60 + seconds;
+        }
+        if (parts.length === 1) {
+          return parts[0];
+        }
+        return undefined;
+      }
+
+      function readRemainingSeconds() {
+        const root = demoCard?.shadowRoot;
+        if (!root) {
+          return undefined;
+        }
+        const label = root.querySelector('[data-testid="remaining"]')?.textContent;
+        return parseDurationSeconds(label ?? "");
+      }
+
+      function getPrimaryActionKind() {
+        const root = demoCard?.shadowRoot;
+        if (!root) {
+          return undefined;
+        }
+        const button = root.querySelector<HTMLButtonElement>('[data-testid="start"]');
+        const action = button?.dataset.action;
+        if (action === "start" || action === "restart") {
+          return action;
+        }
+        return undefined;
+      }
+
+      function selectDuration(seconds) {
+        const root = demoCard?.shadowRoot;
+        if (!root) {
+          return false;
+        }
+        const button = root.querySelector<HTMLButtonElement>(
+          `[data-testid="preset-${Math.round(seconds)}s"]`,
+        );
+        if (!button) {
+          return false;
+        }
+        button.click();
+        return true;
+      }
+
+      function startTimerRun() {
+        const root = demoCard?.shadowRoot;
+        if (!root) {
+          return false;
+        }
+        const button = root.querySelector<HTMLButtonElement>('[data-testid="start"]');
+        if (!button || button.disabled) {
+          return false;
+        }
+        button.click();
+        return true;
+      }
+
+      function captureRemainingSequence(options = {}) {
+        const { durationMs = 2000, maxSamples = 6 } = options;
+        return new Promise((resolve) => {
+          const values = [];
+          const start = performance.now();
+
+          function poll() {
+            const remaining = readRemainingSeconds();
+            if (typeof remaining === "number") {
+              const previous = values[values.length - 1];
+              if (previous !== remaining) {
+                values.push(remaining);
+              }
+            }
+
+            if (performance.now() - start >= durationMs || values.length >= maxSamples) {
+              resolve(values);
+              return;
+            }
+
+            requestAnimationFrame(poll);
+          }
+
+          poll();
+        });
+      }
+
+      function resetTimer() {
+        environment.setIdle();
+      }
+
+      function startRun(seconds) {
+        const rounded = Math.max(1, Math.round(seconds));
+        const presetSelected = selectDuration(rounded);
+        const started = startTimerRun();
+        return presetSelected && started;
+      }
+
+      window.demo = {
+        selectDuration,
+        start: startTimerRun,
+        startRun,
+        readRemainingSeconds,
+        getPrimaryActionKind,
+        captureRemainingSequence,
+        reset: resetTimer,
+      };
 
       cards.forEach((card, index) => {
         card.setConfig(configs[index]);
@@ -733,6 +895,12 @@
       });
 
       const demoCard = cards[0] ?? null;
+
+      if (demoCard?.shadowRoot) {
+        applyDemoTestHooks();
+        const hookObserver = new MutationObserver(() => applyDemoTestHooks());
+        hookObserver.observe(demoCard.shadowRoot, { childList: true, subtree: true });
+      }
       const baseConfig = demoCard ? JSON.parse(JSON.stringify(configs[0])) : null;
       const baseEntityId =
         typeof (baseConfig?.entity ?? undefined) === "string" ? baseConfig?.entity : undefined;
