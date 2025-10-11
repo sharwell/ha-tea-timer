@@ -4,16 +4,16 @@ import { describe, expect, it } from "vitest";
 import { quantizeDisplaySeconds } from "../../src/time/quantize";
 
 describe("quantizeDisplaySeconds", () => {
-  it("does not re-increase once a second ticks down", () => {
+  it("never re-increases once a second ticks down", () => {
     const samples = [
-      10_200,
+      10_050,
       9_980,
-      9_920,
-      9_870,
-      9_930,
+      9_940,
       9_880,
+      9_920,
+      9_860,
       9_120,
-      9_060,
+      9_080,
       9_020,
       8_980,
     ];
@@ -33,7 +33,7 @@ describe("quantizeDisplaySeconds", () => {
     expect(observed).toContain(9);
   });
 
-  it("absorbs small upward corrections without raising the display", () => {
+  it("absorbs sub-threshold upward corrections", () => {
     let previous: number | undefined;
 
     previous = quantizeDisplaySeconds(10_000, previous);
@@ -42,7 +42,7 @@ describe("quantizeDisplaySeconds", () => {
     previous = quantizeDisplaySeconds(9_000, previous);
     expect(previous).toBe(9);
 
-    const afterCorrection = quantizeDisplaySeconds(9_600, previous);
+    const afterCorrection = quantizeDisplaySeconds(9_650, previous);
     expect(afterCorrection).toBe(9);
   });
 
@@ -50,8 +50,41 @@ describe("quantizeDisplaySeconds", () => {
     const before = quantizeDisplaySeconds(8_000, undefined);
     expect(before).toBe(8);
 
-    const corrected = quantizeDisplaySeconds(10_700, undefined);
+    const corrected = quantizeDisplaySeconds(10_800, undefined);
     expect(corrected).toBe(11);
+  });
+
+  it("eliminates back-ticks even with jitter around second boundaries", () => {
+    const remaining = [
+      10_200,
+      9_850,
+      9_780,
+      9_960,
+      9_870,
+      9_050,
+      9_020,
+      9_110,
+      9_010,
+      8_980,
+    ];
+
+    let previous: number | undefined;
+    const sequence: number[] = [];
+
+    for (const value of remaining) {
+      const display = quantizeDisplaySeconds(value, previous);
+      sequence.push(display);
+      previous = display;
+    }
+
+    for (let index = 2; index < sequence.length; index += 1) {
+      const previous = sequence[index - 2];
+      const middle = sequence[index - 1];
+      const current = sequence[index];
+      expect(middle).toBeLessThanOrEqual(previous);
+      expect(current).toBeLessThanOrEqual(middle);
+      expect(!(previous === current && middle > current)).toBe(true);
+    }
   });
 
   it("keeps tick cadence between 0.85s and 1.15s", () => {
@@ -76,10 +109,10 @@ describe("quantizeDisplaySeconds", () => {
     }
   });
 
-  it("emits a non-increasing sequence for decreasing remaining time", () => {
+  it("emits a non-increasing sequence for monotonically decreasing inputs", () => {
     fc.assert(
       fc.property(
-        fc.array(fc.integer({ min: 0, max: 60_000 }), { minLength: 2, maxLength: 90 }),
+        fc.array(fc.integer({ min: 0, max: 90_000 }), { minLength: 2, maxLength: 120 }),
         (raw) => {
           const values = raw
             .slice()

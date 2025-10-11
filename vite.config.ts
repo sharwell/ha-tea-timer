@@ -48,6 +48,17 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    setupFiles: "./vitest.setup.ts"
+    setupFiles: "./vitest.setup.ts",
+    coverage: {
+      provider: "istanbul",
+      include: ["src/time/**/*.ts"],
+      thresholds: {
+        perFile: true,
+        statements: 95,
+        branches: 95,
+        functions: 95,
+        lines: 95,
+      },
+    },
   },
 });

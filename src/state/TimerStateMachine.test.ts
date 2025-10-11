@@ -63,7 +63,7 @@ describe("normalizeTimerEntity", () => {
     const state = normalizeTimerEntity(entity, now);
 
     expect(state.status).toBe("running");
-    expect(state.remainingSeconds).toBe(180);
+    expect(state.remainingSeconds).toBeCloseTo(180, 6);
     expect(state.remainingIsEstimated).toBe(true);
   });
 

@@ -99,4 +99,156 @@ describe("Clock skew estimator — enabled mode", () => {
     const actualRemaining = trueRemainingSeconds(spikeLocalNow - 2500, lastChanged);
     expect(Math.abs(derivedRemaining - actualRemaining)).toBeLessThanOrEqual(0.5);
   });
+
+  it("limits upward skew growth based on the configured rate and trims old samples", () => {
+    const monotonic = createMonotonic();
+    const estimator = new ClockSkewEstimator({
+      monotonicNow: monotonic.now,
+      windowMs: 1_000,
+      maxIncreaseRateMsPerSec: 100,
+      maxMagnitudeMs: 5_000,
+    });
+
+    const internal = estimator as unknown as { samples: Array<{ atMs: number; skewMs: number }>; };
+
+    let previousLocal = BASE_SERVER_START;
+    const server1 = BASE_SERVER_START + 1_000;
+    const local1 = server1 + 100;
+    monotonic.advance(local1 - previousLocal);
+    estimator.estimateFromServerStamp(makeIso(server1), local1);
+    previousLocal = local1;
+    expect(estimator.getSkewMs()).toBe(100);
+
+    const server2 = server1 + 2_000;
+    const local2 = server2 + 400;
+    monotonic.advance(local2 - previousLocal);
+    estimator.estimateFromServerStamp(makeIso(server2), local2);
+
+    expect(estimator.getSkewMs()).toBeCloseTo(330, 6);
+    expect(internal.samples.length).toBe(1);
+  });
+
+  it("drops samples entirely when the configured window is negative", () => {
+    const monotonic = createMonotonic();
+    const estimator = new ClockSkewEstimator({
+      monotonicNow: monotonic.now,
+      windowMs: -1,
+    });
+
+    const serverNow = BASE_SERVER_START + 1_000;
+    const localNow = serverNow + 800;
+    monotonic.advance(localNow);
+    estimator.estimateFromServerStamp(makeIso(serverNow), localNow);
+
+    expect(estimator.getSkewMs()).toBe(0);
+  });
+
+  it("handles missing or invalid timestamps without updating skew", () => {
+    const estimator = new ClockSkewEstimator();
+    const before = estimator.getSkewMs();
+
+    estimator.estimateFromServerStamp(undefined, Date.now());
+    estimator.estimateFromServerStamp("not-a-date", Date.now());
+
+    expect(estimator.getSkewMs()).toBe(before);
+    expect(estimator.getOffsetMs()).toBe(before);
+
+    estimator.estimateFromServerStamp(new Date(BASE_SERVER_START).toISOString(), BASE_SERVER_START + 10);
+    expect(estimator.getSkewMs()).toBeGreaterThanOrEqual(before);
+  });
+
+  it("clamps large negative skew estimates to the minimum bound", () => {
+    const monotonic = createMonotonic();
+    const estimator = new ClockSkewEstimator({ monotonicNow: monotonic.now });
+
+    const serverNow = BASE_SERVER_START + 5_000;
+    const localNow = serverNow - 15_000;
+    monotonic.advance(serverNow - BASE_SERVER_START);
+    estimator.estimateFromServerStamp(makeIso(serverNow), localNow);
+
+    expect(estimator.getSkewMs()).toBe(-10_000);
+  });
+
+  it("falls back to Date.now when performance.now is unavailable", () => {
+    const original = globalThis.performance;
+    try {
+      // @ts-expect-error - override for test coverage.
+      delete (globalThis as typeof globalThis & { performance?: Performance }).performance;
+      const estimator = new ClockSkewEstimator();
+      const base = Date.now();
+      estimator.estimateFromServerStamp(new Date(base).toISOString(), base + 50);
+      expect(estimator.getSkewMs()).toBeGreaterThanOrEqual(0);
+    } finally {
+      if (original) {
+        globalThis.performance = original;
+      }
+    }
+  });
+
+  it("skips upward adjustments when the increase rate is zero", () => {
+    const monotonic = createMonotonic();
+    const estimator = new ClockSkewEstimator({
+      monotonicNow: monotonic.now,
+      maxIncreaseRateMsPerSec: 0,
+      windowMs: 1_000,
+    });
+
+    let previousLocal = BASE_SERVER_START;
+    const firstServer = BASE_SERVER_START + 1_000;
+    const firstLocal = firstServer + 200;
+    monotonic.advance(firstLocal - previousLocal);
+    estimator.estimateFromServerStamp(makeIso(firstServer), firstLocal);
+    previousLocal = firstLocal;
+
+    const secondServer = firstServer + 2_000;
+    const secondLocal = secondServer + 600;
+    monotonic.advance(secondLocal - previousLocal);
+    estimator.estimateFromServerStamp(makeIso(secondServer), secondLocal);
+
+    expect(estimator.getSkewMs()).toBe(200);
+  });
+
+  it("computes server-relative times and resets state", () => {
+    const monotonic = createMonotonic();
+    const estimator = new ClockSkewEstimator({ monotonicNow: monotonic.now });
+
+    const serverNow = BASE_SERVER_START + 1_500;
+    const localNow = serverNow + 250;
+    monotonic.advance(localNow - BASE_SERVER_START);
+    estimator.estimateFromServerStamp(makeIso(serverNow), localNow);
+
+    expect(estimator.serverNowMs(localNow)).toBeCloseTo(serverNow, 6);
+    expect(estimator.applySkew(serverNow)).toBe(serverNow + estimator.getSkewMs());
+    expect(estimator.elapsedSince(serverNow, localNow + 750)).toBeCloseTo(750, 6);
+    expect(estimator.elapsedSince(serverNow, serverNow - 100)).toBe(0);
+    const defaultServerNow = estimator.serverNowMs();
+    expect(defaultServerNow).toBeGreaterThan(0);
+    const defaultElapsed = estimator.elapsedSince(serverNow);
+    expect(defaultElapsed).toBeGreaterThanOrEqual(0);
+
+    estimator.reset();
+    expect(estimator.getSkewMs()).toBe(0);
+  });
+
+  it("ignores increases when the monotonic clock does not advance", () => {
+    const monotonic = createMonotonic();
+    const estimator = new ClockSkewEstimator({
+      monotonicNow: monotonic.now,
+      maxIncreaseRateMsPerSec: 100,
+    });
+
+    let previousLocal = BASE_SERVER_START;
+    const firstServer = BASE_SERVER_START + 1_000;
+    const firstLocal = firstServer + 200;
+    monotonic.advance(firstLocal - previousLocal);
+    estimator.estimateFromServerStamp(makeIso(firstServer), firstLocal);
+    previousLocal = firstLocal;
+
+    const secondServer = firstServer + 1_500;
+    const secondLocal = secondServer + 600;
+    // Monotonic clock does not advance between samples.
+    estimator.estimateFromServerStamp(makeIso(secondServer), secondLocal);
+
+    expect(estimator.getSkewMs()).toBe(200);
+  });
 });
