@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - _Nothing yet._
 
-## [0.2.0] - 2025-11-15
+## [0.2.0] - 2025-10-14
 
 ### Highlights
 - Pause/resume controls, extend-in-place adjustments, and a runtime debug overlay make it easier to keep brews on track and

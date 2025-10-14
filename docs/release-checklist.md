@@ -43,4 +43,4 @@ This checklist captures the release gates from [Issue #72](https://github.com/sh
 ## Sign-off
 
 - Release owner: _Tea Timer maintainers_
-- Date: 2025-11-15
+- Date: 2025-10-14
