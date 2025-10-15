@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vitest"]
+    "types": ["vitest", "node"]
   }
 }
