@@ -2,7 +2,7 @@
 
 Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the perfect cup. The project is currently in a preview state while core functionality is being implemented.
 
-> **Latest release:** [Tea Timer Card v0.1.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0) — our minimum viable deliverable (MVD). See the [QA matrix](docs/qa-matrix.md) for tested platforms, the [countdown reproduction matrix](docs/qa/countdown-repro-matrix.md) for evidence gathered during #52, and the [release checklist](docs/release-checklist.md) for the gates we run before publishing.
+> **Latest release:** [Tea Timer Card v0.2.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.2.0) — our pause/resume + extend quality release. Minimum Home Assistant core: **2024.7.0**. See the [QA matrix](docs/qa-matrix.md) for tested platforms, the [countdown reproduction matrix](docs/qa/countdown-repro-matrix.md) for evidence gathered during #52, and the [release checklist](docs/release-checklist.md) for the gates we run before publishing.
 
 ## Getting Started
 
@@ -19,13 +19,13 @@ Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the p
 #### Via HACS (recommended)
 
 1. Add this repository as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS using the **Lovelace** category.
-2. Install **Tea Timer Card** v0.1.0 (or the latest available release) from the HACS frontend.
+2. Install **Tea Timer Card** v0.2.0 (or the latest available release) from the HACS frontend.
 3. HACS will place `tea-timer-card.js` in your Home Assistant instance. The file is a stable loader that re-exports the fingerprinted production bundle shipped with each release.
 4. Reload your browser or clear the Lovelace resources cache so Home Assistant picks up the new card bundle.
 
 #### Manual install (download release assets)
 
-1. Download the `tea-timer-card.js`, `tea-timer-card.<hash>.js`, and optional `tea-timer-card.<hash>.js.map` files from [Tea Timer Card v0.1.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.1.0).
+1. Download the `tea-timer-card.js`, `tea-timer-card.<hash>.js`, and optional `tea-timer-card.<hash>.js.map` files from [Tea Timer Card v0.2.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.2.0).
 2. (Optional) Verify integrity by comparing the SHA-256 checksums of the downloaded files with the release `checksums.txt`.
 3. Copy the downloaded files into `<config>/www/` in your Home Assistant setup.
 4. Add a Lovelace resource entry pointing at `/local/tea-timer-card.js` (see [Using the Card in Home Assistant](#using-the-card-in-home-assistant)). The stable loader automatically imports the fingerprinted bundle so browsers refresh cached assets between releases.

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- _Nothing yet._
+
+## [0.2.0] - 2025-10-14
+
+### Highlights
+- Pause/resume controls, extend-in-place adjustments, and a runtime debug overlay make it easier to keep brews on track and
+  diagnose timing issues.
+- Native Lovelace Visual Editor support simplifies configuration while keeping YAML parity for advanced options.
+
 ### Added
 - Runtime-toggle debug overlay & structured logs for diagnosing baseline seeds and drift corrections. (#53)
 - Pause/Resume controls for running brews, with accessible announcements, a frozen progress arc, and
@@ -39,6 +48,9 @@ All notable changes to this project will be documented in this file.
 - Document pause/resume flows, helper setup, restore caveats, near-finish races, and update the Lovelace
   examples to include a pause/resume configuration alongside the extend button guidance.
 - Add a Visual Editor quick-start guide outlining the picker flow and available form fields.
+
+### Links
+- Release: [Tea Timer Card v0.2.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.2.0)
 
 ## [0.1.0] - 2025-10-03
 
