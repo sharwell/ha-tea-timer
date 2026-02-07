@@ -14,7 +14,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | Idle baseline | Clear hierarchy: title, status, dial, presets, primary action. Primary action is visually strong. | None major in idle state. | `01-idle-baseline.png` |
 | 2 | Idle dial drag | Dial manipulation is smooth and immediate. Primary action duration updates consistently with dial. | Custom hint appears but is subtle and easy to miss when moving quickly. | `02-idle-dial-drag.png` |
-| 3 | Start by tapping card body | Very fast start path. Running visual state is obvious (blue dial, Running status). | Full-card tap start/restart is implicit and easy to trigger accidentally. | `03-start-via-card-body-tap.png` |
+| 3 | Start by tapping card body | Very fast start path. Running visual state is obvious (blue dial, Running status). | Full-card tap start/restart is implicit and easy to trigger accidentally. Card height jumps from ~516px (`02`) to ~632px (`03`), moving shared controls (preset row and primary action) downward; this breaks positional continuity across a core transition. | `03-start-via-card-body-tap.png` |
 | 4 | Running steady | Countdown updates feel stable. Readability of remaining time is strong. | Preset row is still interactive during run, but its behavior is “queue for later,” which is non-obvious at first glance. | `04-running-steady.png` |
 | 5 | Queue preset while running | Subtitle “Next: …” gives clear queued feedback. Dashed queued chip state is visible. | Card height grows when subtitle appears (layout shift), moving all controls down. | `05-queue-preset-while-running.png` |
 | 6 | Clear queued preset | Tapping queued chip again is reversible and quick. | Subtitle removal shifts layout back up (muscle memory break). | `06-clear-queued-preset.png` |
@@ -55,9 +55,11 @@
 ## Things that do not work well
 - Action activation is too implicit in high-risk states: whole-card tap can restart while running.
 - Layout stability is weak during common interactions: subtitle, dial tooltip, and banners introduce noticeable vertical jumps.
+- Idle-to-running transition changes overall card height and shifts shared controls, reducing predictability for repeated taps.
 - Semantics are inconsistent in paused state: main CTA label becomes `Start` rather than a clearly reset-oriented label.
 - Feedback surfaces are redundant in failures (banner + toast for same event), increasing clutter and obscuring controls.
 - Touch target sizing is inconsistent (`+1:00` and confirm buttons are smaller than primary touch controls).
+- State label duplication (`Idle`/`Running`/`Paused`/`Reconnecting`) appears both in the top pill and inside the dial, consuming vertical space that could increase dial diameter and distance readability of the time value.
 - Error/unavailable modes collapse the card dramatically, causing large dashboard reflow.
 
 ## Code points behind the main UX issues
@@ -90,6 +92,12 @@
 4. Make touch target sizing consistent.
 - Enforce minimum 44x44 for extend and confirm controls.
 - Keep visual style but increase tappable box via padding/container rules.
+
+5. Remove redundant status labeling and reallocate space to the dial.
+- For normal timer modes (idle/running/paused), keep one status label location only (prefer the in-dial secondary label).
+- Reserve top status/banners for exceptional states only (reconnecting/disconnected/error/unavailable).
+- Increase dial diameter with reclaimed vertical space to improve time readability at distance.
+- Rationale: better information density and visual clarity without losing state awareness.
 
 ### P1 (high value: predictability + clarity in failure/reconnect states)
 1. Consolidate error messaging to one primary surface per event.
@@ -134,7 +142,9 @@
 
 ## Suggested acceptance criteria for the next iteration
 1. No layout shift > 8px when toggling queued preset, dial-blocked feedback, or transient status messages.
-2. Running/paused restart cannot be triggered by tapping non-control card regions.
-3. All tappable controls meet minimum 44x44 touch target size.
-4. Paused state main CTA reads `Restart` and never `Start`.
-5. Service failure presents one visible message surface at a time.
+2. Idle -> running transition keeps overall card height stable (or within 8px) and preserves vertical placement of controls present in both states.
+3. Running/paused restart cannot be triggered by tapping non-control card regions.
+4. All tappable controls meet minimum 44x44 touch target size.
+5. Paused state main CTA reads `Restart` and never `Start`.
+6. Service failure presents one visible message surface at a time.
+7. Normal timer modes show only one state label location (no duplicated idle/running/paused label), and reclaimed space is applied to larger dial/time display.
