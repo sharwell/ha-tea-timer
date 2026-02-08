@@ -2440,7 +2440,22 @@ describe("TeaTimerCard", () => {
     expect(shadow.querySelector(".status-pill")).toBeNull();
   });
 
-  it("shows the top status pill in reconnecting state", async () => {
+  it("keeps a hidden banner slot mounted in normal timer modes", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const banner = card.shadowRoot?.querySelector(".state-banner");
+    expect(banner).not.toBeNull();
+    expect(banner?.classList.contains("state-banner-hidden")).toBe(true);
+    expect(banner?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("shows reconnect messaging in the banner slot without a top status pill", async () => {
     const card = createCard();
     document.body.appendChild(card);
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
@@ -2457,8 +2472,11 @@ describe("TeaTimerCard", () => {
 
     await card.updateComplete;
 
-    const pill = card.shadowRoot?.querySelector(".status-pill");
-    expect(pill?.textContent?.trim()).toBe(STRINGS.statusReconnecting);
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+    const banner = shadow.querySelector(".state-banner");
+    expect(banner?.classList.contains("state-banner-hidden")).toBe(false);
+    expect(banner?.textContent?.trim()).toBe(STRINGS.disconnectedReconnectingMessage);
   });
 
   describe("entity error surface", () => {

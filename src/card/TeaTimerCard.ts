@@ -289,7 +289,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const state = this._timerState ?? this._timerStateController.state;
     const entityErrorInfo = state ? this._getEntityErrorInfo(state.uiState) : undefined;
     const showInteractive = !!state && !!this._viewModel;
-    const showStatusPill = !!state && this._shouldRenderStatusPill(state);
     const hasPending = pendingAction !== "none" || !!state?.inFlightAction;
     return html`
       ${this._renderErrors()}
@@ -301,7 +300,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       >
         ${this._renderHeader()}
         ${showInteractive ? this._renderSubtitle() : nothing}
-        ${showStatusPill ? this._renderStatusPill(state) : nothing}
         ${state ? this._renderStateBanner(state) : nothing}
         ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
         ${showInteractive
@@ -1174,32 +1172,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _renderStatusPill(state: TimerViewState) {
-    const label = this._getStatusLabel(state);
-    const className = this._getStatusClass(state);
-    return html`<span class=${className} aria-hidden="true">${label}</span>`;
-  }
-
-  private _shouldRenderStatusPill(state: TimerViewState): boolean {
-    if (state.connectionStatus !== "connected") {
-      return true;
-    }
-
-    if (this._isUiError(state.uiState, "ServiceFailure")) {
-      return true;
-    }
-
-    if (state.status === "unavailable") {
-      return true;
-    }
-
-    return false;
-  }
-
   private _renderStateBanner(state: TimerViewState) {
     const banner = this._getUiStateBanner(state);
     if (!banner) {
-      return nothing;
+      return html`<div class="state-banner state-banner-hidden" aria-hidden="true"></div>`;
     }
 
     const { message, tone, live, role } = banner;
@@ -2116,51 +2092,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         return STRINGS.statusFinished;
       default:
         return STRINGS.statusUnavailable;
-    }
-  }
-
-  private _getStatusClass(state: TimerViewState): string {
-    const uiState = state.uiState;
-    if (uiState === "Running") {
-      return "status-pill status-running";
-    }
-    if (uiState === "Paused") {
-      return "status-pill status-paused";
-    }
-    if (uiState === "Idle") {
-      return "status-pill status-idle";
-    }
-    if (typeof uiState === "object") {
-      if (uiState.kind === "FinishedTransient") {
-        return "status-pill status-finished";
-      }
-      if (uiState.reason === "Disconnected") {
-        return "status-pill status-disconnected";
-      }
-      if (
-        uiState.reason === "EntityUnavailable" ||
-        uiState.reason === "EntityConfigMissing" ||
-        uiState.reason === "EntityWrongDomain" ||
-        uiState.reason === "EntityNotFound"
-      ) {
-        return "status-pill status-unavailable";
-      }
-      if (uiState.reason === "ServiceFailure") {
-        return "status-pill status-error";
-      }
-    }
-
-    switch (state.status) {
-      case "running":
-        return "status-pill status-running";
-      case "paused":
-        return "status-pill status-paused";
-      case "finished":
-        return "status-pill status-finished";
-      case "idle":
-        return "status-pill status-idle";
-      default:
-        return "status-pill status-unavailable";
     }
   }
 

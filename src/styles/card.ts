@@ -92,47 +92,6 @@ export const cardStyles = css`
     visibility: hidden;
   }
 
-  .status-pill {
-    align-self: flex-start;
-    border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    background: var(--chip-background-color, rgba(0, 0, 0, 0.04));
-    color: var(--secondary-text-color, #52606d);
-  }
-
-  .status-pill.status-running {
-    background: rgba(0, 122, 255, 0.12);
-    color: var(--primary-text-color, #1f2933);
-  }
-
-  .status-pill.status-paused {
-    background: rgba(250, 204, 21, 0.16);
-    color: var(--warning-color, #a86a13);
-  }
-
-  .status-pill.status-finished {
-    background: rgba(73, 190, 125, 0.16);
-    color: var(--primary-text-color, #1f2933);
-  }
-
-  .status-pill.status-disconnected {
-    background: rgba(250, 204, 21, 0.2);
-    color: var(--warning-color, #a86a13);
-  }
-
-  .status-pill.status-error {
-    background: rgba(191, 26, 47, 0.16);
-    color: #8a1c1c;
-  }
-
-  .status-pill.status-unavailable {
-    background: rgba(128, 128, 128, 0.14);
-  }
-
   .interaction {
     display: flex;
     flex-direction: column;
@@ -417,8 +376,7 @@ export const cardStyles = css`
 
     .preset-chip,
     .primary-action,
-    .dial-wrapper,
-    .status-pill {
+    .dial-wrapper {
       transition: none;
     }
   }
@@ -497,6 +455,13 @@ export const cardStyles = css`
     border-radius: 10px;
     font-size: 0.85rem;
     line-height: 1.4;
+    min-height: calc(0.85rem * 1.4 * 2 + 16px);
+    display: flex;
+    align-items: center;
+  }
+
+  .state-banner-hidden {
+    visibility: hidden;
   }
 
   .state-banner-info {
