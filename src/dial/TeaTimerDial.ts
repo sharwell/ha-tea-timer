@@ -25,8 +25,8 @@ export class TeaTimerDial extends LitElement {
 
     .dial-root {
       position: relative;
-      width: 208px;
-      height: 208px;
+      width: var(--tea-timer-dial-size, 228px);
+      height: var(--tea-timer-dial-size, 228px);
       border-radius: 50%;
       --dial-border-color: var(--divider-color, rgba(0, 0, 0, 0.12));
       --dial-track-color: var(--divider-color, rgba(0, 0, 0, 0.16));
@@ -36,7 +36,7 @@ export class TeaTimerDial extends LitElement {
       place-items: center;
       text-align: center;
       color: var(--secondary-text-color, #52606d);
-      padding: 16px;
+      padding: 18px;
       gap: 4px;
       touch-action: none;
       outline: none;
@@ -157,13 +157,14 @@ export class TeaTimerDial extends LitElement {
     }
 
     ::slotted([slot="primary"]) {
-      font-size: 1.8rem;
+      font-size: 2rem;
       font-weight: 600;
       letter-spacing: 0.02em;
+      line-height: 1;
     }
 
     ::slotted([slot="secondary"]) {
-      font-size: 0.95rem;
+      font-size: 1rem;
       color: var(--secondary-text-color, #52606d);
     }
 

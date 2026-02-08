@@ -4,6 +4,7 @@ export const cardStyles = css`
   :host {
     color-scheme: light dark;
     color: var(--primary-text-color, #1f2933);
+    --tea-timer-dial-size: 228px;
     --mdc-theme-primary: var(--primary-color, #1f2933);
     --mdc-theme-on-primary: var(
       --text-on-primary-color,
@@ -597,6 +598,18 @@ export const cardStyles = css`
     .action-rail .pause-resume-controls,
     .action-rail .extend-controls {
       min-width: 110px;
+    }
+  }
+
+  @media (max-width: 420px) {
+    :host {
+      --tea-timer-dial-size: 220px;
+    }
+  }
+
+  @media (min-width: 520px) {
+    :host {
+      --tea-timer-dial-size: 236px;
     }
   }
 `;
