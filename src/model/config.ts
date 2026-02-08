@@ -23,6 +23,7 @@ export interface TeaTimerCardConfig {
   plusButtonIncrementS?: number;
   maxExtendS?: number;
   showPauseResume?: boolean;
+  cardBodyTapStart?: boolean;
 }
 
 export interface TeaTimerConfig {
@@ -40,6 +41,7 @@ export interface TeaTimerConfig {
   plusButtonIncrementSeconds: number;
   maxExtendSeconds?: number;
   showPauseResume: boolean;
+  cardBodyTapStart: boolean;
 }
 
 export interface ParsedTeaTimerConfig {
@@ -171,6 +173,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
 
   const showPlusButton = raw.showPlusButton !== false;
   const showPauseResume = raw.showPauseResume !== false;
+  const cardBodyTapStart = raw.cardBodyTapStart !== false;
 
   let plusButtonIncrementSeconds = DEFAULT_PLUS_BUTTON_INCREMENT_SECONDS;
   if (typeof raw.plusButtonIncrementS === "number" && Number.isFinite(raw.plusButtonIncrementS)) {
@@ -238,6 +241,7 @@ export function parseTeaTimerConfig(input: unknown): ParsedTeaTimerConfig {
     plusButtonIncrementSeconds,
     maxExtendSeconds,
     showPauseResume,
+    cardBodyTapStart,
   };
 
   return { config, errors };

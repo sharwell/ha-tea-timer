@@ -28,6 +28,7 @@ const config: TeaTimerConfig = {
   plusButtonIncrementSeconds: 60,
   maxExtendSeconds: undefined,
   showPauseResume: true,
+  cardBodyTapStart: true,
 };
 
 describe("createTeaTimerViewModel", () => {
@@ -54,6 +55,7 @@ describe("createTeaTimerViewModel", () => {
     expect(viewModel.ui.confirmRestart).toBe(false);
     expect(viewModel.ui.pendingAction).toBe("none");
     expect(viewModel.ui.showPauseResumeButton).toBe(true);
+    expect(viewModel.ui.cardBodyTapStart).toBe(true);
   });
 
   it("falls back to defaults when title missing", () => {
