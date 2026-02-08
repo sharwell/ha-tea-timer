@@ -2514,6 +2514,93 @@ describe("TeaTimerCard", () => {
     expect(detail?.textContent?.trim()).toBe(STRINGS.serviceFailureMessage);
   });
 
+  it("keeps interaction shell landmarks stable from idle to running", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "idle", durationSeconds: 240, remainingSeconds: 240 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+    expect(shadow.querySelector(".primary-action")).not.toBeNull();
+    expect(shadow.querySelector(".extend-controls[data-placeholder='true']")).not.toBeNull();
+    expect(shadow.querySelector(".pause-resume-controls[data-placeholder='true']")).not.toBeNull();
+
+    setTimerState(card, { status: "running", durationSeconds: 240, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+    expect(shadow.querySelector(".primary-action")).not.toBeNull();
+    expect(shadow.querySelector(".extend-button")).not.toBeNull();
+    expect(shadow.querySelector(".pause-resume-button")).not.toBeNull();
+  });
+
+  it("keeps the fixed shell while disconnected and disables rail actions", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+    card.hass = createHass();
+
+    setTimerState(
+      card,
+      { status: "running", durationSeconds: 240, remainingSeconds: 180 },
+      {
+        connectionStatus: "disconnected",
+        uiState: { kind: "Error", reason: "Disconnected" },
+      },
+    );
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+    const pauseButton = shadow.querySelector<HTMLButtonElement>(".pause-resume-button");
+    const extendButton = shadow.querySelector<HTMLButtonElement>(".extend-button");
+    expect(pauseButton?.disabled).toBe(true);
+    expect(extendButton?.disabled).toBe(true);
+  });
+
+  it("keeps a single banner slot mounted when service-failure messaging appears and clears", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelectorAll(".state-banner-slot")).toHaveLength(1);
+
+    setTimerState(
+      card,
+      { status: "idle", durationSeconds: 180, remainingSeconds: 180 },
+      {
+        connectionStatus: "connected",
+        uiState: { kind: "Error", reason: "ServiceFailure", detail: STRINGS.serviceFailureMessage },
+      },
+    );
+    await card.updateComplete;
+
+    expect(shadow.querySelectorAll(".state-banner-slot")).toHaveLength(1);
+    expect(shadow.querySelector(".state-banner")?.classList.contains("state-banner-hidden")).toBe(
+      false,
+    );
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    expect(shadow.querySelectorAll(".state-banner-slot")).toHaveLength(1);
+    expect(shadow.querySelector(".state-banner")?.classList.contains("state-banner-hidden")).toBe(
+      true,
+    );
+  });
+
   describe("entity error surface", () => {
     it("renders a consolidated message when the entity is missing", async () => {
       const card = createCard();
