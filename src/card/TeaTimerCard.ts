@@ -449,7 +449,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status !== "running" && state.status !== "paused") {
-      return nothing;
+      return html`<div class="extend-controls" data-placeholder="true" aria-hidden="true"></div>`;
     }
 
     const pendingAction = this._viewModel.ui.pendingAction;
@@ -464,7 +464,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     );
 
     return html`
-      <div class="extend-controls" data-busy=${busy ? "true" : "false"} aria-busy=${busy ? "true" : "false"}>
+      <div
+        class="extend-controls"
+        data-busy=${busy ? "true" : "false"}
+        data-placeholder="false"
+        aria-busy=${busy ? "true" : "false"}
+      >
         <button
           type="button"
           class="extend-button"
@@ -483,6 +488,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
+    if (state.status !== "running" && state.status !== "paused") {
+      return html`<div class="pause-resume-controls" data-placeholder="true" aria-hidden="true"></div>`;
+    }
+
     const isPaused = state.status === "paused";
     const label = isPaused ? STRINGS.resumeButtonLabel : STRINGS.pauseButtonLabel;
     const ariaLabel = isPaused ? STRINGS.resumeButtonAriaLabel : STRINGS.pauseButtonAriaLabel;
@@ -490,9 +499,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const busy = this._pauseResumeInFlight !== undefined;
 
     return html`
-      <div class="pause-resume-controls" data-busy=${busy ? "true" : "false"} aria-busy=${
-        busy ? "true" : "false"
-      }>
+      <div
+        class="pause-resume-controls"
+        data-busy=${busy ? "true" : "false"}
+        data-placeholder="false"
+        aria-busy=${busy ? "true" : "false"}
+      >
         <button
           type="button"
           class="pause-resume-button"
@@ -515,7 +527,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return false;
     }
 
-    return state.status === "running" || state.status === "paused";
+    return state.status === "running" || state.status === "paused" || state.status === "idle";
   }
 
   private _isPauseResumeDisabled(state: TimerViewState): boolean {

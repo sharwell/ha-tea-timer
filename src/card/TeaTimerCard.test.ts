@@ -2549,6 +2549,45 @@ describe("TeaTimerCard", () => {
     expect(resumeTimerMock).toHaveBeenCalledWith(hass, "timer.kettle");
   });
 
+  it("reserves secondary control rows while idle when extend and pause are enabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const extendSlot = shadow.querySelector(".extend-controls[data-placeholder='true']");
+    const pauseSlot = shadow.querySelector(".pause-resume-controls[data-placeholder='true']");
+    expect(extendSlot).not.toBeNull();
+    expect(pauseSlot).not.toBeNull();
+    expect(shadow.querySelector(".extend-button")).toBeNull();
+    expect(shadow.querySelector(".pause-resume-button")).toBeNull();
+  });
+
+  it("does not render secondary control rows when features are disabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({
+      entity: "timer.kettle",
+      presets: [],
+      showPlusButton: false,
+      showPauseResume: false,
+    });
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".extend-controls")).toBeNull();
+    expect(shadow.querySelector(".pause-resume-controls")).toBeNull();
+  });
+
   it("extends a paused timer via changeTimer when pause support is native", async () => {
     const card = createCard();
     const hass = createHass();

@@ -124,6 +124,8 @@ export const cardStyles = css`
   .extend-controls {
     display: flex;
     justify-content: center;
+    align-items: center;
+    min-height: 40px;
   }
 
   .extend-button {
@@ -157,6 +159,8 @@ export const cardStyles = css`
   .pause-resume-controls {
     display: flex;
     justify-content: center;
+    align-items: center;
+    min-height: 44px;
   }
 
   .pause-resume-button {
