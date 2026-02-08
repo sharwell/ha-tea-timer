@@ -53,6 +53,12 @@ export const cardStyles = css`
     font-size: 0.85rem;
     color: var(--secondary-text-color, #52606d);
     margin: -8px 0 0;
+    min-height: calc(0.85rem * 1.4);
+    line-height: 1.4;
+  }
+
+  .subtitle-hidden {
+    visibility: hidden;
   }
 
   .dial-wrapper {
@@ -60,6 +66,7 @@ export const cardStyles = css`
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    position: relative;
   }
 
   tea-timer-dial {
@@ -67,11 +74,22 @@ export const cardStyles = css`
   }
 
   .dial-tooltip {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
     font-size: 0.8rem;
     color: var(--secondary-text-color, #52606d);
     background: rgba(0, 0, 0, 0.08);
     padding: 6px 12px;
     border-radius: 999px;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+
+  .dial-tooltip-hidden {
+    opacity: 0;
+    visibility: hidden;
   }
 
   .status-pill {

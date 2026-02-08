@@ -2290,6 +2290,78 @@ describe("TeaTimerCard", () => {
     expect(internals._displayDurationSeconds).toBe(beforeDisplay);
   });
 
+  it("keeps a reserved subtitle row while toggling queued presets", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "running", durationSeconds: 240, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const initialSubtitle = shadow.querySelector(".subtitle");
+    expect(initialSubtitle).not.toBeNull();
+    expect(initialSubtitle?.classList.contains("subtitle-hidden")).toBe(true);
+
+    pointerSelectPreset(card, 0);
+    await card.updateComplete;
+
+    const queuedSubtitle = shadow.querySelector(".subtitle");
+    expect(queuedSubtitle?.classList.contains("subtitle-hidden")).toBe(false);
+    expect(queuedSubtitle?.textContent).toContain("Next:");
+
+    pointerSelectPreset(card, 0);
+    await card.updateComplete;
+
+    const clearedSubtitle = shadow.querySelector(".subtitle");
+    expect(clearedSubtitle?.classList.contains("subtitle-hidden")).toBe(true);
+  });
+
+  it("keeps dial blocked tooltip mounted and toggles visibility", async () => {
+    vi.useFakeTimers();
+    try {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+      card.hass = createHass();
+
+      setTimerState(card, { status: "running", durationSeconds: 240, remainingSeconds: 180 });
+      await card.updateComplete;
+
+      const shadow = card.shadowRoot as ShadowRoot;
+      const blocked = card as unknown as { _onDialBlocked(event: Event): void };
+
+      let tooltip = shadow.querySelector(".dial-tooltip");
+      expect(tooltip).not.toBeNull();
+      expect(tooltip?.classList.contains("dial-tooltip-hidden")).toBe(true);
+
+      blocked._onDialBlocked({
+        stopPropagation: vi.fn(),
+      } as unknown as Event);
+
+      await card.updateComplete;
+      tooltip = shadow.querySelector(".dial-tooltip");
+      expect(tooltip?.classList.contains("dial-tooltip-hidden")).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1800);
+      await card.updateComplete;
+
+      tooltip = shadow.querySelector(".dial-tooltip");
+      expect(tooltip?.classList.contains("dial-tooltip-hidden")).toBe(true);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   it("renders a helpful message when presets are missing", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle", presets: [] });

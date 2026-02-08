@@ -389,12 +389,20 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const queuedId = this._viewModel.ui.queuedPresetId;
     if (typeof queuedId !== "number") {
-      return nothing;
+      return html`
+        <p class=${classMap({ subtitle: true, "subtitle-hidden": true })} aria-hidden="true">
+          ${nothing}
+        </p>
+      `;
     }
 
     const preset = this._viewModel.ui.presets.find((item) => item.id === queuedId);
     if (!preset) {
-      return nothing;
+      return html`
+        <p class=${classMap({ subtitle: true, "subtitle-hidden": true })} aria-hidden="true">
+          ${nothing}
+        </p>
+      `;
     }
 
     const label = STRINGS.presetsQueuedLabel(preset.label, preset.durationLabel);
@@ -433,9 +441,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           <span slot="secondary">${secondary}</span>
         </tea-timer-dial>
         ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
-        ${this._dialTooltipVisible
-          ? html`<div class="dial-tooltip" role="status">${STRINGS.dialBlockedTooltip}</div>`
-          : nothing}
+        <div
+          class=${classMap({
+            "dial-tooltip": true,
+            "dial-tooltip-hidden": !this._dialTooltipVisible,
+          })}
+          role="status"
+          aria-hidden=${this._dialTooltipVisible ? "false" : "true"}
+        >
+          ${STRINGS.dialBlockedTooltip}
+        </div>
       </div>
     `;
   }
