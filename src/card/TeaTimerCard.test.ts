@@ -1448,6 +1448,52 @@ describe("TeaTimerCard", () => {
     expect(internals._viewModel?.ui.error?.message).toContain("Couldn't start the timer");
   });
 
+  it("shows a single service failure surface (banner) without toast duplication", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "idle",
+      durationSeconds: 90,
+      remainingSeconds: 90,
+    });
+
+    startTimerMock.mockRejectedValueOnce(new Error("boom"));
+    invokePrimaryAction(card);
+
+    const results = startTimerMock.mock.results as Array<{ value?: Promise<unknown> }>;
+    const startCall = results.length ? results[results.length - 1]?.value : undefined;
+    if (startCall) {
+      await startCall.catch(() => undefined);
+    }
+
+    setTimerState(
+      card,
+      {
+        status: "idle",
+        durationSeconds: 90,
+        remainingSeconds: 90,
+      },
+      {
+        connectionStatus: "connected",
+        uiState: {
+          kind: "Error",
+          reason: "ServiceFailure",
+          detail: STRINGS.toastStartFailed,
+        },
+      },
+    );
+
+    await card.updateComplete;
+    await Promise.resolve();
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".state-banner")).not.toBeNull();
+    expect(shadow.querySelector(".toast")).toBeNull();
+  });
+
   it("announces entity unavailable when tapped", async () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });

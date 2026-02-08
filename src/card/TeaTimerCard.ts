@@ -1150,6 +1150,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
+    const state = this._timerState ?? this._timerStateController.state;
+    if (state && this._getUiStateBanner(state)) {
+      return nothing;
+    }
+
     const isUnavailable = error.code === "entity-unavailable";
     const tone = isUnavailable ? "info" : "error";
     const role = isUnavailable ? "alert" : "status";
