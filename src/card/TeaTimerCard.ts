@@ -839,7 +839,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _getPrimaryActionInfo(state: TimerViewState) {
-    const action = state.status === "running" ? "restart" : "start";
+    const action = state.status === "running" || state.status === "paused" ? "restart" : "start";
     const durationSeconds = this._getActionDuration();
     const durationLabel = formatDurationSeconds(durationSeconds);
     const durationSpeech = formatDurationSpeech(durationSeconds, STRINGS.durationSpeech);
@@ -1283,7 +1283,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const durationSeconds = this._getActionDuration();
 
-    if (state.status === "running") {
+    if (state.status === "running" || state.status === "paused") {
       if (this._viewModel.ui.confirmRestart) {
         this._confirmRestartDuration = durationSeconds;
         this._confirmRestartVisible = true;

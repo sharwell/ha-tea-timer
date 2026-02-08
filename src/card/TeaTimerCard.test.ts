@@ -1331,6 +1331,35 @@ describe("TeaTimerCard", () => {
     expect(internals._viewModel?.ui.pendingAction).toBe("restart");
   });
 
+  it("uses restart semantics for the primary action while paused", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, pausedState);
+
+    const internals = card as unknown as {
+      _getPrimaryActionInfo(state: TimerViewState): { action: string; label: string };
+    };
+    const info = internals._getPrimaryActionInfo(pausedState);
+    expect(info.action).toBe("restart");
+    expect(info.label).toBe(STRINGS.primaryActionRestart);
+
+    invokePrimaryAction(card);
+    await Promise.resolve();
+
+    expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 240);
+    expect(startTimer).not.toHaveBeenCalled();
+    const vm = card as unknown as { _viewModel?: { ui: { pendingAction: string } } };
+    expect(vm._viewModel?.ui.pendingAction).toBe("restart");
+  });
+
   it("requires confirmation before restarting when confirmRestart is true", async () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle", confirmRestart: true });
