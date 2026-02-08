@@ -2747,12 +2747,11 @@ describe("TeaTimerCard", () => {
     await card.updateComplete;
 
     const shadow = card.shadowRoot as ShadowRoot;
-    expect(shadow.querySelector(".interaction-active")).not.toBeNull();
     expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
     expect(shadow.querySelector(".action-rail")).not.toBeNull();
   });
 
-  it("keeps the non-active layout when idle", async () => {
+  it("keeps the dial-and-rail shell while idle when rail features are enabled", async () => {
     const card = createCard();
     document.body.appendChild(card);
     const hass = createHass();
@@ -2763,8 +2762,27 @@ describe("TeaTimerCard", () => {
     await card.updateComplete;
 
     const shadow = card.shadowRoot as ShadowRoot;
-    expect(shadow.querySelector(".interaction-active")).toBeNull();
-    expect(shadow.querySelector(".dial-and-rail")).toBeNull();
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+  });
+
+  it("omits the rail shell when extend and pause features are disabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({
+      entity: "timer.kettle",
+      presets: [],
+      showPlusButton: false,
+      showPauseResume: false,
+    });
+
+    setTimerState(card, { status: "idle", durationSeconds: 300, remainingSeconds: 300 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
     expect(shadow.querySelector(".action-rail")).toBeNull();
   });
 

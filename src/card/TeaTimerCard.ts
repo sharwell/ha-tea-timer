@@ -449,27 +449,23 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _renderInteraction(state: TimerViewState) {
-    const runningOrPaused = state.status === "running" || state.status === "paused";
-    if (runningOrPaused) {
-      return html`
-        <div class=${classMap({ interaction: true, "interaction-active": true })}>
-          <div class="dial-and-rail">
-            ${this._renderDial(state)}
-            <div class="action-rail">
-              ${this._renderPauseResumeControls(state)}
-              ${this._renderExtendControls(state)}
-            </div>
-          </div>
-          ${this._renderPresets(state)}
-        </div>
-      `;
-    }
+    const showRail =
+      !!this._viewModel &&
+      (this._viewModel.ui.showExtendButton || this._shouldRenderPauseResume(state));
 
     return html`
       <div class="interaction">
-        ${this._renderDial(state)}
-        ${this._renderExtendControls(state)}
-        ${this._renderPauseResumeControls(state)}
+        <div class="dial-and-rail">
+          ${this._renderDial(state)}
+          ${showRail
+            ? html`
+                <div class="action-rail">
+                  ${this._renderPauseResumeControls(state)}
+                  ${this._renderExtendControls(state)}
+                </div>
+              `
+            : nothing}
+        </div>
         ${this._renderPresets(state)}
       </div>
     `;
