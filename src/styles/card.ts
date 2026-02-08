@@ -149,12 +149,12 @@ export const cardStyles = css`
   .extend-button {
     border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
     border-radius: 999px;
-    padding: 6px 14px;
+    padding: 8px 16px;
     background: var(--chip-background-color, var(--mdc-chip-background-color));
     color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
     font-size: 0.9rem;
     font-variant-numeric: tabular-nums;
-    min-height: 40px;
+    min-height: 44px;
     cursor: pointer;
     transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
   }
@@ -451,12 +451,12 @@ export const cardStyles = css`
   .confirm-surface {
     background: var(--mdc-theme-surface);
     border-radius: 12px;
-    padding: 16px;
+    padding: 18px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    max-width: 260px;
+    gap: 14px;
+    max-width: 320px;
     width: 100%;
   }
 
@@ -468,15 +468,17 @@ export const cardStyles = css`
 
   .confirm-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     justify-content: flex-end;
   }
 
   .confirm-actions button {
     border: none;
     border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 0.9rem;
+    padding: 10px 14px;
+    min-height: 44px;
+    min-width: 96px;
+    font-size: 0.95rem;
     cursor: pointer;
   }
 
