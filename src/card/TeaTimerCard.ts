@@ -1219,6 +1219,15 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || state.status !== "idle") {
+      return;
+    }
+
+    if (!this._viewModel?.ui.cardBodyTapStart) {
+      return;
+    }
+
     this._handlePrimaryAction();
   };
 

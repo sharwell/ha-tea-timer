@@ -261,6 +261,15 @@ describe("TeaTimerCard", () => {
     handler._handlePrimaryAction();
   }
 
+  function invokeCardBodyTap(card: TeaTimerCard) {
+    const handler = card as unknown as { _onCardClick(event: MouseEvent): void };
+    const target = document.createElement("div");
+    handler._onCardClick({
+      defaultPrevented: false,
+      composedPath: () => [target, card],
+    } as unknown as MouseEvent);
+  }
+
   function createHass(): HomeAssistant {
     return {
       locale: { language: "en" },
@@ -1217,6 +1226,87 @@ describe("TeaTimerCard", () => {
     expect(startTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 180);
     const internals = card as unknown as { _viewModel?: { ui: { pendingAction: string } } };
     expect(internals._viewModel?.ui.pendingAction).toBe("start");
+  });
+
+  it("starts the timer when tapping the card body from idle", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "idle",
+      durationSeconds: 180,
+      remainingSeconds: 180,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(startTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 180);
+    expect(restartTimer).not.toHaveBeenCalled();
+  });
+
+  it("does not restart when tapping the card body while running", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+
+    expect(restartTimer).not.toHaveBeenCalled();
+    expect(startTimer).not.toHaveBeenCalled();
+  });
+
+  it("does not start when tapping the card body while paused", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+
+    expect(restartTimer).not.toHaveBeenCalled();
+    expect(startTimer).not.toHaveBeenCalled();
+  });
+
+  it("does not start when cardBodyTapStart is disabled", async () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      cardBodyTapStart: false,
+    });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "idle",
+      durationSeconds: 180,
+      remainingSeconds: 180,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+
+    expect(startTimer).not.toHaveBeenCalled();
+    expect(restartTimer).not.toHaveBeenCalled();
   });
 
   it("restarts the timer when tapping while running", async () => {
