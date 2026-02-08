@@ -289,6 +289,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const state = this._timerState ?? this._timerStateController.state;
     const entityErrorInfo = state ? this._getEntityErrorInfo(state.uiState) : undefined;
     const showInteractive = !!state && !entityErrorInfo;
+    const showStatusPill = !!state && this._shouldRenderStatusPill(state);
     const hasPending = pendingAction !== "none" || !!state?.inFlightAction;
     return html`
       ${this._renderErrors()}
@@ -300,7 +301,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       >
         ${this._renderHeader()}
         ${showInteractive ? this._renderSubtitle() : nothing}
-        ${state ? this._renderStatusPill(state) : nothing}
+        ${showStatusPill ? this._renderStatusPill(state) : nothing}
         ${state ? this._renderStateBanner(state) : nothing}
         ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
         ${showInteractive
@@ -1157,6 +1158,22 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const label = this._getStatusLabel(state);
     const className = this._getStatusClass(state);
     return html`<span class=${className} aria-hidden="true">${label}</span>`;
+  }
+
+  private _shouldRenderStatusPill(state: TimerViewState): boolean {
+    if (state.connectionStatus !== "connected") {
+      return true;
+    }
+
+    if (this._isUiError(state.uiState, "ServiceFailure")) {
+      return true;
+    }
+
+    if (state.status === "unavailable") {
+      return true;
+    }
+
+    return false;
   }
 
   private _renderStateBanner(state: TimerViewState) {

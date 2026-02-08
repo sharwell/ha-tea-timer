@@ -25,8 +25,8 @@ export class TeaTimerDial extends LitElement {
 
     .dial-root {
       position: relative;
-      width: 184px;
-      height: 184px;
+      width: 208px;
+      height: 208px;
       border-radius: 50%;
       --dial-border-color: var(--divider-color, rgba(0, 0, 0, 0.12));
       --dial-track-color: var(--divider-color, rgba(0, 0, 0, 0.16));

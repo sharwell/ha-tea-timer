@@ -2302,6 +2302,47 @@ describe("TeaTimerCard", () => {
     expect(emptyState?.textContent).toBe(STRINGS.presetsMissing);
   });
 
+  it("hides the top status pill for normal timer modes", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+    const shadow = card.shadowRoot as ShadowRoot;
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+
+    setTimerState(card, { status: "running", durationSeconds: 180, remainingSeconds: 120 });
+    await card.updateComplete;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+
+    setTimerState(card, { status: "paused", durationSeconds: 180, remainingSeconds: 120 });
+    await card.updateComplete;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+  });
+
+  it("shows the top status pill in reconnecting state", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(
+      card,
+      { status: "running", durationSeconds: 180, remainingSeconds: 120 },
+      {
+        connectionStatus: "reconnecting",
+        uiState: { kind: "Error", reason: "Disconnected" },
+      },
+    );
+
+    await card.updateComplete;
+
+    const pill = card.shadowRoot?.querySelector(".status-pill");
+    expect(pill?.textContent?.trim()).toBe(STRINGS.statusReconnecting);
+  });
+
   describe("entity error surface", () => {
     it("renders a consolidated message when the entity is missing", async () => {
       const card = createCard();
