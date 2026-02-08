@@ -2486,9 +2486,11 @@ describe("TeaTimerCard", () => {
       expect(shadow.querySelector(".entity-error")?.textContent?.trim()).toBe(
         STRINGS.entityErrorMissing,
       );
-      expect(shadow.querySelector(".interaction")).toBeNull();
-      expect(shadow.querySelector(".primary-action")).toBeNull();
-      expect(shadow.querySelector(".empty-state")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const primary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(primary).not.toBeNull();
+      expect(primary?.disabled).toBe(true);
+      expect(shadow.querySelector(".empty-state")).not.toBeNull();
     });
 
     it("indicates when the configured entity is not a timer", async () => {
@@ -2513,7 +2515,9 @@ describe("TeaTimerCard", () => {
       const message = shadow.querySelector(".entity-error")?.textContent ?? "";
       expect(message).toContain(entityId);
       expect(message.trim()).toBe(STRINGS.entityErrorInvalid(entityId));
-      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const primary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(primary?.disabled).toBe(true);
       expect(shadow.querySelectorAll('[role="alert"]').length).toBe(1);
     });
 
@@ -2538,7 +2542,9 @@ describe("TeaTimerCard", () => {
       const shadow = card.shadowRoot as ShadowRoot;
       const message = shadow.querySelector(".entity-error")?.textContent?.trim();
       expect(message).toBe(STRINGS.entityErrorUnavailable(entityId));
-      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const primary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(primary?.disabled).toBe(true);
       expect(shadow.querySelectorAll('[role="alert"]').length).toBe(1);
     });
 
@@ -2582,7 +2588,9 @@ describe("TeaTimerCard", () => {
 
       await card.updateComplete;
       const shadow = card.shadowRoot as ShadowRoot;
-      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const beforePrimary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(beforePrimary?.disabled).toBe(true);
 
       setTimerState(
         card,
@@ -2598,6 +2606,8 @@ describe("TeaTimerCard", () => {
 
       expect(shadow.querySelector(".entity-error")).toBeNull();
       expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const afterPrimary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(afterPrimary?.disabled).toBe(false);
       expect(shadow.querySelectorAll('[role="alert"]').length).toBe(0);
     });
   });

@@ -288,7 +288,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const pendingAction = this._viewModel?.ui.pendingAction ?? "none";
     const state = this._timerState ?? this._timerStateController.state;
     const entityErrorInfo = state ? this._getEntityErrorInfo(state.uiState) : undefined;
-    const showInteractive = !!state && !entityErrorInfo;
+    const showInteractive = !!state && !!this._viewModel;
     const showStatusPill = !!state && this._shouldRenderStatusPill(state);
     const hasPending = pendingAction !== "none" || !!state?.inFlightAction;
     return html`
