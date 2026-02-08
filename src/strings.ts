@@ -26,6 +26,7 @@ export interface StringTable {
   entityErrorInvalid: (entityId?: string) => string;
   entityErrorUnavailable: (entityId?: string) => string;
   serviceFailureMessage: string;
+  bannerDetailsLabel: string;
   durationSpeech: {
     hour: (value: number) => string;
     minute: (value: number) => string;
@@ -133,6 +134,7 @@ export const STRINGS: StringTable = {
       : "The timer entity is unavailable. Check that the helper exists and the entity_id is correct.",
   serviceFailureMessage:
     "Couldn't complete the timer action. Check your Home Assistant connection and try again.",
+  bannerDetailsLabel: "Details",
   durationSpeech: {
     hour: (value: number) => `${value} hour${value === 1 ? "" : "s"}`,
     minute: (value: number) => `${value} minute${value === 1 ? "" : "s"}`,

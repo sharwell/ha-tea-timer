@@ -66,6 +66,7 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const EXTEND_COALESCE_DELAY_MS = 200;
 const START_FIRST_RENDER_TOLERANCE_S = 0.25;
 const START_OUTLIER_MAX_SECONDS = 6 * 60 * 60;
+const BANNER_DETAIL_THRESHOLD = 80;
 
 interface PendingStartSeed {
   requestedSeconds: number;
@@ -165,6 +166,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   @state()
   private _pauseResumeInFlight: "pause" | "resume" | undefined = undefined;
+
+  @state()
+  private _bannerDetailVisible = false;
 
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
@@ -1193,13 +1197,48 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _renderStateBanner(state: TimerViewState) {
     const banner = this._getUiStateBanner(state);
     if (!banner) {
-      return html`<div class="state-banner state-banner-hidden" aria-hidden="true"></div>`;
+      return html`
+        <div class="state-banner-slot" aria-hidden="true">
+          <div class="state-banner state-banner-hidden"></div>
+        </div>
+      `;
     }
 
     const { message, tone, live, role } = banner;
+    const showDetailToggle = message.length > BANNER_DETAIL_THRESHOLD;
+    const detailVisible = showDetailToggle && this._bannerDetailVisible;
+    const detailExpanded = detailVisible ? "true" : "false";
     return html`
-      <div class="state-banner state-banner-${tone}" role=${role} aria-live=${live}>
-        ${message}
+      <div class="state-banner-slot">
+        <div class="state-banner state-banner-${tone}" role=${role} aria-live=${live}>
+          <span class="state-banner-text">${message}</span>
+          ${showDetailToggle
+            ? html`
+                <button
+                  type="button"
+                  class="state-banner-detail-toggle"
+                  aria-expanded=${detailExpanded}
+                  aria-label=${STRINGS.bannerDetailsLabel}
+                  @click=${this._onBannerDetailToggle}
+                >
+                  ${STRINGS.bannerDetailsLabel}
+                </button>
+              `
+            : nothing}
+        </div>
+        ${showDetailToggle
+          ? html`
+              <div
+                class=${classMap({
+                  "state-banner-detail": true,
+                  "state-banner-detail-hidden": !detailVisible,
+                })}
+                role="note"
+              >
+                ${message}
+              </div>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -1272,6 +1311,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     this._handlePrimaryAction();
+  };
+
+  private readonly _onBannerDetailToggle = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    this._bannerDetailVisible = !this._bannerDetailVisible;
   };
 
   private _shouldIgnoreCardClick(event: MouseEvent): boolean {
@@ -2290,6 +2335,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _handleTimerStateChanged(state: TimerViewState) {
     const previousState = this._previousTimerState;
     const previousViewModel = this._viewModel;
+    const currentBannerMessage = this._getUiStateBanner(state)?.message;
+    const previousBannerMessage = previousState ? this._getUiStateBanner(previousState)?.message : undefined;
+    if (!currentBannerMessage || currentBannerMessage !== previousBannerMessage) {
+      this._bannerDetailVisible = false;
+    }
     this._evaluatePauseCapability();
     if (this._confirmRestartVisible && state.status !== "running") {
       this._confirmRestartVisible = false;

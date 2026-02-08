@@ -2449,10 +2449,13 @@ describe("TeaTimerCard", () => {
     setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
     await card.updateComplete;
 
-    const banner = card.shadowRoot?.querySelector(".state-banner");
+    const shadow = card.shadowRoot as ShadowRoot;
+    const slot = shadow.querySelector(".state-banner-slot");
+    const banner = shadow.querySelector(".state-banner");
+    expect(slot).not.toBeNull();
     expect(banner).not.toBeNull();
     expect(banner?.classList.contains("state-banner-hidden")).toBe(true);
-    expect(banner?.getAttribute("aria-hidden")).toBe("true");
+    expect(slot?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("shows reconnect messaging in the banner slot without a top status pill", async () => {
@@ -2477,6 +2480,38 @@ describe("TeaTimerCard", () => {
     const banner = shadow.querySelector(".state-banner");
     expect(banner?.classList.contains("state-banner-hidden")).toBe(false);
     expect(banner?.textContent?.trim()).toBe(STRINGS.disconnectedReconnectingMessage);
+  });
+
+  it("shows service failure details in a non-layout overlay", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(
+      card,
+      { status: "idle", durationSeconds: 180, remainingSeconds: 180 },
+      {
+        connectionStatus: "connected",
+        uiState: { kind: "Error", reason: "ServiceFailure", detail: STRINGS.serviceFailureMessage },
+      },
+    );
+
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const detailToggle = shadow.querySelector<HTMLButtonElement>(".state-banner-detail-toggle");
+    expect(detailToggle).not.toBeNull();
+
+    let detail = shadow.querySelector(".state-banner-detail");
+    expect(detail?.classList.contains("state-banner-detail-hidden")).toBe(true);
+
+    detailToggle?.click();
+    await card.updateComplete;
+
+    detail = shadow.querySelector(".state-banner-detail");
+    expect(detail?.classList.contains("state-banner-detail-hidden")).toBe(false);
+    expect(detail?.textContent?.trim()).toBe(STRINGS.serviceFailureMessage);
   });
 
   describe("entity error surface", () => {

@@ -398,7 +398,8 @@ export const cardStyles = css`
 
     .preset-chip,
     .primary-action,
-    .dial-wrapper {
+    .dial-wrapper,
+    .state-banner-detail {
       transition: none;
     }
   }
@@ -472,18 +473,76 @@ export const cardStyles = css`
     color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
   }
 
+  .state-banner-slot {
+    position: relative;
+    min-height: 40px;
+  }
+
   .state-banner {
     padding: 8px 12px;
     border-radius: 10px;
     font-size: 0.85rem;
-    line-height: 1.4;
-    min-height: calc(0.85rem * 1.4 * 2 + 16px);
+    line-height: 1.2;
+    min-height: 40px;
     display: flex;
     align-items: center;
+    gap: 8px;
   }
 
   .state-banner-hidden {
     visibility: hidden;
+  }
+
+  .state-banner-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .state-banner-detail-toggle {
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.45);
+    color: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    min-height: 28px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .state-banner-detail-toggle:focus-visible {
+    outline: 3px solid var(--focus-ring-color, rgba(0, 122, 255, 0.6));
+    outline-offset: 2px;
+  }
+
+  .state-banner-detail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 2;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--mdc-theme-surface, var(--ha-card-background, #ffffff));
+    color: var(--primary-text-color, #1f2933);
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    font-size: 0.84rem;
+    line-height: 1.35;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+
+  .state-banner-detail-hidden {
+    opacity: 0;
+    transform: translateY(-4px);
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .state-banner-info {
