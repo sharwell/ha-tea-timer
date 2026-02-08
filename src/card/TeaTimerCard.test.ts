@@ -2736,6 +2736,38 @@ describe("TeaTimerCard", () => {
     expect(resumeTimerMock).toHaveBeenCalledWith(hass, "timer.kettle");
   });
 
+  it("uses a dial-and-rail layout while running", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "running", durationSeconds: 300, remainingSeconds: 240 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".interaction-active")).not.toBeNull();
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+  });
+
+  it("keeps the non-active layout when idle", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "idle", durationSeconds: 300, remainingSeconds: 300 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".interaction-active")).toBeNull();
+    expect(shadow.querySelector(".dial-and-rail")).toBeNull();
+    expect(shadow.querySelector(".action-rail")).toBeNull();
+  });
+
   it("reserves secondary control rows while idle when extend and pause are enabled", async () => {
     const card = createCard();
     document.body.appendChild(card);

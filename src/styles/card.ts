@@ -95,7 +95,37 @@ export const cardStyles = css`
   .interaction {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+  }
+
+  .interaction-active {
+    gap: 12px;
+  }
+
+  .dial-and-rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .action-rail {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    min-width: 96px;
+  }
+
+  .action-rail .pause-resume-controls,
+  .action-rail .extend-controls {
+    min-height: 0;
+    justify-content: stretch;
+  }
+
+  .action-rail .pause-resume-button,
+  .action-rail .extend-button {
+    width: 100%;
   }
 
   .extend-controls {
@@ -165,14 +195,6 @@ export const cardStyles = css`
 
   .pause-resume-controls[data-busy="true"] .pause-resume-button {
     cursor: progress;
-  }
-
-  .interaction .dial-wrapper {
-    order: 0;
-  }
-
-  .interaction .presets-section {
-    order: 1;
   }
 
   .estimation {
@@ -498,5 +520,24 @@ export const cardStyles = css`
 
   .toast-info {
     background: rgba(0, 0, 0, 0.75);
+  }
+
+  @media (max-width: 340px) {
+    .dial-and-rail {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .action-rail {
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .action-rail .pause-resume-controls,
+    .action-rail .extend-controls {
+      min-width: 110px;
+    }
   }
 `;

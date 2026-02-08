@@ -304,12 +304,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
         ${showInteractive
           ? html`
-              <div class="interaction">
-                ${this._renderPresets(state)}
-                ${this._renderDial(state)}
-                ${this._renderExtendControls(state)}
-                ${this._renderPauseResumeControls(state)}
-              </div>
+              ${this._renderInteraction(state)}
               ${this._renderPrimaryAction(state)}
             `
           : !state
@@ -449,6 +444,33 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         >
           ${STRINGS.dialBlockedTooltip}
         </div>
+      </div>
+    `;
+  }
+
+  private _renderInteraction(state: TimerViewState) {
+    const runningOrPaused = state.status === "running" || state.status === "paused";
+    if (runningOrPaused) {
+      return html`
+        <div class=${classMap({ interaction: true, "interaction-active": true })}>
+          <div class="dial-and-rail">
+            ${this._renderDial(state)}
+            <div class="action-rail">
+              ${this._renderPauseResumeControls(state)}
+              ${this._renderExtendControls(state)}
+            </div>
+          </div>
+          ${this._renderPresets(state)}
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="interaction">
+        ${this._renderDial(state)}
+        ${this._renderExtendControls(state)}
+        ${this._renderPauseResumeControls(state)}
+        ${this._renderPresets(state)}
       </div>
     `;
   }
