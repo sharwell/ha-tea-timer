@@ -18,15 +18,19 @@ const POINTER_DRAG_SLOP_PX = 8;
 export class TeaTimerDial extends LitElement {
   static styles = css`
     :host {
-      display: inline-flex;
-      justify-content: center;
+      display: block;
+      width: 100%;
       color: var(--primary-text-color, #1f2933);
     }
 
     .dial-root {
       position: relative;
-      width: var(--tea-timer-dial-size, 228px);
-      height: var(--tea-timer-dial-size, 228px);
+      box-sizing: border-box;
+      width: min(100%, var(--tea-timer-dial-size, 228px));
+      max-width: var(--tea-timer-dial-size, 228px);
+      aspect-ratio: 1 / 1;
+      height: auto;
+      margin-inline: auto;
       border-radius: 50%;
       --dial-border-color: var(--divider-color, rgba(0, 0, 0, 0.12));
       --dial-track-color: var(--divider-color, rgba(0, 0, 0, 0.16));
