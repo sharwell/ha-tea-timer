@@ -303,12 +303,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onCardClick}
       >
         ${this._renderHeader()}
-        ${showInteractive ? this._renderSubtitle() : nothing}
-        ${state ? this._renderStateBanner(state) : nothing}
-        ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
         ${showInteractive
           ? html`
-              ${this._renderInteraction(state)}
+              <div class="interaction-shell">
+                ${this._renderInteraction(state)}
+                ${this._renderAlertOverlays(state, entityErrorInfo)}
+              </div>
               ${this._renderPrimaryAction(state)}
             `
           : !state
@@ -369,12 +369,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _renderHeader() {
     const title = this._viewModel?.ui.title ?? STRINGS.cardTitleFallback;
-    const entityLabel = this._viewModel?.ui.entityLabel ?? STRINGS.emptyState;
 
     return html`
       <header class="header">
         <h2 class="title">${title}</h2>
-        <span class="entity">${entityLabel}</span>
       </header>
     `;
   }
@@ -386,24 +384,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const queuedId = this._viewModel.ui.queuedPresetId;
     if (typeof queuedId !== "number") {
-      return html`
-        <p class=${classMap({ subtitle: true, "subtitle-hidden": true })} aria-hidden="true">
-          ${nothing}
-        </p>
-      `;
+      return nothing;
     }
 
     const preset = this._viewModel.ui.presets.find((item) => item.id === queuedId);
     if (!preset) {
-      return html`
-        <p class=${classMap({ subtitle: true, "subtitle-hidden": true })} aria-hidden="true">
-          ${nothing}
-        </p>
-      `;
+      return nothing;
     }
 
     const label = STRINGS.presetsQueuedLabel(preset.label, preset.durationLabel);
-    return html`<p class="subtitle" role="note">${label}</p>`;
+    return html`<p class="subtitle subtitle-inline" role="note">${label}</p>`;
   }
 
   private _renderDial(state?: TimerViewState) {
@@ -471,6 +461,16 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
             : nothing}
         </div>
         ${this._renderPresets(state)}
+        ${this._renderSubtitle()}
+      </div>
+    `;
+  }
+
+  private _renderAlertOverlays(state: TimerViewState, entityErrorInfo: EntityErrorInfo | undefined) {
+    return html`
+      <div class="card-overlays" aria-live="polite">
+        ${this._renderStateBanner(state)}
+        ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
       </div>
     `;
   }
@@ -1197,11 +1197,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _renderStateBanner(state: TimerViewState) {
     const banner = this._getUiStateBanner(state);
     if (!banner) {
-      return html`
-        <div class="state-banner-slot" aria-hidden="true">
-          <div class="state-banner state-banner-hidden"></div>
-        </div>
-      `;
+      return nothing;
     }
 
     const { message, tone, live, role } = banner;
@@ -1209,7 +1205,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const detailVisible = showDetailToggle && this._bannerDetailVisible;
     const detailExpanded = detailVisible ? "true" : "false";
     return html`
-      <div class="state-banner-slot">
+      <div class="state-banner-wrap">
         <div class="state-banner state-banner-${tone}" role=${role} aria-live=${live}>
           <span class="state-banner-text">${message}</span>
           ${showDetailToggle

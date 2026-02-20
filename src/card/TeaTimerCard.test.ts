@@ -2336,7 +2336,7 @@ describe("TeaTimerCard", () => {
     expect(internals._displayDurationSeconds).toBe(beforeDisplay);
   });
 
-  it("keeps a reserved subtitle row while toggling queued presets", async () => {
+  it("shows queued subtitle inline only when a queued preset is active", async () => {
     const card = createCard();
     document.body.appendChild(card);
     card.setConfig({
@@ -2353,22 +2353,21 @@ describe("TeaTimerCard", () => {
     await card.updateComplete;
 
     const shadow = card.shadowRoot as ShadowRoot;
-    const initialSubtitle = shadow.querySelector(".subtitle");
-    expect(initialSubtitle).not.toBeNull();
-    expect(initialSubtitle?.classList.contains("subtitle-hidden")).toBe(true);
+    const initialSubtitle = shadow.querySelector(".subtitle-inline");
+    expect(initialSubtitle).toBeNull();
 
     pointerSelectPreset(card, 0);
     await card.updateComplete;
 
-    const queuedSubtitle = shadow.querySelector(".subtitle");
-    expect(queuedSubtitle?.classList.contains("subtitle-hidden")).toBe(false);
+    const queuedSubtitle = shadow.querySelector(".subtitle-inline");
+    expect(queuedSubtitle).not.toBeNull();
     expect(queuedSubtitle?.textContent).toContain("Next:");
 
     pointerSelectPreset(card, 0);
     await card.updateComplete;
 
-    const clearedSubtitle = shadow.querySelector(".subtitle");
-    expect(clearedSubtitle?.classList.contains("subtitle-hidden")).toBe(true);
+    const clearedSubtitle = shadow.querySelector(".subtitle-inline");
+    expect(clearedSubtitle).toBeNull();
   });
 
   it("keeps dial blocked tooltip mounted and toggles visibility", async () => {
@@ -2440,7 +2439,7 @@ describe("TeaTimerCard", () => {
     expect(shadow.querySelector(".status-pill")).toBeNull();
   });
 
-  it("keeps a hidden banner slot mounted in normal timer modes", async () => {
+  it("does not render a banner element in normal timer modes", async () => {
     const card = createCard();
     document.body.appendChild(card);
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
@@ -2450,15 +2449,11 @@ describe("TeaTimerCard", () => {
     await card.updateComplete;
 
     const shadow = card.shadowRoot as ShadowRoot;
-    const slot = shadow.querySelector(".state-banner-slot");
     const banner = shadow.querySelector(".state-banner");
-    expect(slot).not.toBeNull();
-    expect(banner).not.toBeNull();
-    expect(banner?.classList.contains("state-banner-hidden")).toBe(true);
-    expect(slot?.getAttribute("aria-hidden")).toBe("true");
+    expect(banner).toBeNull();
   });
 
-  it("shows reconnect messaging in the banner slot without a top status pill", async () => {
+  it("shows reconnect messaging in an overlay banner without a top status pill", async () => {
     const card = createCard();
     document.body.appendChild(card);
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
@@ -2478,7 +2473,7 @@ describe("TeaTimerCard", () => {
     const shadow = card.shadowRoot as ShadowRoot;
     expect(shadow.querySelector(".status-pill")).toBeNull();
     const banner = shadow.querySelector(".state-banner");
-    expect(banner?.classList.contains("state-banner-hidden")).toBe(false);
+    expect(banner).not.toBeNull();
     expect(banner?.textContent?.trim()).toBe(STRINGS.disconnectedReconnectingMessage);
   });
 
@@ -2565,7 +2560,7 @@ describe("TeaTimerCard", () => {
     expect(extendButton?.disabled).toBe(true);
   });
 
-  it("keeps a single banner slot mounted when service-failure messaging appears and clears", async () => {
+  it("renders overlay banner only while service-failure messaging is active", async () => {
     const card = createCard();
     document.body.appendChild(card);
     card.setConfig({ entity: "timer.kettle", presets: [] });
@@ -2575,7 +2570,7 @@ describe("TeaTimerCard", () => {
     await card.updateComplete;
 
     const shadow = card.shadowRoot as ShadowRoot;
-    expect(shadow.querySelectorAll(".state-banner-slot")).toHaveLength(1);
+    expect(shadow.querySelector(".state-banner")).toBeNull();
 
     setTimerState(
       card,
@@ -2587,18 +2582,12 @@ describe("TeaTimerCard", () => {
     );
     await card.updateComplete;
 
-    expect(shadow.querySelectorAll(".state-banner-slot")).toHaveLength(1);
-    expect(shadow.querySelector(".state-banner")?.classList.contains("state-banner-hidden")).toBe(
-      false,
-    );
+    expect(shadow.querySelectorAll(".state-banner")).toHaveLength(1);
 
     setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
     await card.updateComplete;
 
-    expect(shadow.querySelectorAll(".state-banner-slot")).toHaveLength(1);
-    expect(shadow.querySelector(".state-banner")?.classList.contains("state-banner-hidden")).toBe(
-      true,
-    );
+    expect(shadow.querySelector(".state-banner")).toBeNull();
   });
 
   describe("entity error surface", () => {

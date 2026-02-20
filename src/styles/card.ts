@@ -35,7 +35,7 @@ export const cardStyles = css`
   .header {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
   }
 
   .title {
@@ -44,22 +44,15 @@ export const cardStyles = css`
     margin: 0;
   }
 
-  .entity {
-    font-size: 0.875rem;
-    color: var(--secondary-text-color, #52606d);
-    word-break: break-word;
-  }
-
   .subtitle {
     font-size: 0.85rem;
     color: var(--secondary-text-color, #52606d);
-    margin: -8px 0 0;
-    min-height: calc(0.85rem * 1.4);
+    margin: 0;
     line-height: 1.4;
   }
 
-  .subtitle-hidden {
-    visibility: hidden;
+  .subtitle-inline {
+    margin-top: -2px;
   }
 
   .dial-wrapper {
@@ -99,8 +92,8 @@ export const cardStyles = css`
     gap: 12px;
   }
 
-  .interaction-active {
-    gap: 12px;
+  .interaction-shell {
+    position: relative;
   }
 
   .dial-and-rail {
@@ -335,10 +328,12 @@ export const cardStyles = css`
   }
 
   .entity-error {
-    margin: 16px 0;
+    margin: 0;
     padding: 12px 14px;
     border-radius: 12px;
-    background: rgba(191, 26, 47, 0.12);
+    background: rgba(255, 240, 243, 0.98);
+    border: 1px solid rgba(191, 26, 47, 0.35);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
     color: #8a1c1c;
     font-size: 0.95rem;
     line-height: 1.5;
@@ -474,9 +469,24 @@ export const cardStyles = css`
     color: var(--chip-text-color, var(--mdc-chip-label-ink-color));
   }
 
-  .state-banner-slot {
+  .card-overlays {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .card-overlays > * {
+    pointer-events: auto;
+  }
+
+  .state-banner-wrap {
     position: relative;
-    min-height: 40px;
   }
 
   .state-banner {
@@ -488,10 +498,8 @@ export const cardStyles = css`
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .state-banner-hidden {
-    visibility: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
   }
 
   .state-banner-text {
@@ -503,9 +511,9 @@ export const cardStyles = css`
   }
 
   .state-banner-detail-toggle {
-    border: 1px solid rgba(0, 0, 0, 0.16);
+    border: 1px solid rgba(0, 0, 0, 0.22);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.92);
     color: inherit;
     font-size: 0.72rem;
     font-weight: 600;
@@ -547,18 +555,21 @@ export const cardStyles = css`
   }
 
   .state-banner-info {
-    background: rgba(0, 122, 255, 0.12);
-    color: var(--primary-text-color, #1f2933);
+    background: rgba(232, 243, 255, 0.98);
+    color: #12365d;
+    border-color: rgba(0, 122, 255, 0.36);
   }
 
   .state-banner-warn {
-    background: rgba(250, 204, 21, 0.18);
-    color: var(--warning-color, #a86a13);
+    background: rgba(255, 246, 219, 0.98);
+    color: #7f540f;
+    border-color: rgba(250, 204, 21, 0.45);
   }
 
   .state-banner-error {
-    background: rgba(191, 26, 47, 0.12);
+    background: rgba(255, 240, 243, 0.98);
     color: #8a1c1c;
+    border-color: rgba(191, 26, 47, 0.35);
   }
 
   .toast {
