@@ -2,7 +2,7 @@
 
 Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the perfect cup. The project is currently in a preview state while core functionality is being implemented.
 
-> **Latest release:** [Tea Timer Card v0.2.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.2.0) — our pause/resume + extend quality release. Minimum Home Assistant core: **2024.7.0**. See the [QA matrix](docs/qa-matrix.md) for tested platforms, the [countdown reproduction matrix](docs/qa/countdown-repro-matrix.md) for evidence gathered during #52, and the [release checklist](docs/release-checklist.md) for the gates we run before publishing.
+> **Latest release:** [Tea Timer Card v0.3.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.3.0) — our touch UX stabilization release with improved layout consistency and timer-state resilience. Minimum Home Assistant core: **2024.7.0**. See the [QA matrix](docs/qa-matrix.md), the [UX audit](docs/ux-audit.md), and the [release checklist](docs/release-checklist.md) for validation evidence and release gates.
 
 ## Getting Started
 
@@ -19,13 +19,13 @@ Tea Timer is a custom Lovelace card for Home Assistant that helps you brew the p
 #### Via HACS (recommended)
 
 1. Add this repository as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS using the **Lovelace** category.
-2. Install **Tea Timer Card** v0.2.0 (or the latest available release) from the HACS frontend.
+2. Install **Tea Timer Card** v0.3.0 (or the latest available release) from the HACS frontend.
 3. HACS will place `tea-timer-card.js` in your Home Assistant instance. The file is a stable loader that re-exports the fingerprinted production bundle shipped with each release.
 4. Reload your browser or clear the Lovelace resources cache so Home Assistant picks up the new card bundle.
 
 #### Manual install (download release assets)
 
-1. Download the `tea-timer-card.js`, `tea-timer-card.<hash>.js`, and optional `tea-timer-card.<hash>.js.map` files from [Tea Timer Card v0.2.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.2.0).
+1. Download the `tea-timer-card.js`, `tea-timer-card.<hash>.js`, and optional `tea-timer-card.<hash>.js.map` files from [Tea Timer Card v0.3.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.3.0).
 2. (Optional) Verify integrity by comparing the SHA-256 checksums of the downloaded files with the release `checksums.txt`.
 3. Copy the downloaded files into `<config>/www/` in your Home Assistant setup.
 4. Add a Lovelace resource entry pointing at `/local/tea-timer-card.js` (see [Using the Card in Home Assistant](#using-the-card-in-home-assistant)). The stable loader automatically imports the fingerprinted bundle so browsers refresh cached assets between releases.
@@ -57,7 +57,7 @@ npm ci
 - Between Home Assistant updates, the card performs a visual once-per-second countdown from the last synchronized `remaining` value (clamped to zero). Each server update resets the baseline so Home Assistant stays authoritative for countdown accuracy. The countdown pauses while disconnected and resumes after a successful resync.
 - A monotonic countdown engine renders directly from that baseline using a monotonic clock. A quantizer rounds the remaining time to integer seconds with a small hysteresis window so the visible value never jumps upward between ticks—only material state changes (start/restart/resume) or large upward corrections (≥1.5 s) can raise the display, eliminating back-ticks after background tabs or jittery frames.
 - Right after a start or restart, the card seeds a monotonic baseline so the first running frame matches the requested duration within ±0.25 s while waiting for Home Assistant’s authoritative snapshot.
-- Taps on the card body proxy to Home Assistant services: idle taps call `timer.start` with the normalized dial duration. Running taps restart the timer by calling `timer.start` again with the desired duration (no client-side cancel). Dial drags never trigger these service calls—releasing after an adjustment leaves the timer idle until you explicitly tap/click/press Enter. The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state. While running or paused, the dial presents a read-only progress indicator—the handle hides and the slider leaves the tab order to reinforce that the duration cannot be changed mid-brew.
+- Card-body taps proxy to Home Assistant only while idle: with `cardBodyTapStart` enabled (default), idle taps call `timer.start` with the normalized dial duration. Running/paused restart always requires explicit controls (`Restart`, plus optional confirmation). Dial drags never trigger service calls—releasing after an adjustment leaves the timer idle until you explicitly start. The UI enforces a single in-flight action with a pending overlay (“Starting…” / “Restarting…”) and ignores further taps until Home Assistant confirms the new state. While running or paused, the dial presents a read-only progress indicator—the handle hides and the slider leaves the tab order to reinforce that the duration cannot be changed mid-brew.
 - The connection status is monitored in real time. If the Home Assistant WebSocket disconnects the card freezes the countdown, surfaces a “Disconnected” banner, and disables interactions until the link is restored and a fresh state snapshot is fetched.
 - Entity errors and connection status follow a clear precedence: the existing “Disconnected” banner wins whenever the WebSocket is offline, otherwise a consolidated entity alert appears (for missing/wrong-domain/unknown/unavailable entities), and only when both are clear do preset hints or secondary notices render.
 
@@ -120,12 +120,13 @@ To experiment locally, run `npm run dev` and open the playground at <http://loca
     minDurationSeconds: 30
     maxDurationSeconds: 900
     stepSeconds: 10
+    cardBodyTapStart: true # optional—allow tap-to-start on non-control card body regions while idle
     confirmRestart: true # optional—require confirmation before restarting a running timer
     finishedAutoIdleMs: 7000 # optional—show the Done overlay before returning to Idle
-   disableClockSkewEstimator: true # optional—prefer the local clock with bounded drift instead of estimating skew
-   ```
+    disableClockSkewEstimator: true # optional—prefer the local clock with bounded drift instead of estimating skew
+    ```
 
-   Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next: …” subtitle.
+   Preset chips render in the order provided. Set `defaultPreset` to the label or zero-based index of the preset you want selected when the card loads; if omitted, the first preset is used. Selecting a preset while the timer is idle updates the dial immediately, while taps during a brew queue the new selection for the next restart and surface a “Next …” context label in the primary action line.
 
 #### Configure with the Lovelace Visual Editor
 
@@ -191,9 +192,11 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    2.4. **Visuals:** static outer track, animated progress arc while running, marker at end time.
 
 3. **Start & Restart by Click**
-   3.1. **Single tap/click on the card body** when idle → starts countdown using the **currently selected preset duration** (or dial‑set duration if no preset selected).
-  3.2. **Single tap/click while running** → **restarts** the countdown to the current preset/dial duration from full. Dedicated Pause/Resume controls are provided to halt and continue without resetting the brew.
-   3.3. Optional “Are you sure?” restart confirmation is **off by default**, to satisfy the “restart by clicking” requirement.
+   3.1. **Single tap/click on the card body** when idle can start the countdown using the
+        **currently selected preset duration** (or dial-set duration if no preset is selected).
+   3.2. While running/paused, restart requires an explicit control tap (`Restart`) rather than a
+        non-control card-body tap. Dedicated Pause/Resume controls halt and continue without reset.
+   3.3. Optional restart confirmation is **off by default**.
 
 4. **Remaining Time Text**
    4.1. Prominent time display in `M:SS` (or `H:MM:SS` above 59:59).
@@ -208,7 +211,8 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
 
 6. **Title & Subtitle**
    6.1. **Title** field shown at top (e.g., “Kitchen Tea Timer”).
-   6.2. Optional subtitle to reflect **selected preset** (e.g., “Black Tea • 4:00”) while idle/running.
+   6.2. Optional secondary context line in the primary action to reflect queued/custom duration
+        information (for example, “Next: Black 4:00”).
 
 7. **Automation Hook at Zero**
    7.1. Completion relies on the underlying `timer` entity’s **`timer.finished`** event.
@@ -335,7 +339,8 @@ Below is a crisp, implementation‑ready specification for a **Tea Timer Card** 
    * Acceptance: Dragging the dial updates a local duration model with min/max/step; changes are visible in the time text.
 5. **Start/Restart Actions**
 
-   * Acceptance: Tap when idle → calls `timer.start(duration)`; tap when running → restarts with selected duration; finish state visible.
+   * Acceptance: Tap when idle can call `timer.start(duration)` when `cardBodyTapStart` is enabled;
+     running/paused restart requires explicit action controls; finish state visible.
 6. **Beverage Presets (Static)**
 
    * Acceptance: Configurable preset chips render; selecting a chip updates dial (idle) and queues next duration (running).

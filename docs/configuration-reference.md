@@ -22,7 +22,7 @@ provided for the card to load.
 ### `title`
 
 - **Description:** Text shown at the top of the card.
-- **Default:** No title (the entity id appears in smaller text instead).
+- **Default:** `Tea Timer`.
 - **Example:** `title: Kitchen Tea Timer` helps differentiate multiple cards on the same view.
 
 ### `presets`
@@ -76,6 +76,15 @@ provided for the card to load.
 - **Default:** `false` (restarts immediately).
 - **Example:** `confirmRestart: true` forces a confirmation dialog before canceling a brew in
   progress.
+
+### `cardBodyTapStart`
+
+- **Description:** Enables one-tap start from non-control card body regions while the timer is idle.
+  This setting has no effect while running or paused, where restart always requires explicit action
+  controls.
+- **Default:** `true`.
+- **Example:** `cardBodyTapStart: false` disables idle card-body start so users must tap the primary
+  `Start` action.
 
 ### `finishedAutoIdleMs`
 
@@ -156,6 +165,7 @@ defaultPreset: Assam
 minDurationSeconds: 30
 maxDurationSeconds: 1200
 stepSeconds: 5
+cardBodyTapStart: true
 confirmRestart: false
 finishedAutoIdleMs: 5000
 ```

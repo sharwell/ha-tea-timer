@@ -6,6 +6,37 @@ All notable changes to this project will be documented in this file.
 
 - _Nothing yet._
 
+## [0.3.0] - 2026-02-20
+
+### Highlights
+- UX audit follow-up release focused on touch ergonomics, layout stability, and predictable control behavior across idle, running, paused, reconnecting, and error states.
+- Core interaction shell now remains spatially stable across common state transitions, with denser information placement and larger in-face dial readability.
+- Added a finished-state fallback for environments that occasionally miss or skip visible `Done` time before returning to idle.
+
+### Added
+- New `cardBodyTapStart` configuration option (default `true`) to control whether tapping non-control card body regions starts the timer while idle.
+- UX audit evidence pack (`docs/ux-audit.md` plus scenario artifacts) documenting observed flows, tradeoffs, and prioritized improvements.
+
+### Changed
+- Active timer layout now uses a dial-plus-action-rail structure with stable control slots and touch-safe target sizes.
+- Normal timer modes no longer duplicate state labels in multiple places; reclaimed space is applied to a larger dial.
+- Queued preset and custom-duration context now appears in the primary action secondary line instead of separate subtitle/custom rows.
+- State and entity alerts render as overlays to reduce layout reflow and improve consistency during transient errors.
+- Card-body tap behavior is scoped to idle only; running and paused restart paths require explicit action controls.
+
+### Fixed
+- Preserve circular dial geometry at narrow card widths.
+- Suppress duplicate failure messaging when inline banner feedback is active.
+- Restore left-aligned primary action secondary text for improved scanability.
+- Mark finished overlay when running transitions to idle near zero without a finish event.
+
+### Documentation
+- Added touchscreen UX audit scenarios, findings, and acceptance criteria.
+- Updated release documentation, QA matrix, and release checklist for v0.3.0.
+
+### Links
+- Release: [Tea Timer Card v0.3.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.3.0)
+
 ## [0.2.0] - 2025-10-14
 
 ### Highlights

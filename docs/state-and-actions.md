@@ -21,20 +21,22 @@ stateDiagram-v2
 
 ## Idle
 
-- **What you see:** Dial is interactive, presets respond instantly, subtitle shows the selected
-  preset or custom duration.
+- **What you see:** Dial is interactive, presets respond instantly, and the primary action shows the
+  selected duration.
 - **Actions available:**
   - Drag the dial or use arrow keys/PageUp/PageDown to change the duration (rounded to `stepSeconds`).
-  - Tap/click/press **Space** or **Enter** anywhere on the card body to start the timer.
+  - Tap/click the primary **Start** action, or press **Space**/**Enter** while the button is focused.
+  - Optionally tap the card body to start when `cardBodyTapStart: true` (default).
   - Pick a preset to update the dial.
 - **Announcements:** Screen readers hear the selected preset and duration when it changes.
 
 ## Running
 
 - **What you see:** Dial locks, the handle hides, a progress arc fills clockwise, remaining time
-  updates once per second (throttled for screen readers), and queued presets appear as a subtitle.
+  updates once per second (throttled for screen readers), and queued presets appear as context in
+  the primary action secondary line.
 - **Actions available:**
-  - Tap/click the card to restart with the queued duration.
+  - Tap/click **Restart** to restart with the current or queued duration.
   - Change presets—the card queues the new selection for the next restart without interrupting the
     current brew.
   - Tap the **Pause** control to halt the brew without resetting the remaining time. The button
@@ -51,8 +53,8 @@ stateDiagram-v2
 ## Paused
 
 - **What you see:** The dial remains locked with the handle hidden, the progress arc freezes in
-  place, and a “Paused” badge appears above the card body. Resume and Restart controls replace the
-  Pause button.
+  place, and the in-dial secondary text shows **Paused**. Resume and Restart controls replace the
+  running-state action set.
 - **Actions available:**
   - Tap **Resume** to continue from the stored remaining time (Home Assistant may emit
     `timer.restarted`; rely on `timer.finished` for automations).
@@ -68,8 +70,8 @@ stateDiagram-v2
 - **What you see:** The card displays **Done** with an optional preset label. A translucent overlay
   lasts `finishedAutoIdleMs` milliseconds (default 5000) before returning to Idle.
 - **Actions available:**
-  - Tap/click/press **Space** or **Enter** to restart immediately using the same duration or a queued
-    preset.
+  - Tap/click **Start** (or press **Space**/**Enter** while focused) to start immediately using the
+    same duration or a queued preset.
   - Let the overlay expire; the card automatically returns to Idle and restores dial interaction.
 - **Announcements:** “Brew finished – Done” with the preset label when available.
 
@@ -89,7 +91,7 @@ stateDiagram-v2
 
 ## Keyboard & pointer shortcuts
 
-- **Start or restart:** **Space** or **Enter** when the card is focused.
+- **Start or restart:** **Space** or **Enter** on the focused primary action button.
 - **Adjust duration:**
   - **Arrow keys:** ±`stepSeconds`.
   - **PageUp/PageDown:** ±30 seconds.

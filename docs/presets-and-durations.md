@@ -44,7 +44,7 @@ presets:
 Selecting a preset while the timer runs does not interrupt the current brew. Instead:
 
 1. The card announces the next preset (for example, “Next: Herbal 5:00”).
-2. The queued preset appears in the subtitle to signal the pending change.
+2. The queued preset appears as context in the primary action secondary line to signal the pending change.
 3. When you restart the timer—either manually or when it finishes—the queued preset becomes active.
 
 This behavior keeps the running brew predictable while still letting you line up the next tea.
