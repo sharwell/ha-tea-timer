@@ -271,6 +271,7 @@ export const cardStyles = css`
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    text-align: left;
     gap: 2px;
     padding: 12px 16px;
     border-radius: 12px;
@@ -310,6 +311,7 @@ export const cardStyles = css`
     font-weight: 500;
     opacity: 0.9;
     width: 100%;
+    text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
