@@ -57,6 +57,8 @@ export interface TimerStateControllerOptions {
   clockSkewEstimatorEnabled?: boolean;
 }
 
+const FINISH_FALLBACK_MAX_REMAINING_SECONDS = 1;
+
 interface ConnectionMonitor {
   connection: HassConnection;
   cleanup(): void;
@@ -495,11 +497,54 @@ export class TimerStateController implements ReactiveController {
   private applyEntityState(state: TimerEntityState): void {
     const transformed = this.applyPauseHelper(state);
     const previous = this.previousEntityState;
-    this.previousEntityState = transformed;
-    this.updateActionGeneration(transformed, previous);
-    this.composeState(transformed);
+    let nextState = transformed;
+    if (this.shouldApplyFinishFallback(previous, transformed)) {
+      const now = this.getCurrentTime();
+      nextState = this.stateMachine.markFinished(now, { serverNow: this.getServerNow(now) });
+    }
+
+    this.previousEntityState = nextState;
+    this.updateActionGeneration(nextState, previous);
+    this.composeState(nextState);
     this.emitCurrentState();
     this.scheduleOverlayTimer();
+  }
+
+  private shouldApplyFinishFallback(
+    previous: TimerEntityState | undefined,
+    next: TimerEntityState,
+  ): boolean {
+    if (previous?.status !== "running" || next.status !== "idle") {
+      return false;
+    }
+
+    if (this.connectionStatus !== "connected") {
+      return false;
+    }
+
+    if (this.inFlightAction) {
+      return false;
+    }
+
+    if (this.stateMachine.getOverlayDeadline() !== undefined) {
+      return false;
+    }
+
+    let projectedRemaining: number | undefined;
+    if (this.serverRemainingSecAtT0 !== undefined && this.clientMonotonicT0 !== undefined) {
+      const elapsedSeconds = Math.max(0, this.monotonicNow() - this.clientMonotonicT0) / 1000;
+      projectedRemaining = Math.max(0, this.serverRemainingSecAtT0 - elapsedSeconds);
+    }
+
+    if (projectedRemaining === undefined && previous.remainingSeconds !== undefined) {
+      projectedRemaining = Math.max(0, previous.remainingSeconds);
+    }
+
+    if (projectedRemaining === undefined) {
+      return false;
+    }
+
+    return projectedRemaining <= FINISH_FALLBACK_MAX_REMAINING_SECONDS;
   }
 
   private updateActionGeneration(state: TimerEntityState, previous: TimerEntityState | undefined): void {

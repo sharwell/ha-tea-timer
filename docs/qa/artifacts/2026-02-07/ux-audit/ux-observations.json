@@ -1,0 +1,4816 @@
+{
+  "generatedAt": "2026-02-07T22:42:54.905Z",
+  "scenarioCount": 23,
+  "scenarios": [
+    {
+      "id": 1,
+      "name": "idle baseline",
+      "interaction": "Reset to configured timer and observe initial mobile layout.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/01-idle-baseline.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Idle",
+          "statusClass": "status-pill status-idle",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "4:00",
+          "dialSecondary": "Idle",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 478,
+            "bottom": 628.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "4:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 545.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 611.3
+            }
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": true,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 463.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 463.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 507.9
+              }
+            }
+          ],
+          "customHintVisible": false,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 55.2,
+                "h": 22,
+                "right": 104.2,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 529.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 545.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 611.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 948,
+            "bottom": 628.3
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "idle dial drag",
+      "interaction": "Drag dial clockwise by roughly one quarter turn while idle.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/02-idle-dial-drag.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Idle",
+          "statusClass": "status-pill status-idle",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:05",
+          "dialSecondary": "Idle",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 478,
+            "bottom": 628.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "5:05",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 545.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 611.3
+            }
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 463.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 463.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 507.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 55.2,
+                "h": 22,
+                "right": 104.2,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 529.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 545.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 611.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 948,
+            "bottom": 628.3
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "start via card body tap",
+      "interaction": "Tap on non-control card header region to start timer.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/03-start-via-card-body-tap.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:05",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "5:05",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "running steady",
+      "interaction": "Observe running state after first second tick.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/04-running-steady.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:03",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "5:05",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "queue preset while running",
+      "interaction": "Tap preset chip during running to queue next brew.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/05-queue-preset-while-running.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": "Next: Green 2:00",
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:03",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 655.4,
+            "right": 478,
+            "bottom": 767.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 248.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 470.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "2:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 684.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 750.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 486.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 526.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 542.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 586.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": true,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 602.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 646.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 602.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 646.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 602.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 646.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "subtitle",
+              "rect": {
+                "x": 49,
+                "y": 179.9,
+                "w": 412,
+                "h": 15,
+                "right": 461,
+                "bottom": 194.9
+              },
+              "gapFromPrevious": 8
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 210.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 232.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 248.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 470.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 486.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 526.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 542.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 586.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 602.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 668.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 684.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 750.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 655.4,
+            "right": 948,
+            "bottom": 767.3
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "name": "clear queued preset",
+      "interaction": "Tap same queued preset chip again to clear queue.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/06-clear-queued-preset.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:02",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "5:05",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "tap dial while running",
+      "interaction": "Tap dial while running to check blocked-feedback behavior.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/07-tap-dial-while-running.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:01",
+          "dialSecondary": "Running",
+          "dialTooltip": "Timer is running—cannot change duration.",
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 667.4,
+            "right": 478,
+            "bottom": 779.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "5:05",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 696.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 762.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 498.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 538.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 554.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 598.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 614.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 658.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 614.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 658.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 614.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 658.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 257,
+                "right": 461,
+                "bottom": 482.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 498.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 538.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 554.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 598.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 614.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 680.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 696.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 762.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 667.4,
+            "right": 948,
+            "bottom": 779.3
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "name": "extend while running",
+      "interaction": "Tap +1 minute while running.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/08-extend-while-running.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "6:00",
+          "dialSecondary": "Running",
+          "dialTooltip": "Timer is running—cannot change duration.",
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 667.4,
+            "right": 478,
+            "bottom": 779.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "6:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 696.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 762.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 498.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 538.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 554.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 598.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 614.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 658.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 614.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 658.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 614.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 658.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 257,
+                "right": 461,
+                "bottom": 482.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 498.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 538.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 554.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 598.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 614.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 680.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 696.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 762.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 667.4,
+            "right": 948,
+            "bottom": 779.3
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "name": "pause running timer",
+      "interaction": "Tap Pause control.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/09-pause-running-timer.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Paused",
+          "statusClass": "status-pill status-paused",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "6:00",
+          "dialSecondary": "Paused",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "6:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Resume",
+            "disabled": false,
+            "rect": {
+              "x": 207.7,
+              "y": 519.9,
+              "w": 94.6,
+              "h": 44,
+              "right": 302.3,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 78.9,
+                "h": 22,
+                "right": 127.9,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "name": "extend while paused",
+      "interaction": "Tap +1 minute while paused.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/10-extend-while-paused.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Paused",
+          "statusClass": "status-pill status-paused",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "6:00",
+          "dialSecondary": "Paused",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "6:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Resume",
+            "disabled": false,
+            "rect": {
+              "x": 207.7,
+              "y": 519.9,
+              "w": 94.6,
+              "h": 44,
+              "right": 302.3,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 78.9,
+                "h": 22,
+                "right": 127.9,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "name": "resume paused timer",
+      "interaction": "Tap Resume control.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/11-resume-paused-timer.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "6:00",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "6:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "name": "rapid double tap restart attempt",
+      "interaction": "Tap card body twice quickly while running to probe duplicate-action handling.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/12-rapid-double-tap-restart-attempt.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "5:59",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "6:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "name": "disconnect state",
+      "interaction": "Tap demo Disconnect control while timer is active.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/13-disconnect-state.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Reconnecting",
+          "statusClass": "status-pill status-disconnected",
+          "stateBanner": "Connection lost—trying to reconnect to Home Assistant…",
+          "entityError": null,
+          "dialPrimary": "5:59",
+          "dialSecondary": "Reconnecting",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 683.4,
+            "right": 478,
+            "bottom": 795.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 276.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 498.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "6:00",
+            "disabled": true,
+            "ariaDisabled": "true",
+            "rect": {
+              "x": 49,
+              "y": 712.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 778.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": true,
+            "rect": {
+              "x": 221.8,
+              "y": 514.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 554.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": true,
+            "rect": {
+              "x": 214.4,
+              "y": 570.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 614.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": true,
+              "rect": {
+                "x": 49,
+                "y": 630.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 674.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": true,
+              "rect": {
+                "x": 154.8,
+                "y": 630.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 674.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": true,
+              "rect": {
+                "x": 257.6,
+                "y": 630.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 674.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 132.9,
+                "h": 22,
+                "right": 181.9,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "stateBanner",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 35,
+                "right": 461,
+                "bottom": 260.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 276.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 498.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 514.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 554.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 570.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 614.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 630.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 696.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 712.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 778.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": "Add at least one preset to start brewing.",
+          "status": "Reconnecting",
+          "hasPrimaryAction": true,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 683.4,
+            "right": 948,
+            "bottom": 795.3
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "name": "reconnect state",
+      "interaction": "Reconnect and observe state restoration.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/14-reconnect-state.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "6:00",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "6:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": true,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "name": "entity unavailable",
+      "interaction": "Mark timer entity unavailable in demo controls.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/15-entity-unavailable.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Entity unavailable",
+          "statusClass": "status-pill status-unavailable",
+          "stateBanner": null,
+          "entityError": "The timer entity timer.kitchen_tea is unavailable. Check that the helper exists and the entity_id is correct.",
+          "dialPrimary": null,
+          "dialSecondary": null,
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 478,
+            "bottom": 398.5
+          },
+          "dialRect": null,
+          "primaryAction": {
+            "label": null,
+            "duration": null,
+            "disabled": null,
+            "ariaDisabled": null,
+            "rect": null
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [],
+          "customHintVisible": null,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 171.3,
+                "h": 22,
+                "right": 220.3,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "entityError",
+              "rect": {
+                "x": 49,
+                "y": 241.9,
+                "w": 412,
+                "h": 69.6,
+                "right": 461,
+                "bottom": 311.5
+              },
+              "gapFromPrevious": 32
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 948,
+            "bottom": 398.5
+          }
+        }
+      }
+    },
+    {
+      "id": 16,
+      "name": "recovered after unavailable",
+      "interaction": "Restore timer entity from unavailable state.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/16-recovered-after-unavailable.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Idle",
+          "statusClass": "status-pill status-idle",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "4:00",
+          "dialSecondary": "Idle",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 478,
+            "bottom": 628.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "4:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 545.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 611.3
+            }
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": true,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 463.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 463.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 507.9
+              }
+            }
+          ],
+          "customHintVisible": false,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 55.2,
+                "h": 22,
+                "right": 104.2,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 529.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 545.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 611.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 948,
+            "bottom": 628.3
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "name": "missing entity configuration",
+      "interaction": "Remove entity from card config.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/17-missing-entity-configuration.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "Timer entity not configured.",
+          "subtitle": null,
+          "status": "Entity unavailable",
+          "statusClass": "status-pill status-unavailable",
+          "stateBanner": null,
+          "entityError": "This card isn’t set up yet. Add a timer entity in the card settings.",
+          "dialPrimary": null,
+          "dialSecondary": null,
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 478,
+            "bottom": 398.5
+          },
+          "dialRect": null,
+          "primaryAction": {
+            "label": null,
+            "duration": null,
+            "disabled": null,
+            "ariaDisabled": null,
+            "rect": null
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [],
+          "customHintVisible": null,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 171.3,
+                "h": 22,
+                "right": 220.3,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "entityError",
+              "rect": {
+                "x": 49,
+                "y": 241.9,
+                "w": 412,
+                "h": 69.6,
+                "right": 461,
+                "bottom": 311.5
+              },
+              "gapFromPrevious": 32
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 948,
+            "bottom": 398.5
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "name": "wrong domain entity",
+      "interaction": "Set entity to non-timer domain.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/18-wrong-domain-entity.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "sensor.demo_timer",
+          "subtitle": null,
+          "status": "Entity unavailable",
+          "statusClass": "status-pill status-unavailable",
+          "stateBanner": null,
+          "entityError": "The configured entity sensor.demo_timer isn’t a timer (or doesn’t exist). Choose a timer.* entity.",
+          "dialPrimary": null,
+          "dialSecondary": null,
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 478,
+            "bottom": 398.5
+          },
+          "dialRect": null,
+          "primaryAction": {
+            "label": null,
+            "duration": null,
+            "disabled": null,
+            "ariaDisabled": null,
+            "rect": null
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [],
+          "customHintVisible": null,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 171.3,
+                "h": 22,
+                "right": 220.3,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "entityError",
+              "rect": {
+                "x": 49,
+                "y": 241.9,
+                "w": 412,
+                "h": 69.6,
+                "right": 461,
+                "bottom": 311.5
+              },
+              "gapFromPrevious": 32
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 948,
+            "bottom": 398.5
+          }
+        }
+      }
+    },
+    {
+      "id": 19,
+      "name": "unknown timer entity",
+      "interaction": "Set timer id to unknown entity.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/19-unknown-timer-entity.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.demo_missing",
+          "subtitle": null,
+          "status": "Entity unavailable",
+          "statusClass": "status-pill status-unavailable",
+          "stateBanner": null,
+          "entityError": "The configured entity timer.demo_missing isn’t a timer (or doesn’t exist). Choose a timer.* entity.",
+          "dialPrimary": null,
+          "dialSecondary": null,
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 478,
+            "bottom": 398.5
+          },
+          "dialRect": null,
+          "primaryAction": {
+            "label": null,
+            "duration": null,
+            "disabled": null,
+            "ariaDisabled": null,
+            "rect": null
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [],
+          "customHintVisible": null,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 171.3,
+                "h": 22,
+                "right": 220.3,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "entityError",
+              "rect": {
+                "x": 49,
+                "y": 241.9,
+                "w": 412,
+                "h": 69.6,
+                "right": 461,
+                "bottom": 311.5
+              },
+              "gapFromPrevious": 32
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 286.6,
+            "right": 948,
+            "bottom": 398.5
+          }
+        }
+      }
+    },
+    {
+      "id": 20,
+      "name": "restored entity config",
+      "interaction": "Restore valid entity config after error scenarios.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/20-restored-entity-config.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Idle",
+          "statusClass": "status-pill status-idle",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "4:00",
+          "dialSecondary": "Idle",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 478,
+            "bottom": 628.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "4:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 545.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 611.3
+            }
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": true,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 463.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 507.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 463.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 507.9
+              }
+            }
+          ],
+          "customHintVisible": false,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 55.2,
+                "h": 22,
+                "right": 104.2,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 529.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 545.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 611.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 516.4,
+            "right": 948,
+            "bottom": 628.3
+          }
+        }
+      }
+    },
+    {
+      "id": 21,
+      "name": "start service failure",
+      "interaction": "Fail next timer service call and attempt start via card tap.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/21-start-service-failure.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Error",
+          "statusClass": "status-pill status-error",
+          "stateBanner": "Couldn't start the timer. Please try again.",
+          "entityError": null,
+          "dialPrimary": "4:00",
+          "dialSecondary": "Error",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": "Couldn't start the timer. Please try again.",
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 567.4,
+            "right": 478,
+            "bottom": 679.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 276.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 498.9
+          },
+          "primaryAction": {
+            "label": "Start",
+            "duration": "4:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 596.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 662.3
+            }
+          },
+          "extendButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "pauseResumeButton": {
+            "present": false,
+            "label": null,
+            "disabled": null,
+            "rect": null
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 514.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 558.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": true,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 514.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 558.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 514.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 558.9
+              }
+            }
+          ],
+          "customHintVisible": false,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 72.1,
+                "h": 22,
+                "right": 121.1,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "stateBanner",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 35,
+                "right": 461,
+                "bottom": 260.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 276.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 498.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 514.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 580.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 596.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 662.3
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "toast",
+              "rect": {
+                "x": 144,
+                "y": 616.3,
+                "w": 222,
+                "h": 46,
+                "right": 366,
+                "bottom": 662.3
+              },
+              "gapFromPrevious": -46
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 567.4,
+            "right": 948,
+            "bottom": 679.3
+          }
+        }
+      }
+    },
+    {
+      "id": 22,
+      "name": "restart confirmation overlay",
+      "interaction": "Enable confirmRestart and tap card while running to open restart confirmation dialog.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/22-restart-confirmation-overlay.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "1:59",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": "Restart the timer for 2:00?",
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "2:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": true,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": false,
+          "layout": [
+            {
+              "name": "confirm",
+              "rect": {
+                "x": 33,
+                "y": 112.9,
+                "w": 444,
+                "h": 630.4,
+                "right": 477,
+                "bottom": 743.3
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": -614.4
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    },
+    {
+      "id": 23,
+      "name": "restart confirm canceled",
+      "interaction": "Cancel restart confirmation dialog.",
+      "screenshot": "docs/qa/artifacts/2026-02-07/ux-audit/23-restart-confirm-canceled.png",
+      "snapshot": {
+        "page": {
+          "viewport": {
+            "width": 981,
+            "height": 1996
+          },
+          "scrollY": 0
+        },
+        "mainCard": {
+          "title": "Kitchen Tea Timer",
+          "entity": "timer.kitchen_tea",
+          "subtitle": null,
+          "status": "Running",
+          "statusClass": "status-pill status-running",
+          "stateBanner": null,
+          "entityError": null,
+          "dialPrimary": "1:59",
+          "dialSecondary": "Running",
+          "dialTooltip": null,
+          "estimationNotice": null,
+          "toast": null,
+          "pendingOverlay": null,
+          "confirmMessage": null,
+          "cardRect": {
+            "x": 32,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 478,
+            "bottom": 744.3
+          },
+          "dialRect": {
+            "x": 49,
+            "y": 225.9,
+            "w": 412,
+            "h": 222,
+            "right": 461,
+            "bottom": 447.9
+          },
+          "primaryAction": {
+            "label": "Restart",
+            "duration": "2:00",
+            "disabled": false,
+            "ariaDisabled": "false",
+            "rect": {
+              "x": 49,
+              "y": 661.8,
+              "w": 412,
+              "h": 65.5,
+              "right": 461,
+              "bottom": 727.3
+            }
+          },
+          "extendButton": {
+            "present": true,
+            "label": "+1:00",
+            "disabled": false,
+            "rect": {
+              "x": 221.8,
+              "y": 463.9,
+              "w": 66.4,
+              "h": 40,
+              "right": 288.2,
+              "bottom": 503.9
+            }
+          },
+          "pauseResumeButton": {
+            "present": true,
+            "label": "Pause",
+            "disabled": false,
+            "rect": {
+              "x": 214.4,
+              "y": 519.9,
+              "w": 81.1,
+              "h": 44,
+              "right": 295.5,
+              "bottom": 563.9
+            }
+          },
+          "presets": [
+            {
+              "label": "Green",
+              "duration": "2:00",
+              "selected": true,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 97.8,
+                "h": 44,
+                "right": 146.8,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Black",
+              "duration": "4:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 154.8,
+                "y": 579.9,
+                "w": 94.8,
+                "h": 44,
+                "right": 249.6,
+                "bottom": 623.9
+              }
+            },
+            {
+              "label": "Herbal",
+              "duration": "5:00",
+              "selected": false,
+              "queued": false,
+              "disabled": false,
+              "rect": {
+                "x": 257.6,
+                "y": 579.9,
+                "w": 100.8,
+                "h": 44,
+                "right": 358.4,
+                "bottom": 623.9
+              }
+            }
+          ],
+          "customHintVisible": false,
+          "layout": [
+            {
+              "name": "header",
+              "rect": {
+                "x": 49,
+                "y": 128.9,
+                "w": 412,
+                "h": 43,
+                "right": 461,
+                "bottom": 171.9
+              },
+              "gapFromPrevious": null
+            },
+            {
+              "name": "status",
+              "rect": {
+                "x": 49,
+                "y": 187.9,
+                "w": 86.7,
+                "h": 22,
+                "right": 135.7,
+                "bottom": 209.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "dial",
+              "rect": {
+                "x": 49,
+                "y": 225.9,
+                "w": 412,
+                "h": 222,
+                "right": 461,
+                "bottom": 447.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "extend",
+              "rect": {
+                "x": 49,
+                "y": 463.9,
+                "w": 412,
+                "h": 40,
+                "right": 461,
+                "bottom": 503.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "pauseResume",
+              "rect": {
+                "x": 49,
+                "y": 519.9,
+                "w": 412,
+                "h": 44,
+                "right": 461,
+                "bottom": 563.9
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "presets",
+              "rect": {
+                "x": 49,
+                "y": 579.9,
+                "w": 412,
+                "h": 65.9,
+                "right": 461,
+                "bottom": 645.8
+              },
+              "gapFromPrevious": 16
+            },
+            {
+              "name": "primaryAction",
+              "rect": {
+                "x": 49,
+                "y": 661.8,
+                "w": 412,
+                "h": 65.5,
+                "right": 461,
+                "bottom": 727.3
+              },
+              "gapFromPrevious": 16
+            }
+          ]
+        },
+        "secondaryCard": {
+          "title": "Office Break Timer",
+          "entity": "Timer entity not configured.",
+          "emptyState": null,
+          "status": "Entity unavailable",
+          "hasPrimaryAction": false,
+          "cardRect": {
+            "x": 502,
+            "y": 111.9,
+            "w": 446,
+            "h": 632.4,
+            "right": 948,
+            "bottom": 744.3
+          }
+        }
+      }
+    }
+  ]
+}

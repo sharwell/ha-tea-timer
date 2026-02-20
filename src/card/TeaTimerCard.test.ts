@@ -192,30 +192,22 @@ describe("TeaTimerCard", () => {
     Object.defineProperty(row, "getBoundingClientRect", {
       configurable: true,
       value: () => {
-        const indicator = row.querySelector(".preset-custom");
-        const hasIndicator = !!indicator;
         const baseHeight = 56;
-        const indicatorHeight = hasIndicator ? 20 : 0;
-        const height = baseHeight + indicatorHeight;
         return {
           x: 0,
           y: 0,
           width: 320,
-          height,
+          height: baseHeight,
           top: 0,
           left: 0,
           right: 320,
-          bottom: height,
+          bottom: baseHeight,
           toJSON: () => ({}),
         } as DOMRect;
       },
     });
 
     return row.getBoundingClientRect().height;
-  }
-
-  function getPresetIndicator(card: TeaTimerCard): HTMLElement | null {
-    return card.shadowRoot?.querySelector<HTMLElement>(".preset-custom") ?? null;
   }
 
   function pointerSelectPreset(card: TeaTimerCard, presetId: number) {
@@ -259,6 +251,15 @@ describe("TeaTimerCard", () => {
   function invokePrimaryAction(card: TeaTimerCard) {
     const handler = card as unknown as { _handlePrimaryAction(): void };
     handler._handlePrimaryAction();
+  }
+
+  function invokeCardBodyTap(card: TeaTimerCard) {
+    const handler = card as unknown as { _onCardClick(event: MouseEvent): void };
+    const target = document.createElement("div");
+    handler._onCardClick({
+      defaultPrevented: false,
+      composedPath: () => [target, card],
+    } as unknown as MouseEvent);
   }
 
   function createHass(): HomeAssistant {
@@ -1219,6 +1220,87 @@ describe("TeaTimerCard", () => {
     expect(internals._viewModel?.ui.pendingAction).toBe("start");
   });
 
+  it("starts the timer when tapping the card body from idle", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "idle",
+      durationSeconds: 180,
+      remainingSeconds: 180,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(startTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 180);
+    expect(restartTimer).not.toHaveBeenCalled();
+  });
+
+  it("does not restart when tapping the card body while running", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+
+    expect(restartTimer).not.toHaveBeenCalled();
+    expect(startTimer).not.toHaveBeenCalled();
+  });
+
+  it("does not start when tapping the card body while paused", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+
+    expect(restartTimer).not.toHaveBeenCalled();
+    expect(startTimer).not.toHaveBeenCalled();
+  });
+
+  it("does not start when cardBodyTapStart is disabled", async () => {
+    const card = createCard();
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      cardBodyTapStart: false,
+    });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "idle",
+      durationSeconds: 180,
+      remainingSeconds: 180,
+    });
+
+    invokeCardBodyTap(card);
+
+    await Promise.resolve();
+
+    expect(startTimer).not.toHaveBeenCalled();
+    expect(restartTimer).not.toHaveBeenCalled();
+  });
+
   it("restarts the timer when tapping while running", async () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
@@ -1239,6 +1321,35 @@ describe("TeaTimerCard", () => {
     expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 240);
     const internals = card as unknown as { _viewModel?: { ui: { pendingAction: string } } };
     expect(internals._viewModel?.ui.pendingAction).toBe("restart");
+  });
+
+  it("uses restart semantics for the primary action while paused", async () => {
+    const card = createCard();
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    const pausedState: TimerViewState = {
+      status: "paused",
+      durationSeconds: 240,
+      remainingSeconds: 120,
+    };
+
+    setTimerState(card, pausedState);
+
+    const internals = card as unknown as {
+      _getPrimaryActionInfo(state: TimerViewState): { action: string; label: string };
+    };
+    const info = internals._getPrimaryActionInfo(pausedState);
+    expect(info.action).toBe("restart");
+    expect(info.label).toBe(STRINGS.primaryActionRestart);
+
+    invokePrimaryAction(card);
+    await Promise.resolve();
+
+    expect(restartTimer).toHaveBeenCalledWith(card.hass, "timer.kettle", 240);
+    expect(startTimer).not.toHaveBeenCalled();
+    const vm = card as unknown as { _viewModel?: { ui: { pendingAction: string } } };
+    expect(vm._viewModel?.ui.pendingAction).toBe("restart");
   });
 
   it("requires confirmation before restarting when confirmRestart is true", async () => {
@@ -1327,6 +1438,52 @@ describe("TeaTimerCard", () => {
     };
     expect(internals._viewModel?.ui.pendingAction).toBe("none");
     expect(internals._viewModel?.ui.error?.message).toContain("Couldn't start the timer");
+  });
+
+  it("shows a single service failure surface (banner) without toast duplication", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, {
+      status: "idle",
+      durationSeconds: 90,
+      remainingSeconds: 90,
+    });
+
+    startTimerMock.mockRejectedValueOnce(new Error("boom"));
+    invokePrimaryAction(card);
+
+    const results = startTimerMock.mock.results as Array<{ value?: Promise<unknown> }>;
+    const startCall = results.length ? results[results.length - 1]?.value : undefined;
+    if (startCall) {
+      await startCall.catch(() => undefined);
+    }
+
+    setTimerState(
+      card,
+      {
+        status: "idle",
+        durationSeconds: 90,
+        remainingSeconds: 90,
+      },
+      {
+        connectionStatus: "connected",
+        uiState: {
+          kind: "Error",
+          reason: "ServiceFailure",
+          detail: STRINGS.toastStartFailed,
+        },
+      },
+    );
+
+    await card.updateComplete;
+    await Promise.resolve();
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".state-banner")).not.toBeNull();
+    expect(shadow.querySelector(".toast")).toBeNull();
   });
 
   it("announces entity unavailable when tapped", async () => {
@@ -1813,7 +1970,7 @@ describe("TeaTimerCard", () => {
     expect(dialElement.value).toBe(120);
   });
 
-  it("queues presets while running and surfaces next message", () => {
+  it("queues presets while running and surfaces next context in primary action", () => {
     const card = createCard();
     card.setConfig({
       type: "custom:tea-timer-card",
@@ -1838,12 +1995,15 @@ describe("TeaTimerCard", () => {
     };
     expect(internals._viewModel?.ui.queuedPresetId).toBe(0);
     expect(internals._viewModel?.pendingDurationSeconds).toBe(120);
-    const subtitleTemplate = (card as unknown as { _renderSubtitle(): unknown })._renderSubtitle();
+    const primaryTemplate = (
+      card as unknown as { _renderPrimaryAction(state: TimerViewState): unknown }
+    )._renderPrimaryAction(runningState);
     const container = document.createElement("div");
-    if (subtitleTemplate && subtitleTemplate !== nothing) {
-      render(subtitleTemplate as TemplateResult, container);
+    if (primaryTemplate && primaryTemplate !== nothing) {
+      render(primaryTemplate as TemplateResult, container);
     }
-    expect(container.textContent).toContain("Next");
+    const durationLine = container.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).toContain("Next");
   });
 
   it("restarts with queued preset and clears the queue", async () => {
@@ -1912,7 +2072,7 @@ describe("TeaTimerCard", () => {
     expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
   });
 
-  it("shows custom preset indicator after dial adjustment", () => {
+  it("surfaces custom duration context in the primary action after dial adjustment", () => {
     const card = createCard();
     card.setConfig({
       type: "custom:tea-timer-card",
@@ -1934,11 +2094,13 @@ describe("TeaTimerCard", () => {
 
     const internals = card as unknown as { _viewModel?: { ui: { selectedPresetId?: unknown } } };
     expect(internals._viewModel?.ui.selectedPresetId).toBe("custom");
-    const presetsTemplate = (card as unknown as { _renderPresets(): unknown })._renderPresets();
+    const primaryTemplate = (
+      card as unknown as { _renderPrimaryAction(state: TimerViewState): unknown }
+    )._renderPrimaryAction(idleState);
     const container = document.createElement("div");
-    render(presetsTemplate as TemplateResult, container);
-    const customLabel = container.querySelector(".preset-custom");
-    expect(customLabel?.textContent?.trim()).toBe(STRINGS.presetsCustomLabel);
+    render(primaryTemplate as TemplateResult, container);
+    const durationLabel = container.querySelector(".primary-action-duration");
+    expect(durationLabel?.textContent?.trim()).toContain(STRINGS.presetsCustomLabel);
   });
 
   describe("custom preset layout", () => {
@@ -1964,19 +2126,19 @@ describe("TeaTimerCard", () => {
       await card.updateComplete;
 
       const baseHeight = measurePresetRowHeight(card);
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
 
       triggerDialInput(card, 195);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const customHeight = measurePresetRowHeight(card);
       expect(customHeight).toBe(baseHeight);
 
       triggerDialInput(card, 240);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const restoredHeight = measurePresetRowHeight(card);
       expect(restoredHeight).toBe(baseHeight);
 
@@ -2007,7 +2169,7 @@ describe("TeaTimerCard", () => {
       const dial = card.shadowRoot?.querySelector("tea-timer-dial");
       expect(dial).not.toBeNull();
       const baselineHeight = measurePresetRowHeight(card);
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
 
       dial?.dispatchEvent(
         new CustomEvent("dial-input", {
@@ -2018,7 +2180,7 @@ describe("TeaTimerCard", () => {
       );
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const customHeight = measurePresetRowHeight(card);
       expect(customHeight).toBe(baselineHeight);
 
@@ -2031,7 +2193,7 @@ describe("TeaTimerCard", () => {
       );
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const restoredHeight = measurePresetRowHeight(card);
       expect(restoredHeight).toBe(baselineHeight);
 
@@ -2061,19 +2223,19 @@ describe("TeaTimerCard", () => {
       await card.updateComplete;
 
       const baseHeight = measurePresetRowHeight(card);
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
 
       triggerDialInput(card, 255);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const customHeight = measurePresetRowHeight(card);
       expect(customHeight).toBe(baseHeight);
 
       triggerDialInput(card, 180);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const restoredHeight = measurePresetRowHeight(card);
       expect(restoredHeight).toBe(baseHeight);
 
@@ -2171,6 +2333,82 @@ describe("TeaTimerCard", () => {
     expect(internals._displayDurationSeconds).toBe(beforeDisplay);
   });
 
+  it("shows queued context in the primary action without rendering a subtitle row", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({
+      type: "custom:tea-timer-card",
+      entity: "timer.kettle",
+      presets: [
+        { label: "Green", durationSeconds: 120 },
+        { label: "Black", durationSeconds: 240 },
+      ],
+    });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "running", durationSeconds: 240, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const initialSubtitle = shadow.querySelector(".subtitle");
+    expect(initialSubtitle).toBeNull();
+    let durationLine = shadow.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).not.toContain("Next:");
+
+    pointerSelectPreset(card, 0);
+    await card.updateComplete;
+
+    const queuedSubtitle = shadow.querySelector(".subtitle");
+    expect(queuedSubtitle).toBeNull();
+    durationLine = shadow.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).toContain("Next:");
+
+    pointerSelectPreset(card, 0);
+    await card.updateComplete;
+
+    const clearedSubtitle = shadow.querySelector(".subtitle");
+    expect(clearedSubtitle).toBeNull();
+    durationLine = shadow.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).not.toContain("Next:");
+  });
+
+  it("keeps dial blocked tooltip mounted and toggles visibility", async () => {
+    vi.useFakeTimers();
+    try {
+      const card = createCard();
+      document.body.appendChild(card);
+      card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+      card.hass = createHass();
+
+      setTimerState(card, { status: "running", durationSeconds: 240, remainingSeconds: 180 });
+      await card.updateComplete;
+
+      const shadow = card.shadowRoot as ShadowRoot;
+      const blocked = card as unknown as { _onDialBlocked(event: Event): void };
+
+      let tooltip = shadow.querySelector(".dial-tooltip");
+      expect(tooltip).not.toBeNull();
+      expect(tooltip?.classList.contains("dial-tooltip-hidden")).toBe(true);
+
+      blocked._onDialBlocked({
+        stopPropagation: vi.fn(),
+      } as unknown as Event);
+
+      await card.updateComplete;
+      tooltip = shadow.querySelector(".dial-tooltip");
+      expect(tooltip?.classList.contains("dial-tooltip-hidden")).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1800);
+      await card.updateComplete;
+
+      tooltip = shadow.querySelector(".dial-tooltip");
+      expect(tooltip?.classList.contains("dial-tooltip-hidden")).toBe(true);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   it("renders a helpful message when presets are missing", () => {
     const card = createCard();
     card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle", presets: [] });
@@ -2181,6 +2419,177 @@ describe("TeaTimerCard", () => {
     render(presetsTemplate as TemplateResult, container);
     const emptyState = container.querySelector(".empty-state");
     expect(emptyState?.textContent).toBe(STRINGS.presetsMissing);
+  });
+
+  it("hides the top status pill for normal timer modes", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+    const shadow = card.shadowRoot as ShadowRoot;
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+
+    setTimerState(card, { status: "running", durationSeconds: 180, remainingSeconds: 120 });
+    await card.updateComplete;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+
+    setTimerState(card, { status: "paused", durationSeconds: 180, remainingSeconds: 120 });
+    await card.updateComplete;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+  });
+
+  it("does not render a banner element in normal timer modes", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const banner = shadow.querySelector(".state-banner");
+    expect(banner).toBeNull();
+  });
+
+  it("shows reconnect messaging in an overlay banner without a top status pill", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(
+      card,
+      { status: "running", durationSeconds: 180, remainingSeconds: 120 },
+      {
+        connectionStatus: "reconnecting",
+        uiState: { kind: "Error", reason: "Disconnected" },
+      },
+    );
+
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".status-pill")).toBeNull();
+    const banner = shadow.querySelector(".state-banner");
+    expect(banner).not.toBeNull();
+    expect(banner?.textContent?.trim()).toBe(STRINGS.disconnectedReconnectingMessage);
+  });
+
+  it("shows service failure details in a non-layout overlay", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ type: "custom:tea-timer-card", entity: "timer.kettle" });
+    card.hass = createHass();
+
+    setTimerState(
+      card,
+      { status: "idle", durationSeconds: 180, remainingSeconds: 180 },
+      {
+        connectionStatus: "connected",
+        uiState: { kind: "Error", reason: "ServiceFailure", detail: STRINGS.serviceFailureMessage },
+      },
+    );
+
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const detailToggle = shadow.querySelector<HTMLButtonElement>(".state-banner-detail-toggle");
+    expect(detailToggle).not.toBeNull();
+
+    let detail = shadow.querySelector(".state-banner-detail");
+    expect(detail?.classList.contains("state-banner-detail-hidden")).toBe(true);
+
+    detailToggle?.click();
+    await card.updateComplete;
+
+    detail = shadow.querySelector(".state-banner-detail");
+    expect(detail?.classList.contains("state-banner-detail-hidden")).toBe(false);
+    expect(detail?.textContent?.trim()).toBe(STRINGS.serviceFailureMessage);
+  });
+
+  it("keeps interaction shell landmarks stable from idle to running", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "idle", durationSeconds: 240, remainingSeconds: 240 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+    expect(shadow.querySelector(".primary-action")).not.toBeNull();
+    expect(shadow.querySelector(".extend-controls[data-placeholder='true']")).not.toBeNull();
+    expect(shadow.querySelector(".pause-resume-controls[data-placeholder='true']")).not.toBeNull();
+
+    setTimerState(card, { status: "running", durationSeconds: 240, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+    expect(shadow.querySelector(".primary-action")).not.toBeNull();
+    expect(shadow.querySelector(".extend-button")).not.toBeNull();
+    expect(shadow.querySelector(".pause-resume-button")).not.toBeNull();
+  });
+
+  it("keeps the fixed shell while disconnected and disables rail actions", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+    card.hass = createHass();
+
+    setTimerState(
+      card,
+      { status: "running", durationSeconds: 240, remainingSeconds: 180 },
+      {
+        connectionStatus: "disconnected",
+        uiState: { kind: "Error", reason: "Disconnected" },
+      },
+    );
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+    const pauseButton = shadow.querySelector<HTMLButtonElement>(".pause-resume-button");
+    const extendButton = shadow.querySelector<HTMLButtonElement>(".extend-button");
+    expect(pauseButton?.disabled).toBe(true);
+    expect(extendButton?.disabled).toBe(true);
+  });
+
+  it("renders overlay banner only while service-failure messaging is active", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+    card.hass = createHass();
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".state-banner")).toBeNull();
+
+    setTimerState(
+      card,
+      { status: "idle", durationSeconds: 180, remainingSeconds: 180 },
+      {
+        connectionStatus: "connected",
+        uiState: { kind: "Error", reason: "ServiceFailure", detail: STRINGS.serviceFailureMessage },
+      },
+    );
+    await card.updateComplete;
+
+    expect(shadow.querySelectorAll(".state-banner")).toHaveLength(1);
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    expect(shadow.querySelector(".state-banner")).toBeNull();
   });
 
   describe("entity error surface", () => {
@@ -2208,9 +2617,11 @@ describe("TeaTimerCard", () => {
       expect(shadow.querySelector(".entity-error")?.textContent?.trim()).toBe(
         STRINGS.entityErrorMissing,
       );
-      expect(shadow.querySelector(".interaction")).toBeNull();
-      expect(shadow.querySelector(".primary-action")).toBeNull();
-      expect(shadow.querySelector(".empty-state")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const primary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(primary).not.toBeNull();
+      expect(primary?.disabled).toBe(true);
+      expect(shadow.querySelector(".empty-state")).not.toBeNull();
     });
 
     it("indicates when the configured entity is not a timer", async () => {
@@ -2235,7 +2646,9 @@ describe("TeaTimerCard", () => {
       const message = shadow.querySelector(".entity-error")?.textContent ?? "";
       expect(message).toContain(entityId);
       expect(message.trim()).toBe(STRINGS.entityErrorInvalid(entityId));
-      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const primary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(primary?.disabled).toBe(true);
       expect(shadow.querySelectorAll('[role="alert"]').length).toBe(1);
     });
 
@@ -2260,7 +2673,9 @@ describe("TeaTimerCard", () => {
       const shadow = card.shadowRoot as ShadowRoot;
       const message = shadow.querySelector(".entity-error")?.textContent?.trim();
       expect(message).toBe(STRINGS.entityErrorUnavailable(entityId));
-      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const primary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(primary?.disabled).toBe(true);
       expect(shadow.querySelectorAll('[role="alert"]').length).toBe(1);
     });
 
@@ -2304,7 +2719,9 @@ describe("TeaTimerCard", () => {
 
       await card.updateComplete;
       const shadow = card.shadowRoot as ShadowRoot;
-      expect(shadow.querySelector(".interaction")).toBeNull();
+      expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const beforePrimary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(beforePrimary?.disabled).toBe(true);
 
       setTimerState(
         card,
@@ -2320,6 +2737,8 @@ describe("TeaTimerCard", () => {
 
       expect(shadow.querySelector(".entity-error")).toBeNull();
       expect(shadow.querySelector(".interaction")).not.toBeNull();
+      const afterPrimary = shadow.querySelector<HTMLButtonElement>(".primary-action");
+      expect(afterPrimary?.disabled).toBe(false);
       expect(shadow.querySelectorAll('[role="alert"]').length).toBe(0);
     });
   });
@@ -2428,6 +2847,95 @@ describe("TeaTimerCard", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(resumeTimerMock).toHaveBeenCalledWith(hass, "timer.kettle");
+  });
+
+  it("uses a dial-and-rail layout while running", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "running", durationSeconds: 300, remainingSeconds: 240 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+  });
+
+  it("keeps the dial-and-rail shell while idle when rail features are enabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "idle", durationSeconds: 300, remainingSeconds: 300 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).not.toBeNull();
+  });
+
+  it("omits the rail shell when extend and pause features are disabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({
+      entity: "timer.kettle",
+      presets: [],
+      showPlusButton: false,
+      showPauseResume: false,
+    });
+
+    setTimerState(card, { status: "idle", durationSeconds: 300, remainingSeconds: 300 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".dial-and-rail")).not.toBeNull();
+    expect(shadow.querySelector(".action-rail")).toBeNull();
+  });
+
+  it("reserves secondary control rows while idle when extend and pause are enabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({ entity: "timer.kettle", presets: [] });
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    const extendSlot = shadow.querySelector(".extend-controls[data-placeholder='true']");
+    const pauseSlot = shadow.querySelector(".pause-resume-controls[data-placeholder='true']");
+    expect(extendSlot).not.toBeNull();
+    expect(pauseSlot).not.toBeNull();
+    expect(shadow.querySelector(".extend-button")).toBeNull();
+    expect(shadow.querySelector(".pause-resume-button")).toBeNull();
+  });
+
+  it("does not render secondary control rows when features are disabled", async () => {
+    const card = createCard();
+    document.body.appendChild(card);
+    const hass = createHass();
+    card.hass = hass;
+    card.setConfig({
+      entity: "timer.kettle",
+      presets: [],
+      showPlusButton: false,
+      showPauseResume: false,
+    });
+
+    setTimerState(card, { status: "idle", durationSeconds: 180, remainingSeconds: 180 });
+    await card.updateComplete;
+
+    const shadow = card.shadowRoot as ShadowRoot;
+    expect(shadow.querySelector(".extend-controls")).toBeNull();
+    expect(shadow.querySelector(".pause-resume-controls")).toBeNull();
   });
 
   it("extends a paused timer via changeTimer when pause support is native", async () => {

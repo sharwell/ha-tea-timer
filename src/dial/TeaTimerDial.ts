@@ -18,15 +18,19 @@ const POINTER_DRAG_SLOP_PX = 8;
 export class TeaTimerDial extends LitElement {
   static styles = css`
     :host {
-      display: inline-flex;
-      justify-content: center;
+      display: block;
+      width: 100%;
       color: var(--primary-text-color, #1f2933);
     }
 
     .dial-root {
       position: relative;
-      width: 184px;
-      height: 184px;
+      box-sizing: border-box;
+      width: min(100%, var(--tea-timer-dial-size, 228px));
+      max-width: var(--tea-timer-dial-size, 228px);
+      aspect-ratio: 1 / 1;
+      height: auto;
+      margin-inline: auto;
       border-radius: 50%;
       --dial-border-color: var(--divider-color, rgba(0, 0, 0, 0.12));
       --dial-track-color: var(--divider-color, rgba(0, 0, 0, 0.16));
@@ -36,7 +40,7 @@ export class TeaTimerDial extends LitElement {
       place-items: center;
       text-align: center;
       color: var(--secondary-text-color, #52606d);
-      padding: 16px;
+      padding: 18px;
       gap: 4px;
       touch-action: none;
       outline: none;
@@ -157,13 +161,14 @@ export class TeaTimerDial extends LitElement {
     }
 
     ::slotted([slot="primary"]) {
-      font-size: 1.8rem;
+      font-size: 2rem;
       font-weight: 600;
       letter-spacing: 0.02em;
+      line-height: 1;
     }
 
     ::slotted([slot="secondary"]) {
-      font-size: 0.95rem;
+      font-size: 1rem;
       color: var(--secondary-text-color, #52606d);
     }
 

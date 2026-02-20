@@ -29,6 +29,7 @@ describe("parseTeaTimerConfig", () => {
     expect(result.config?.confirmRestart).toBe(false);
     expect(result.config?.finishedAutoIdleMs).toBe(5000);
     expect(result.config?.clockSkewEstimatorEnabled).toBe(true);
+    expect(result.config?.cardBodyTapStart).toBe(true);
   });
 
   it("limits presets to 8 items", () => {
@@ -63,6 +64,17 @@ describe("parseTeaTimerConfig", () => {
 
     expect(result.errors).toHaveLength(0);
     expect(result.config?.clockSkewEstimatorEnabled).toBe(false);
+  });
+
+  it("parses cardBodyTapStart flag", () => {
+    const result = parseTeaTimerConfig({
+      entity: "timer.test",
+      presets: [],
+      cardBodyTapStart: false,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.config?.cardBodyTapStart).toBe(false);
   });
 
   it("parses finishedAutoIdleMs", () => {

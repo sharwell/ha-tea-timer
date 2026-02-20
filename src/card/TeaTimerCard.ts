@@ -66,6 +66,7 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const EXTEND_COALESCE_DELAY_MS = 200;
 const START_FIRST_RENDER_TOLERANCE_S = 0.25;
 const START_OUTLIER_MAX_SECONDS = 6 * 60 * 60;
+const BANNER_DETAIL_THRESHOLD = 80;
 
 interface PendingStartSeed {
   requestedSeconds: number;
@@ -165,6 +166,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   @state()
   private _pauseResumeInFlight: "pause" | "resume" | undefined = undefined;
+
+  @state()
+  private _bannerDetailVisible = false;
 
   @query("tea-timer-dial")
   private _dialElement?: TeaTimerDial;
@@ -288,7 +292,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const pendingAction = this._viewModel?.ui.pendingAction ?? "none";
     const state = this._timerState ?? this._timerStateController.state;
     const entityErrorInfo = state ? this._getEntityErrorInfo(state.uiState) : undefined;
-    const showInteractive = !!state && !entityErrorInfo;
+    const showInteractive = !!state && !!this._viewModel;
     const hasPending = pendingAction !== "none" || !!state?.inFlightAction;
     return html`
       ${this._renderErrors()}
@@ -299,17 +303,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onCardClick}
       >
         ${this._renderHeader()}
-        ${showInteractive ? this._renderSubtitle() : nothing}
-        ${state ? this._renderStatusPill(state) : nothing}
-        ${state ? this._renderStateBanner(state) : nothing}
-        ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
         ${showInteractive
           ? html`
-              <div class="interaction">
-                ${this._renderPresets(state)}
-                ${this._renderDial(state)}
-                ${this._renderExtendControls(state)}
-                ${this._renderPauseResumeControls(state)}
+              <div class="interaction-shell">
+                ${this._renderInteraction(state)}
+                ${this._renderAlertOverlays(state, entityErrorInfo)}
               </div>
               ${this._renderPrimaryAction(state)}
             `
@@ -371,33 +369,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
   private _renderHeader() {
     const title = this._viewModel?.ui.title ?? STRINGS.cardTitleFallback;
-    const entityLabel = this._viewModel?.ui.entityLabel ?? STRINGS.emptyState;
 
     return html`
       <header class="header">
         <h2 class="title">${title}</h2>
-        <span class="entity">${entityLabel}</span>
       </header>
     `;
-  }
-
-  private _renderSubtitle() {
-    if (!this._viewModel) {
-      return nothing;
-    }
-
-    const queuedId = this._viewModel.ui.queuedPresetId;
-    if (typeof queuedId !== "number") {
-      return nothing;
-    }
-
-    const preset = this._viewModel.ui.presets.find((item) => item.id === queuedId);
-    if (!preset) {
-      return nothing;
-    }
-
-    const label = STRINGS.presetsQueuedLabel(preset.label, preset.durationLabel);
-    return html`<p class="subtitle" role="note">${label}</p>`;
   }
 
   private _renderDial(state?: TimerViewState) {
@@ -432,9 +409,48 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
           <span slot="secondary">${secondary}</span>
         </tea-timer-dial>
         ${estimation ? html`<p class="estimation" role="note">${estimation}</p>` : nothing}
-        ${this._dialTooltipVisible
-          ? html`<div class="dial-tooltip" role="status">${STRINGS.dialBlockedTooltip}</div>`
-          : nothing}
+        <div
+          class=${classMap({
+            "dial-tooltip": true,
+            "dial-tooltip-hidden": !this._dialTooltipVisible,
+          })}
+          role="status"
+          aria-hidden=${this._dialTooltipVisible ? "false" : "true"}
+        >
+          ${STRINGS.dialBlockedTooltip}
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderInteraction(state: TimerViewState) {
+    const showRail =
+      !!this._viewModel &&
+      (this._viewModel.ui.showExtendButton || this._shouldRenderPauseResume(state));
+
+    return html`
+      <div class="interaction">
+        <div class="dial-and-rail">
+          ${this._renderDial(state)}
+          ${showRail
+            ? html`
+                <div class="action-rail">
+                  ${this._renderPauseResumeControls(state)}
+                  ${this._renderExtendControls(state)}
+                </div>
+              `
+            : nothing}
+        </div>
+        ${this._renderPresets(state)}
+      </div>
+    `;
+  }
+
+  private _renderAlertOverlays(state: TimerViewState, entityErrorInfo: EntityErrorInfo | undefined) {
+    return html`
+      <div class="card-overlays" aria-live="polite">
+        ${this._renderStateBanner(state)}
+        ${entityErrorInfo ? this._renderEntityError(entityErrorInfo) : nothing}
       </div>
     `;
   }
@@ -449,7 +465,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     if (state.status !== "running" && state.status !== "paused") {
-      return nothing;
+      return html`<div class="extend-controls" data-placeholder="true" aria-hidden="true"></div>`;
     }
 
     const pendingAction = this._viewModel.ui.pendingAction;
@@ -464,7 +480,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     );
 
     return html`
-      <div class="extend-controls" data-busy=${busy ? "true" : "false"} aria-busy=${busy ? "true" : "false"}>
+      <div
+        class="extend-controls"
+        data-busy=${busy ? "true" : "false"}
+        data-placeholder="false"
+        aria-busy=${busy ? "true" : "false"}
+      >
         <button
           type="button"
           class="extend-button"
@@ -483,6 +504,10 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
+    if (state.status !== "running" && state.status !== "paused") {
+      return html`<div class="pause-resume-controls" data-placeholder="true" aria-hidden="true"></div>`;
+    }
+
     const isPaused = state.status === "paused";
     const label = isPaused ? STRINGS.resumeButtonLabel : STRINGS.pauseButtonLabel;
     const ariaLabel = isPaused ? STRINGS.resumeButtonAriaLabel : STRINGS.pauseButtonAriaLabel;
@@ -490,9 +515,12 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const busy = this._pauseResumeInFlight !== undefined;
 
     return html`
-      <div class="pause-resume-controls" data-busy=${busy ? "true" : "false"} aria-busy=${
-        busy ? "true" : "false"
-      }>
+      <div
+        class="pause-resume-controls"
+        data-busy=${busy ? "true" : "false"}
+        data-placeholder="false"
+        aria-busy=${busy ? "true" : "false"}
+      >
         <button
           type="button"
           class="pause-resume-button"
@@ -515,7 +543,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return false;
     }
 
-    return state.status === "running" || state.status === "paused";
+    return state.status === "running" || state.status === "paused" || state.status === "idle";
   }
 
   private _isPauseResumeDisabled(state: TimerViewState): boolean {
@@ -802,16 +830,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
             `;
           })}
         </div>
-        <span
-          class=${classMap({
-            "preset-custom": true,
-            "preset-custom-hidden": !isCustom,
-          })}
-          role="note"
-          aria-hidden=${isCustom ? nothing : "true"}
-        >
-          ${STRINGS.presetsCustomLabel}
-        </span>
       </div>
     `;
   }
@@ -820,6 +838,9 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const info = this._getPrimaryActionInfo(state);
     const disabled = this._isActionDisabled(state);
     const ariaDisabled = disabled ? "true" : "false";
+    const queuedLabel = this._getQueuedPrimaryContextLabel(info);
+    const customLabel = this._getCustomPrimaryContextLabel(info);
+    const durationLabel = queuedLabel ?? customLabel ?? info.durationLabel;
 
     return html`
       <button
@@ -833,13 +854,47 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onPrimaryButtonClick}
       >
         <span class="primary-action-label">${info.label}</span>
-        <span class="primary-action-duration">${info.durationLabel}</span>
+        <span class="primary-action-duration">${durationLabel}</span>
       </button>
     `;
   }
 
+  private _getQueuedPrimaryContextLabel(info: {
+    queued: boolean;
+    presetLabel?: string;
+    presetId?: number | typeof CUSTOM_PRESET_ID;
+    isCustom: boolean;
+    durationLabel: string;
+  }): string | undefined {
+    if (!info.queued) {
+      return undefined;
+    }
+
+    if (info.presetLabel) {
+      return STRINGS.presetsQueuedLabel(info.presetLabel, info.durationLabel);
+    }
+
+    if (info.presetId === CUSTOM_PRESET_ID || info.isCustom) {
+      return STRINGS.presetsQueuedLabel(STRINGS.presetsCustomLabel, info.durationLabel);
+    }
+
+    return undefined;
+  }
+
+  private _getCustomPrimaryContextLabel(info: {
+    queued: boolean;
+    isCustom: boolean;
+    durationLabel: string;
+  }): string | undefined {
+    if (info.queued || !info.isCustom) {
+      return undefined;
+    }
+
+    return `${STRINGS.presetsCustomLabel} ${info.durationLabel}`;
+  }
+
   private _getPrimaryActionInfo(state: TimerViewState) {
-    const action = state.status === "running" ? "restart" : "start";
+    const action = state.status === "running" || state.status === "paused" ? "restart" : "start";
     const durationSeconds = this._getActionDuration();
     const durationLabel = formatDurationSeconds(durationSeconds);
     const durationSpeech = formatDurationSpeech(durationSeconds, STRINGS.durationSpeech);
@@ -1122,6 +1177,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
+    const state = this._timerState ?? this._timerStateController.state;
+    if (state && this._getUiStateBanner(state)) {
+      return nothing;
+    }
+
     const isUnavailable = error.code === "entity-unavailable";
     const tone = isUnavailable ? "info" : "error";
     const role = isUnavailable ? "alert" : "status";
@@ -1141,12 +1201,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _renderStatusPill(state: TimerViewState) {
-    const label = this._getStatusLabel(state);
-    const className = this._getStatusClass(state);
-    return html`<span class=${className} aria-hidden="true">${label}</span>`;
-  }
-
   private _renderStateBanner(state: TimerViewState) {
     const banner = this._getUiStateBanner(state);
     if (!banner) {
@@ -1154,9 +1208,40 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     const { message, tone, live, role } = banner;
+    const showDetailToggle = message.length > BANNER_DETAIL_THRESHOLD;
+    const detailVisible = showDetailToggle && this._bannerDetailVisible;
+    const detailExpanded = detailVisible ? "true" : "false";
     return html`
-      <div class="state-banner state-banner-${tone}" role=${role} aria-live=${live}>
-        ${message}
+      <div class="state-banner-wrap">
+        <div class="state-banner state-banner-${tone}" role=${role} aria-live=${live}>
+          <span class="state-banner-text">${message}</span>
+          ${showDetailToggle
+            ? html`
+                <button
+                  type="button"
+                  class="state-banner-detail-toggle"
+                  aria-expanded=${detailExpanded}
+                  aria-label=${STRINGS.bannerDetailsLabel}
+                  @click=${this._onBannerDetailToggle}
+                >
+                  ${STRINGS.bannerDetailsLabel}
+                </button>
+              `
+            : nothing}
+        </div>
+        ${showDetailToggle
+          ? html`
+              <div
+                class=${classMap({
+                  "state-banner-detail": true,
+                  "state-banner-detail-hidden": !detailVisible,
+                })}
+                role="note"
+              >
+                ${message}
+              </div>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -1219,7 +1304,22 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    const state = this._timerState ?? this._timerStateController.state;
+    if (!state || state.status !== "idle") {
+      return;
+    }
+
+    if (!this._viewModel?.ui.cardBodyTapStart) {
+      return;
+    }
+
     this._handlePrimaryAction();
+  };
+
+  private readonly _onBannerDetailToggle = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    this._bannerDetailVisible = !this._bannerDetailVisible;
   };
 
   private _shouldIgnoreCardClick(event: MouseEvent): boolean {
@@ -1274,7 +1374,7 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
 
     const durationSeconds = this._getActionDuration();
 
-    if (state.status === "running") {
+    if (state.status === "running" || state.status === "paused") {
       if (this._viewModel.ui.confirmRestart) {
         this._confirmRestartDuration = durationSeconds;
         this._confirmRestartVisible = true;
@@ -2061,51 +2161,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _getStatusClass(state: TimerViewState): string {
-    const uiState = state.uiState;
-    if (uiState === "Running") {
-      return "status-pill status-running";
-    }
-    if (uiState === "Paused") {
-      return "status-pill status-paused";
-    }
-    if (uiState === "Idle") {
-      return "status-pill status-idle";
-    }
-    if (typeof uiState === "object") {
-      if (uiState.kind === "FinishedTransient") {
-        return "status-pill status-finished";
-      }
-      if (uiState.reason === "Disconnected") {
-        return "status-pill status-disconnected";
-      }
-      if (
-        uiState.reason === "EntityUnavailable" ||
-        uiState.reason === "EntityConfigMissing" ||
-        uiState.reason === "EntityWrongDomain" ||
-        uiState.reason === "EntityNotFound"
-      ) {
-        return "status-pill status-unavailable";
-      }
-      if (uiState.reason === "ServiceFailure") {
-        return "status-pill status-error";
-      }
-    }
-
-    switch (state.status) {
-      case "running":
-        return "status-pill status-running";
-      case "paused":
-        return "status-pill status-paused";
-      case "finished":
-        return "status-pill status-finished";
-      case "idle":
-        return "status-pill status-idle";
-      default:
-        return "status-pill status-unavailable";
-    }
-  }
-
   private _isUiError(
     uiState: TimerUiState,
     reason?: TimerUiErrorReason,
@@ -2283,6 +2338,11 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
   private _handleTimerStateChanged(state: TimerViewState) {
     const previousState = this._previousTimerState;
     const previousViewModel = this._viewModel;
+    const currentBannerMessage = this._getUiStateBanner(state)?.message;
+    const previousBannerMessage = previousState ? this._getUiStateBanner(previousState)?.message : undefined;
+    if (!currentBannerMessage || currentBannerMessage !== previousBannerMessage) {
+      this._bannerDetailVisible = false;
+    }
     this._evaluatePauseCapability();
     if (this._confirmRestartVisible && state.status !== "running") {
       this._confirmRestartVisible = false;
