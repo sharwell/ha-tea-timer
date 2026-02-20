@@ -1,6 +1,7 @@
 # Tea Timer Touch UX Audit (2026-02-07)
 
 ## Scope and method
+
 - Code review focused on touch interaction and layout behavior in `src/card/TeaTimerCard.ts`, `src/dial/TeaTimerDial.ts`, `src/styles/card.ts`, and `src/strings.ts`.
 - Executed 23 touchscreen-oriented scenarios in the local dev demo (`/demo`) with mobile emulation and full-page screenshots.
 - Collected structured UI snapshots (state text, control positions, control sizes, disabled/queued flags) into `docs/qa/artifacts/2026-02-07/ux-audit/ux-observations.json`.
@@ -10,6 +11,7 @@
 ## Scenario record
 
 ### A. Core brew flow scenarios
+
 | ID | Scenario | What looked good | What did not look good | Evidence |
 | --- | --- | --- | --- | --- |
 | 1 | Idle baseline | Clear hierarchy: title, status, dial, presets, primary action. Primary action is visually strong. | None major in idle state. | `01-idle-baseline.png` |
@@ -26,6 +28,7 @@
 | 12 | Rapid double-tap while running | UI remained stable and did not visibly glitch/crash. | Full-card tap restart remains risky under rapid taps because restart is too easy to trigger. | `12-rapid-double-tap-restart-attempt.png` |
 
 ### B. Connectivity and entity health scenarios
+
 | ID | Scenario | What looked good | What did not look good | Evidence |
 | --- | --- | --- | --- | --- |
 | 13 | Disconnect/reconnecting | Controls visibly disable and reconnect message is explicit. | Card grows significantly (banner insertion), causing vertical reflow during unstable connectivity. | `13-disconnect-state.png` |
@@ -38,6 +41,7 @@
 | 20 | Restore valid config | Returns to baseline safely. | No major issue in this step. | `20-restored-entity-config.png` |
 
 ### C. Error and confirmation scenarios
+
 | ID | Scenario | What looked good | What did not look good | Evidence |
 | --- | --- | --- | --- | --- |
 | 21 | Start service failure | Failure is clearly surfaced and retry path remains available. | Error is duplicated as both banner and toast; toast overlays primary CTA area and truncates readability. | `21-start-service-failure.png` |
@@ -45,6 +49,7 @@
 | 23 | Cancel restart confirmation | Dismiss path works and state is preserved. | No major issue beyond small dialog control sizing. | `23-restart-confirm-canceled.png` |
 
 ## Things that work well
+
 - Dial-centric visual hierarchy is strong across idle/running/paused states.
 - State colors communicate mode changes effectively (idle, running, paused, reconnecting).
 - Pause/resume and extend behavior is functionally predictable.
@@ -53,6 +58,7 @@
 - Entity error messaging is clear and specific.
 
 ## Things that do not work well
+
 - Action activation is too implicit in high-risk states: whole-card tap can restart while running.
 - Layout stability is weak during common interactions: subtitle, dial tooltip, and banners introduce noticeable vertical jumps.
 - Idle-to-running transition changes overall card height and shifts shared controls, reducing predictability for repeated taps.
@@ -63,6 +69,7 @@
 - Error/unavailable modes collapse the card dramatically, causing large dashboard reflow.
 
 ## Code points behind the main UX issues
+
 - Card-wide action tap: `src/card/TeaTimerCard.ts:1213`, `src/card/TeaTimerCard.ts:1250`.
 - Paused-state primary action label decision: `src/card/TeaTimerCard.ts:842`.
 - Blocking tooltip that inserts/removes layout content: `src/card/TeaTimerCard.ts:2359`, `src/styles/card.ts` (`.dial-tooltip`).
@@ -72,79 +79,99 @@
 ## Prioritized UX improvement plan
 
 ### P0 (highest value: consistency + safety in frequent flows)
+
 1. Restrict card-body tap behavior by state.
+
 - Idle: allow optional card-body tap start.
 - Running/Paused: require explicit button tap for restart.
 - Rationale: avoids accidental restart while preserving one-tap convenience where risk is low.
 
 2. Normalize primary action semantics.
+
 - Idle main CTA: `Start`.
 - Running main CTA: `Restart`.
 - Paused main CTA: `Restart` (not `Start`), with `Resume` kept as separate continuation action.
 - Rationale: removes paused-state ambiguity.
 
 3. Freeze control ordering and reserve row space.
+
 - Use one fixed vertical structure in all active states: `Status/Banner` -> `Dial` -> `Preset row` -> `Secondary controls row` -> `Primary CTA`.
 - Keep a reserved subtitle row (empty when unused) to prevent jumps.
 - Keep blocked-dial feedback non-layout-shifting (overlay badge inside dial region).
 - Rationale: preserves muscle memory and reduces mis-taps.
 
 4. Make touch target sizing consistent.
+
 - Enforce minimum 44x44 for extend and confirm controls.
-- Keep visual style but increase tappable box via padding/container rules.
+- Keep visual style but increase tap target box via padding/container rules.
 
 5. Remove redundant status labeling and reallocate space to the dial.
+
 - For normal timer modes (idle/running/paused), keep one status label location only (prefer the in-dial secondary label).
 - Reserve top status/banners for exceptional states only (reconnecting/disconnected/error/unavailable).
 - Increase dial diameter with reclaimed vertical space to improve time readability at distance.
 - Rationale: better information density and visual clarity without losing state awareness.
 
 ### P1 (high value: predictability + clarity in failure/reconnect states)
+
 1. Consolidate error messaging to one primary surface per event.
+
 - Service action failures: inline banner only, no duplicate toast.
 - Non-blocking transient notices: toast only when no inline banner exists.
 - Rationale: removes overlap and conflicting attention cues.
 
 2. Stabilize disconnected/reconnecting and entity-error layout.
+
 - Prefer an in-place state panel within fixed card height for recoverable errors.
 - Keep dial/controls visible but visibly locked where appropriate.
 - Rationale: reduces severe dashboard reflow during transient outages.
 
 3. Improve confirmation modal ergonomics.
+
 - Increase button size to touch-safe minimums.
 - Use stronger visual hierarchy (`Cancel` and `Restart`) and clearer spacing.
 
 ### P2 (polish: aesthetics + comprehension)
+
 1. Improve running-state control grouping.
+
 - Present `Pause/Resume`, `+1:00`, and `Restart` as a coherent action cluster.
 - Keep consistent spacing and weight across states.
 
 2. Refine queued preset presentation.
+
 - Show selected preset and queued preset states simultaneously with clearer visual tokens.
 - Keep subtitle row reserved to avoid motion.
 
 3. Tone and typography pass.
+
 - Reduce minor text density around controls.
 - Increase contrast consistency for small helper labels.
 
 ## Conflict-resolution rules used for prioritization
+
 1. Safety over speed when timer is active.
+
 - If quick restart and accidental restart prevention conflict, prioritize prevention in running/paused states.
 
 2. Spatial stability over dynamic compactness.
+
 - If conditional rows save space but cause control movement, prioritize stable control positions.
 
 3. Single-source feedback over redundant emphasis.
+
 - If multiple messages increase visibility but reduce clarity, prefer one clear message surface.
 
 4. Frequent-path optimization over rare-path optimization.
+
 - Core brew flow (start, adjust, pause, resume, extend, restart) gets priority over misconfiguration screens.
 
 ## Suggested acceptance criteria for the next iteration
+
 1. No layout shift > 8px when toggling queued preset, dial-blocked feedback, or transient status messages.
 2. Idle -> running transition keeps overall card height stable (or within 8px) and preserves vertical placement of controls present in both states.
 3. Running/paused restart cannot be triggered by tapping non-control card regions.
-4. All tappable controls meet minimum 44x44 touch target size.
+4. All tap target controls meet minimum 44x44 touch target size.
 5. Paused state main CTA reads `Restart` and never `Start`.
 6. Service failure presents one visible message surface at a time.
 7. Normal timer modes show only one state label location (no duplicated idle/running/paused label), and reclaimed space is applied to larger dial/time display.
