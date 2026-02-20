@@ -830,16 +830,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
             `;
           })}
         </div>
-        <span
-          class=${classMap({
-            "preset-custom": true,
-            "preset-custom-hidden": !isCustom,
-          })}
-          role="note"
-          aria-hidden=${isCustom ? nothing : "true"}
-        >
-          ${STRINGS.presetsCustomLabel}
-        </span>
       </div>
     `;
   }
@@ -849,7 +839,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const disabled = this._isActionDisabled(state);
     const ariaDisabled = disabled ? "true" : "false";
     const queuedLabel = this._getQueuedPrimaryContextLabel(info);
-    const durationLabel = queuedLabel ?? info.durationLabel;
+    const customLabel = this._getCustomPrimaryContextLabel(info);
+    const durationLabel = queuedLabel ?? customLabel ?? info.durationLabel;
 
     return html`
       <button
@@ -888,6 +879,18 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     }
 
     return undefined;
+  }
+
+  private _getCustomPrimaryContextLabel(info: {
+    queued: boolean;
+    isCustom: boolean;
+    durationLabel: string;
+  }): string | undefined {
+    if (info.queued || !info.isCustom) {
+      return undefined;
+    }
+
+    return `${STRINGS.presetsCustomLabel} ${info.durationLabel}`;
   }
 
   private _getPrimaryActionInfo(state: TimerViewState) {

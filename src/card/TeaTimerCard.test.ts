@@ -192,30 +192,22 @@ describe("TeaTimerCard", () => {
     Object.defineProperty(row, "getBoundingClientRect", {
       configurable: true,
       value: () => {
-        const indicator = row.querySelector(".preset-custom");
-        const hasIndicator = !!indicator;
         const baseHeight = 56;
-        const indicatorHeight = hasIndicator ? 20 : 0;
-        const height = baseHeight + indicatorHeight;
         return {
           x: 0,
           y: 0,
           width: 320,
-          height,
+          height: baseHeight,
           top: 0,
           left: 0,
           right: 320,
-          bottom: height,
+          bottom: baseHeight,
           toJSON: () => ({}),
         } as DOMRect;
       },
     });
 
     return row.getBoundingClientRect().height;
-  }
-
-  function getPresetIndicator(card: TeaTimerCard): HTMLElement | null {
-    return card.shadowRoot?.querySelector<HTMLElement>(".preset-custom") ?? null;
   }
 
   function pointerSelectPreset(card: TeaTimerCard, presetId: number) {
@@ -2080,7 +2072,7 @@ describe("TeaTimerCard", () => {
     expect(internals._viewModel?.ui.selectedPresetId).toBe(0);
   });
 
-  it("shows custom preset indicator after dial adjustment", () => {
+  it("surfaces custom duration context in the primary action after dial adjustment", () => {
     const card = createCard();
     card.setConfig({
       type: "custom:tea-timer-card",
@@ -2102,11 +2094,13 @@ describe("TeaTimerCard", () => {
 
     const internals = card as unknown as { _viewModel?: { ui: { selectedPresetId?: unknown } } };
     expect(internals._viewModel?.ui.selectedPresetId).toBe("custom");
-    const presetsTemplate = (card as unknown as { _renderPresets(): unknown })._renderPresets();
+    const primaryTemplate = (
+      card as unknown as { _renderPrimaryAction(state: TimerViewState): unknown }
+    )._renderPrimaryAction(idleState);
     const container = document.createElement("div");
-    render(presetsTemplate as TemplateResult, container);
-    const customLabel = container.querySelector(".preset-custom");
-    expect(customLabel?.textContent?.trim()).toBe(STRINGS.presetsCustomLabel);
+    render(primaryTemplate as TemplateResult, container);
+    const durationLabel = container.querySelector(".primary-action-duration");
+    expect(durationLabel?.textContent?.trim()).toContain(STRINGS.presetsCustomLabel);
   });
 
   describe("custom preset layout", () => {
@@ -2132,19 +2126,19 @@ describe("TeaTimerCard", () => {
       await card.updateComplete;
 
       const baseHeight = measurePresetRowHeight(card);
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
 
       triggerDialInput(card, 195);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const customHeight = measurePresetRowHeight(card);
       expect(customHeight).toBe(baseHeight);
 
       triggerDialInput(card, 240);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const restoredHeight = measurePresetRowHeight(card);
       expect(restoredHeight).toBe(baseHeight);
 
@@ -2175,7 +2169,7 @@ describe("TeaTimerCard", () => {
       const dial = card.shadowRoot?.querySelector("tea-timer-dial");
       expect(dial).not.toBeNull();
       const baselineHeight = measurePresetRowHeight(card);
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
 
       dial?.dispatchEvent(
         new CustomEvent("dial-input", {
@@ -2186,7 +2180,7 @@ describe("TeaTimerCard", () => {
       );
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const customHeight = measurePresetRowHeight(card);
       expect(customHeight).toBe(baselineHeight);
 
@@ -2199,7 +2193,7 @@ describe("TeaTimerCard", () => {
       );
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const restoredHeight = measurePresetRowHeight(card);
       expect(restoredHeight).toBe(baselineHeight);
 
@@ -2229,19 +2223,19 @@ describe("TeaTimerCard", () => {
       await card.updateComplete;
 
       const baseHeight = measurePresetRowHeight(card);
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
 
       triggerDialInput(card, 255);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const customHeight = measurePresetRowHeight(card);
       expect(customHeight).toBe(baseHeight);
 
       triggerDialInput(card, 180);
       await card.updateComplete;
 
-      expect(getPresetIndicator(card)?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.shadowRoot?.querySelector(".preset-custom")).toBeNull();
       const restoredHeight = measurePresetRowHeight(card);
       expect(restoredHeight).toBe(baseHeight);
 
