@@ -7,7 +7,7 @@ Use these notes to verify behavior during accessibility reviews.
 
 1. Title (if present) is skipped to keep focus on interactive elements.
 2. Preset chips appear left-to-right.
-3. The card body (start/restart surface) is last.
+3. The primary action button (`Start`/`Restart`) follows the preset chips.
 
 Keyboard users can cycle through presets with **Tab**/**Shift+Tab** and activate the focused control
 with **Space** or **Enter**. The card exposes ARIA labels that include the preset name and formatted
@@ -42,7 +42,7 @@ duration (for example, “Preset Green Tea – 2 minutes”).
 
 ## Screen reader testing checklist
 
-1. Navigate through presets and the card body using only the keyboard.
+1. Navigate through presets and the primary action using only the keyboard.
 2. Start a brew and confirm you hear a single announcement for the selected preset and duration.
 3. Queue a different preset mid-brew and verify the “Next preset” announcement.
 4. Wait for the brew to finish; listen for the completion message.

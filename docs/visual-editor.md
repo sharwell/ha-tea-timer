@@ -4,7 +4,7 @@ Home Assistant's Lovelace editor now includes the Tea Timer card in the **Add ca
 
 ## Requirements
 
-- Tea Timer Card v0.2.0 or later (Unreleased)
+- Tea Timer Card v0.2.0 or later
 - Home Assistant 2023.12 or newer with Lovelace dashboards
 - A `timer` helper for each brew you want to control
 
