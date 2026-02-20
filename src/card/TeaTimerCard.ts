@@ -377,25 +377,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _renderSubtitle() {
-    if (!this._viewModel) {
-      return nothing;
-    }
-
-    const queuedId = this._viewModel.ui.queuedPresetId;
-    if (typeof queuedId !== "number") {
-      return nothing;
-    }
-
-    const preset = this._viewModel.ui.presets.find((item) => item.id === queuedId);
-    if (!preset) {
-      return nothing;
-    }
-
-    const label = STRINGS.presetsQueuedLabel(preset.label, preset.durationLabel);
-    return html`<p class="subtitle subtitle-inline" role="note">${label}</p>`;
-  }
-
   private _renderDial(state?: TimerViewState) {
     const resolvedState = state ?? this._timerState ?? this._timerStateController.state;
     const status = resolvedState.status;
@@ -461,7 +442,6 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
             : nothing}
         </div>
         ${this._renderPresets(state)}
-        ${this._renderSubtitle()}
       </div>
     `;
   }
@@ -868,6 +848,8 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
     const info = this._getPrimaryActionInfo(state);
     const disabled = this._isActionDisabled(state);
     const ariaDisabled = disabled ? "true" : "false";
+    const queuedLabel = this._getQueuedPrimaryContextLabel(info);
+    const durationLabel = queuedLabel ?? info.durationLabel;
 
     return html`
       <button
@@ -881,9 +863,31 @@ export class TeaTimerCard extends LitElement implements LovelaceCard {
         @click=${this._onPrimaryButtonClick}
       >
         <span class="primary-action-label">${info.label}</span>
-        <span class="primary-action-duration">${info.durationLabel}</span>
+        <span class="primary-action-duration">${durationLabel}</span>
       </button>
     `;
+  }
+
+  private _getQueuedPrimaryContextLabel(info: {
+    queued: boolean;
+    presetLabel?: string;
+    presetId?: number | typeof CUSTOM_PRESET_ID;
+    isCustom: boolean;
+    durationLabel: string;
+  }): string | undefined {
+    if (!info.queued) {
+      return undefined;
+    }
+
+    if (info.presetLabel) {
+      return STRINGS.presetsQueuedLabel(info.presetLabel, info.durationLabel);
+    }
+
+    if (info.presetId === CUSTOM_PRESET_ID || info.isCustom) {
+      return STRINGS.presetsQueuedLabel(STRINGS.presetsCustomLabel, info.durationLabel);
+    }
+
+    return undefined;
   }
 
   private _getPrimaryActionInfo(state: TimerViewState) {

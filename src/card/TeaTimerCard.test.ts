@@ -1978,7 +1978,7 @@ describe("TeaTimerCard", () => {
     expect(dialElement.value).toBe(120);
   });
 
-  it("queues presets while running and surfaces next message", () => {
+  it("queues presets while running and surfaces next context in primary action", () => {
     const card = createCard();
     card.setConfig({
       type: "custom:tea-timer-card",
@@ -2003,12 +2003,15 @@ describe("TeaTimerCard", () => {
     };
     expect(internals._viewModel?.ui.queuedPresetId).toBe(0);
     expect(internals._viewModel?.pendingDurationSeconds).toBe(120);
-    const subtitleTemplate = (card as unknown as { _renderSubtitle(): unknown })._renderSubtitle();
+    const primaryTemplate = (
+      card as unknown as { _renderPrimaryAction(state: TimerViewState): unknown }
+    )._renderPrimaryAction(runningState);
     const container = document.createElement("div");
-    if (subtitleTemplate && subtitleTemplate !== nothing) {
-      render(subtitleTemplate as TemplateResult, container);
+    if (primaryTemplate && primaryTemplate !== nothing) {
+      render(primaryTemplate as TemplateResult, container);
     }
-    expect(container.textContent).toContain("Next");
+    const durationLine = container.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).toContain("Next");
   });
 
   it("restarts with queued preset and clears the queue", async () => {
@@ -2336,7 +2339,7 @@ describe("TeaTimerCard", () => {
     expect(internals._displayDurationSeconds).toBe(beforeDisplay);
   });
 
-  it("shows queued subtitle inline only when a queued preset is active", async () => {
+  it("shows queued context in the primary action without rendering a subtitle row", async () => {
     const card = createCard();
     document.body.appendChild(card);
     card.setConfig({
@@ -2353,21 +2356,26 @@ describe("TeaTimerCard", () => {
     await card.updateComplete;
 
     const shadow = card.shadowRoot as ShadowRoot;
-    const initialSubtitle = shadow.querySelector(".subtitle-inline");
+    const initialSubtitle = shadow.querySelector(".subtitle");
     expect(initialSubtitle).toBeNull();
+    let durationLine = shadow.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).not.toContain("Next:");
 
     pointerSelectPreset(card, 0);
     await card.updateComplete;
 
-    const queuedSubtitle = shadow.querySelector(".subtitle-inline");
-    expect(queuedSubtitle).not.toBeNull();
-    expect(queuedSubtitle?.textContent).toContain("Next:");
+    const queuedSubtitle = shadow.querySelector(".subtitle");
+    expect(queuedSubtitle).toBeNull();
+    durationLine = shadow.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).toContain("Next:");
 
     pointerSelectPreset(card, 0);
     await card.updateComplete;
 
-    const clearedSubtitle = shadow.querySelector(".subtitle-inline");
+    const clearedSubtitle = shadow.querySelector(".subtitle");
     expect(clearedSubtitle).toBeNull();
+    durationLine = shadow.querySelector(".primary-action-duration");
+    expect(durationLine?.textContent).not.toContain("Next:");
   });
 
   it("keeps dial blocked tooltip mounted and toggles visibility", async () => {

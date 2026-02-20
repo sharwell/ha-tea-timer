@@ -44,17 +44,6 @@ export const cardStyles = css`
     margin: 0;
   }
 
-  .subtitle {
-    font-size: 0.85rem;
-    color: var(--secondary-text-color, #52606d);
-    margin: 0;
-    line-height: 1.4;
-  }
-
-  .subtitle-inline {
-    margin-top: -2px;
-  }
-
   .dial-wrapper {
     display: flex;
     flex-direction: column;
@@ -320,6 +309,10 @@ export const cardStyles = css`
     font-size: 0.85rem;
     font-weight: 500;
     opacity: 0.9;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .empty-state {
