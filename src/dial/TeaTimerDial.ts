@@ -161,15 +161,17 @@ export class TeaTimerDial extends LitElement {
     }
 
     ::slotted([slot="primary"]) {
-      font-size: 2rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
+      font-size: var(--tea-timer-dial-primary-font-size, 2.6rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
       line-height: 1;
     }
 
     ::slotted([slot="secondary"]) {
-      font-size: 1rem;
+      font-size: var(--tea-timer-dial-secondary-font-size, 1rem);
       color: var(--secondary-text-color, #52606d);
+      line-height: 1.15;
     }
 
     @media (prefers-reduced-motion: reduce) {
