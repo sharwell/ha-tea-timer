@@ -143,6 +143,7 @@ describe("TimerStateController finished fallback", () => {
       previousEntityState?: MachineTimerViewState;
       serverRemainingSecAtT0?: number;
       clientMonotonicT0?: number;
+      clientWallT0?: number;
       applyEntityState(state: MachineTimerViewState): void;
       currentState: { status: string };
     };
@@ -156,6 +157,7 @@ describe("TimerStateController finished fallback", () => {
     };
     internals.serverRemainingSecAtT0 = 0.4;
     internals.clientMonotonicT0 = monotonicNow - 350;
+    internals.clientWallT0 = wallNow - 350;
 
     wallNow += 350;
     monotonicNow += 350;
@@ -183,6 +185,7 @@ describe("TimerStateController finished fallback", () => {
       previousEntityState?: MachineTimerViewState;
       serverRemainingSecAtT0?: number;
       clientMonotonicT0?: number;
+      clientWallT0?: number;
       applyEntityState(state: MachineTimerViewState): void;
       currentState: { status: string };
     };
@@ -196,6 +199,7 @@ describe("TimerStateController finished fallback", () => {
     };
     internals.serverRemainingSecAtT0 = 15;
     internals.clientMonotonicT0 = monotonicNow - 2_000;
+    internals.clientWallT0 = wallNow - 2_000;
 
     wallNow += 2_000;
     monotonicNow += 2_000;
@@ -208,6 +212,48 @@ describe("TimerStateController finished fallback", () => {
     });
 
     expect(internals.currentState.status).toBe("idle");
+  });
+
+  it("marks finished when monotonic time lags but wall time indicates expiry", () => {
+    let wallNow = 2_000_000;
+    let monotonicNow = 10_000;
+    const controller = new TimerStateController(new TestHost(), {
+      now: () => wallNow,
+      monotonicNow: () => monotonicNow,
+    });
+
+    const internals = controller as unknown as {
+      connectionStatus: "connected" | "disconnected" | "reconnecting";
+      previousEntityState?: MachineTimerViewState;
+      serverRemainingSecAtT0?: number;
+      clientMonotonicT0?: number;
+      clientWallT0?: number;
+      applyEntityState(state: MachineTimerViewState): void;
+      currentState: { status: string };
+    };
+
+    internals.connectionStatus = "connected";
+    internals.previousEntityState = {
+      status: "running",
+      durationSeconds: 30,
+      remainingSeconds: 3,
+      lastChangedTs: wallNow - 3_000,
+    };
+    internals.serverRemainingSecAtT0 = 3;
+    internals.clientMonotonicT0 = monotonicNow - 200;
+    internals.clientWallT0 = wallNow - 2_950;
+
+    wallNow += 2_950;
+    monotonicNow += 200;
+
+    internals.applyEntityState({
+      status: "idle",
+      durationSeconds: 30,
+      remainingSeconds: 30,
+      lastChangedTs: wallNow,
+    });
+
+    expect(internals.currentState.status).toBe("finished");
   });
 });
 
