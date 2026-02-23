@@ -113,6 +113,22 @@ describe("TeaTimerDial", () => {
     dial.remove();
   });
 
+  it("hides the handle when finished", async () => {
+    const dial = document.createElement("tea-timer-dial");
+    dial.bounds = { min: 15, max: 360, step: 5 };
+    dial.value = 0;
+    dial.status = "finished";
+    dial.interactive = false;
+
+    const { root } = await renderDial(dial);
+
+    expect(root.classList.contains("is-finished")).toBe(true);
+    expect(root.tabIndex).toBe(-1);
+    expect(root.getAttribute("aria-disabled")).toBe("true");
+
+    dial.remove();
+  });
+
   it("shows the handle and allows focus while idle", async () => {
     const dial = document.createElement("tea-timer-dial");
     dial.bounds = { min: 15, max: 360, step: 5 };

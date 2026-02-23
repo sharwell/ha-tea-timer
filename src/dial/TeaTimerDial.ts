@@ -133,7 +133,8 @@ export class TeaTimerDial extends LitElement {
     }
 
     .dial-root.is-running .dial-handle,
-    .dial-root.is-paused .dial-handle {
+    .dial-root.is-paused .dial-handle,
+    .dial-root.is-finished .dial-handle {
       opacity: 0;
       visibility: hidden;
     }
@@ -269,6 +270,8 @@ export class TeaTimerDial extends LitElement {
       rootClass += " is-running";
     } else if (status === "paused") {
       rootClass += " is-paused";
+    } else if (status === "finished") {
+      rootClass += " is-finished";
     }
     const tabIndex = this.interactive ? 0 : -1;
     const ariaDisabled = this.interactive ? "false" : "true";
