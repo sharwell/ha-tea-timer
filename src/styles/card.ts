@@ -5,8 +5,8 @@ export const cardStyles = css`
     color-scheme: light dark;
     color: var(--primary-text-color, #1f2933);
     --tea-timer-dial-size: 228px;
-    --tea-timer-dial-primary-font-size: 2.6rem;
-    --tea-timer-dial-secondary-font-size: 1.02rem;
+    --tea-timer-dial-primary-font-size: 3.1rem;
+    --tea-timer-dial-secondary-font-size: 1.05rem;
     --mdc-theme-primary: var(--primary-color, #1f2933);
     --mdc-theme-on-primary: var(
       --text-on-primary-color,
@@ -588,16 +588,16 @@ export const cardStyles = css`
   @media (max-width: 420px) {
     :host {
       --tea-timer-dial-size: 220px;
-      --tea-timer-dial-primary-font-size: 2.45rem;
-      --tea-timer-dial-secondary-font-size: 1rem;
+      --tea-timer-dial-primary-font-size: 2.9rem;
+      --tea-timer-dial-secondary-font-size: 1.02rem;
     }
   }
 
   @media (min-width: 520px) {
     :host {
       --tea-timer-dial-size: 236px;
-      --tea-timer-dial-primary-font-size: 2.7rem;
-      --tea-timer-dial-secondary-font-size: 1.06rem;
+      --tea-timer-dial-primary-font-size: 3.3rem;
+      --tea-timer-dial-secondary-font-size: 1.1rem;
     }
   }
 `;
