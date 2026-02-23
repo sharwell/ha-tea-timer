@@ -6,7 +6,9 @@ export const cardStyles = css`
     color: var(--primary-text-color, #1f2933);
     --tea-timer-dial-size: 228px;
     --tea-timer-dial-primary-font-size: 3.1rem;
+    --tea-timer-dial-primary-fluid-size: 26.67cqi;
     --tea-timer-dial-secondary-font-size: 1.05rem;
+    --tea-timer-dial-secondary-fluid-size: 9.03cqi;
     --mdc-theme-primary: var(--primary-color, #1f2933);
     --mdc-theme-on-primary: var(
       --text-on-primary-color,
@@ -589,7 +591,9 @@ export const cardStyles = css`
     :host {
       --tea-timer-dial-size: 220px;
       --tea-timer-dial-primary-font-size: 2.9rem;
+      --tea-timer-dial-primary-fluid-size: 26.07cqi;
       --tea-timer-dial-secondary-font-size: 1.02rem;
+      --tea-timer-dial-secondary-fluid-size: 9.17cqi;
     }
   }
 
@@ -597,7 +601,9 @@ export const cardStyles = css`
     :host {
       --tea-timer-dial-size: 236px;
       --tea-timer-dial-primary-font-size: 3.3rem;
+      --tea-timer-dial-primary-fluid-size: 27.22cqi;
       --tea-timer-dial-secondary-font-size: 1.1rem;
+      --tea-timer-dial-secondary-fluid-size: 9.07cqi;
     }
   }
 `;
