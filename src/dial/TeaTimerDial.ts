@@ -25,6 +25,7 @@ export class TeaTimerDial extends LitElement {
 
     .dial-root {
       position: relative;
+      container-type: inline-size;
       box-sizing: border-box;
       width: min(100%, var(--tea-timer-dial-size, 228px));
       max-width: var(--tea-timer-dial-size, 228px);
@@ -132,7 +133,8 @@ export class TeaTimerDial extends LitElement {
     }
 
     .dial-root.is-running .dial-handle,
-    .dial-root.is-paused .dial-handle {
+    .dial-root.is-paused .dial-handle,
+    .dial-root.is-finished .dial-handle {
       opacity: 0;
       visibility: hidden;
     }
@@ -161,15 +163,25 @@ export class TeaTimerDial extends LitElement {
     }
 
     ::slotted([slot="primary"]) {
-      font-size: 2rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
+      font-size: var(--tea-timer-dial-primary-font-size, 2.6rem);
+      font-size: min(
+        var(--tea-timer-dial-primary-font-size, 2.6rem),
+        var(--tea-timer-dial-primary-fluid-size, 22cqi)
+      );
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
       line-height: 1;
     }
 
     ::slotted([slot="secondary"]) {
-      font-size: 1rem;
+      font-size: var(--tea-timer-dial-secondary-font-size, 1rem);
+      font-size: min(
+        var(--tea-timer-dial-secondary-font-size, 1rem),
+        var(--tea-timer-dial-secondary-fluid-size, 7.4cqi)
+      );
       color: var(--secondary-text-color, #52606d);
+      line-height: 1.15;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -258,6 +270,8 @@ export class TeaTimerDial extends LitElement {
       rootClass += " is-running";
     } else if (status === "paused") {
       rootClass += " is-paused";
+    } else if (status === "finished") {
+      rootClass += " is-finished";
     }
     const tabIndex = this.interactive ? 0 : -1;
     const ariaDisabled = this.interactive ? "false" : "true";

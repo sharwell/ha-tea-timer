@@ -57,7 +57,7 @@ export interface TimerStateControllerOptions {
   clockSkewEstimatorEnabled?: boolean;
 }
 
-const FINISH_FALLBACK_MAX_REMAINING_SECONDS = 1;
+const FINISH_FALLBACK_MAX_REMAINING_SECONDS = 2;
 
 interface ConnectionMonitor {
   connection: HassConnection;
@@ -116,6 +116,8 @@ export class TimerStateController implements ReactiveController {
   private serverRemainingSecAtT0?: number;
 
   private clientMonotonicT0?: number;
+
+  private clientWallT0?: number;
 
   private baselineEndMs?: number;
 
@@ -530,15 +532,29 @@ export class TimerStateController implements ReactiveController {
       return false;
     }
 
-    let projectedRemaining: number | undefined;
+    const remainingCandidates: number[] = [];
     if (this.serverRemainingSecAtT0 !== undefined && this.clientMonotonicT0 !== undefined) {
       const elapsedSeconds = Math.max(0, this.monotonicNow() - this.clientMonotonicT0) / 1000;
-      projectedRemaining = Math.max(0, this.serverRemainingSecAtT0 - elapsedSeconds);
+      remainingCandidates.push(Math.max(0, this.serverRemainingSecAtT0 - elapsedSeconds));
     }
 
-    if (projectedRemaining === undefined && previous.remainingSeconds !== undefined) {
-      projectedRemaining = Math.max(0, previous.remainingSeconds);
+    if (this.serverRemainingSecAtT0 !== undefined && this.clientWallT0 !== undefined) {
+      const elapsedSeconds = Math.max(0, this.getCurrentTime() - this.clientWallT0) / 1000;
+      remainingCandidates.push(Math.max(0, this.serverRemainingSecAtT0 - elapsedSeconds));
     }
+
+    if (previous.durationSeconds !== undefined && previous.lastChangedTs !== undefined) {
+      const serverNow = this.getServerNow(this.getCurrentTime()) ?? this.getCurrentTime();
+      const elapsedSeconds = Math.max(0, serverNow - previous.lastChangedTs) / 1000;
+      remainingCandidates.push(Math.max(0, previous.durationSeconds - elapsedSeconds));
+    }
+
+    if (remainingCandidates.length === 0 && previous.remainingSeconds !== undefined) {
+      remainingCandidates.push(Math.max(0, previous.remainingSeconds));
+    }
+
+    const projectedRemaining =
+      remainingCandidates.length > 0 ? Math.min(...remainingCandidates) : undefined;
 
     if (projectedRemaining === undefined) {
       return false;
@@ -589,6 +605,7 @@ export class TimerStateController implements ReactiveController {
 
     let serverRemainingSecAtT0 = this.serverRemainingSecAtT0;
     let clientMonotonicT0 = this.clientMonotonicT0;
+    let clientWallT0 = this.clientWallT0;
     let baselineEndMs = this.baselineEndMs;
 
     if (connectionStatus !== "connected") {
@@ -599,6 +616,7 @@ export class TimerStateController implements ReactiveController {
       if (seed) {
         serverRemainingSecAtT0 = seed.remainingSeconds;
         clientMonotonicT0 = seed.monotonicT0;
+        clientWallT0 = seed.wallT0;
         baselineEndMs = seed.baselineEndMs;
       }
     } else if (entityState.status === "paused") {
@@ -608,15 +626,18 @@ export class TimerStateController implements ReactiveController {
         serverRemainingSecAtT0 = undefined;
       }
       clientMonotonicT0 = undefined;
+      clientWallT0 = undefined;
       baselineEndMs = undefined;
     } else {
       serverRemainingSecAtT0 = undefined;
       clientMonotonicT0 = undefined;
+      clientWallT0 = undefined;
       baselineEndMs = undefined;
     }
 
     this.serverRemainingSecAtT0 = serverRemainingSecAtT0;
     this.clientMonotonicT0 = clientMonotonicT0;
+    this.clientWallT0 = clientWallT0;
     this.baselineEndMs = baselineEndMs;
 
     this.currentState = {
@@ -641,6 +662,7 @@ export class TimerStateController implements ReactiveController {
     | {
         remainingSeconds: number;
         monotonicT0: number;
+        wallT0: number;
         baselineEndMs: number;
       }
     | undefined {
@@ -690,6 +712,7 @@ export class TimerStateController implements ReactiveController {
     return {
       remainingSeconds,
       monotonicT0,
+      wallT0: wallNow,
       baselineEndMs: monotonicT0 + remainingSeconds * 1000,
     };
   }
