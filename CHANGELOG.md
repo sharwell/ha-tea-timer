@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 - _Nothing yet._
 
+## [0.4.0] - 2026-02-24
+
+### Highlights
+
+- Improves countdown readability at distance with larger in-dial time typography.
+- Preserves the larger full-size dial text while scaling text down responsively when the dial shrinks on narrow cards.
+- Strengthens finished-state resilience on older Android WebView devices so the `Done` overlay remains visible for the configured duration.
+
+### Changed
+
+- Increased in-dial primary/secondary typography and tuned responsive scale behavior across breakpoints.
+- Added container-size-aware dial text scaling tied to dial shrink behavior.
+
+### Fixed
+
+- Hide the dial handle in `finished` (`Done`) state for visual consistency.
+- Hardened running->idle finished fallback inference using monotonic and wall-clock projections plus stale-baseline guards.
+- Improved finish fallback tolerance for delayed/throttled WebView timing updates.
+
+### Testing
+
+- Added regression tests for:
+  - finished-state handle hiding
+  - monotonic-lag finished fallback
+  - stale-baseline finished fallback inference
+
+### Links
+
+- Release: [Tea Timer Card v0.4.0](https://github.com/sharwell/ha-tea-timer/releases/tag/v0.4.0)
+
 ## [0.3.0] - 2026-02-20
 
 ### Highlights
