@@ -57,7 +57,7 @@ export interface TimerStateControllerOptions {
   clockSkewEstimatorEnabled?: boolean;
 }
 
-const FINISH_FALLBACK_MAX_REMAINING_SECONDS = 1;
+const FINISH_FALLBACK_MAX_REMAINING_SECONDS = 2;
 
 interface ConnectionMonitor {
   connection: HassConnection;
@@ -541,6 +541,12 @@ export class TimerStateController implements ReactiveController {
     if (this.serverRemainingSecAtT0 !== undefined && this.clientWallT0 !== undefined) {
       const elapsedSeconds = Math.max(0, this.getCurrentTime() - this.clientWallT0) / 1000;
       remainingCandidates.push(Math.max(0, this.serverRemainingSecAtT0 - elapsedSeconds));
+    }
+
+    if (previous.durationSeconds !== undefined && previous.lastChangedTs !== undefined) {
+      const serverNow = this.getServerNow(this.getCurrentTime()) ?? this.getCurrentTime();
+      const elapsedSeconds = Math.max(0, serverNow - previous.lastChangedTs) / 1000;
+      remainingCandidates.push(Math.max(0, previous.durationSeconds - elapsedSeconds));
     }
 
     if (remainingCandidates.length === 0 && previous.remainingSeconds !== undefined) {

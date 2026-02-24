@@ -255,5 +255,49 @@ describe("TimerStateController finished fallback", () => {
 
     expect(internals.currentState.status).toBe("finished");
   });
+
+  it("marks finished when running->idle arrives with stale baseline but last_changed indicates near-zero", () => {
+    let wallNow = 3_000_000;
+    let monotonicNow = 15_000;
+    const controller = new TimerStateController(new TestHost(), {
+      now: () => wallNow,
+      monotonicNow: () => monotonicNow,
+    });
+
+    const internals = controller as unknown as {
+      connectionStatus: "connected" | "disconnected" | "reconnecting";
+      previousEntityState?: MachineTimerViewState;
+      serverRemainingSecAtT0?: number;
+      clientMonotonicT0?: number;
+      clientWallT0?: number;
+      applyEntityState(state: MachineTimerViewState): void;
+      currentState: { status: string };
+    };
+
+    internals.connectionStatus = "connected";
+    internals.previousEntityState = {
+      status: "running",
+      durationSeconds: 240,
+      remainingSeconds: 40,
+      lastChangedTs: wallNow - 239_000,
+    };
+
+    // Simulate stale/invalid running baselines from a throttled environment.
+    internals.serverRemainingSecAtT0 = undefined;
+    internals.clientMonotonicT0 = undefined;
+    internals.clientWallT0 = undefined;
+
+    wallNow += 1_200;
+    monotonicNow += 250;
+
+    internals.applyEntityState({
+      status: "idle",
+      durationSeconds: 240,
+      remainingSeconds: 240,
+      lastChangedTs: wallNow,
+    });
+
+    expect(internals.currentState.status).toBe("finished");
+  });
 });
 
