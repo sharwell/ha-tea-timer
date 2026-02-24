@@ -1,6 +1,6 @@
-# Release checklist — Tea Timer Card v0.3.0
+# Release checklist — Tea Timer Card v0.4.0
 
-This checklist records release gates for the UX stabilization release prepared from the `ux-audit` branch.
+This checklist records release gates for the dial legibility and finished-state reliability release prepared from `release/v0.4.0`.
 
 ## Quality gates
 
@@ -16,20 +16,23 @@ This checklist records release gates for the UX stabilization release prepared f
 - [x] Stable loader `tea-timer-card.js` re-exports the fingerprinted build for Lovelace resources and HACS.
 - [x] Release verification script (`npm run release:verify`) passes against generated build artifacts.
 - [x] SHA-256 checksums can be produced via `npm run release:checksums`.
-- [x] Release workflow (`.github/workflows/release.yml`) publishes artifacts and uses `docs/releases/v0.3.0.md` as release notes when tag `v0.3.0` is pushed.
+- [x] Release workflow (`.github/workflows/release.yml`) publishes artifacts and uses `docs/releases/v0.4.0.md` as release notes when tag `v0.4.0` is pushed.
 
 ## Documentation & links
 
-- [x] `CHANGELOG.md` includes v0.3.0 highlights and release link.
-- [x] `README.md` points installation guidance to v0.3.0 assets and current behavior semantics.
-- [x] Release notes are documented in [`docs/releases/v0.3.0.md`](releases/v0.3.0.md).
+- [x] `CHANGELOG.md` includes v0.4.0 highlights and release link.
+- [x] `README.md` points installation guidance to v0.4.0 assets and current behavior semantics.
+- [x] Release notes are documented in [`docs/releases/v0.4.0.md`](releases/v0.4.0.md).
 - [x] QA evidence is captured in [`docs/qa-matrix.md`](qa-matrix.md) and [`docs/ux-audit.md`](ux-audit.md).
 
 ## Compatibility & QA results
 
 - Minimum Home Assistant version: **2024.7.0**.
-- Browser/device coverage retained from v0.2.0 matrix plus UX-audit validation artifacts.
-- Additional manual spot-check: older Android tablet in Fully Kiosk Browser confirmed finished-state fallback behavior.
+- Browser/device coverage includes desktop browsers and Android WebView/fully-kiosk scenarios.
+- Manual focus scenarios validated:
+  - in-dial readability at full-size and narrow widths
+  - finished overlay persistence on older Android WebView
+  - finished-state dial-handle visibility
 
 ## Known limitations carried into release
 
@@ -39,9 +42,9 @@ This checklist records release gates for the UX stabilization release prepared f
 
 ## Triage
 
-- [x] No open P0 defects blocking v0.3.0 release preparation in this branch.
+- [x] No open P0 defects blocking v0.4.0 release preparation in this branch.
 
 ## Sign-off
 
 - Release owner: _Tea Timer maintainers_
-- Date: 2026-02-20
+- Date: 2026-02-24

@@ -1,14 +1,14 @@
-# QA matrix — Tea Timer Card v0.3.0
+# QA matrix — Tea Timer Card v0.4.0
 
 ## Summary
 
-- Release tag: `v0.3.0`
+- Release tag: `v0.4.0`
 - Minimum Home Assistant version: **2024.7.0**
-- Focus areas in this cycle: touch UX stability, layout consistency across states, narrow-width dial integrity, and finished-state resilience.
-- Evidence set:
-  - Structured observations: [`docs/qa/artifacts/2026-02-07/ux-audit/ux-observations.json`](qa/artifacts/2026-02-07/ux-audit/ux-observations.json)
-  - Screenshot sample: [`docs/qa/artifacts/2026-02-07/ux-audit/01-idle-baseline.png`](qa/artifacts/2026-02-07/ux-audit/01-idle-baseline.png)
-  - UX findings and prioritization: [`docs/ux-audit.md`](ux-audit.md)
+- Focus areas in this cycle:
+  - in-dial countdown readability at distance
+  - responsive text behavior when dial geometry shrinks
+  - finished-overlay reliability on older Android WebView
+  - finished-state handle visibility consistency
 
 ## Home Assistant coverage
 
@@ -21,10 +21,10 @@
 
 | Browser | OS / Device | Layout | Result | Notes |
 | --- | --- | --- | --- | --- |
-| Chrome | Windows 11 desktop | Light | ✅ | Baseline interaction shell, queued presets, and restart semantics validated. |
-| Microsoft Edge | Windows 11 desktop | Light | ✅ | Confirmed finished overlay timing and idle fallback behavior. |
-| Chrome | Android 14 phone | Mobile | ✅ | Touch targets and dial-plus-rail flow validated. |
-| Fully Kiosk Browser | Older Android tablet | Kiosk/mobile | ✅ | Verified fallback finished overlay behavior when native finished transition is skipped. |
+| Chrome | Windows 11 desktop | Light | ✅ | Done overlay persists for configured duration; dial text readability improved. |
+| Microsoft Edge | Windows 11 desktop | Light | ✅ | Finished state and handle visibility verified. |
+| Chrome | Android 14 phone | Mobile | ✅ | Responsive dial text scales down with dial width. |
+| Fully Kiosk Browser / WebView | Older Android tablet | Kiosk/mobile | ✅ | Finished overlay fallback no longer skips immediately on observed device profile. |
 
 ## Network conditions
 
@@ -37,13 +37,11 @@
 
 | Scenario | Result | Notes |
 | --- | --- | --- |
-| Idle -> start via card body tap | ✅ | Enabled only in idle mode; guarded by `cardBodyTapStart`. |
-| Running/paused accidental card-body restart prevention | ✅ | Restart requires explicit action control. |
-| Running -> queued preset feedback | ✅ | Context rendered in primary action secondary line (no dedicated subtitle row). |
-| Overlay feedback surfaces | ✅ | Reconnecting/service/entity alerts render without shifting core shell layout. |
-| Narrow-width dial rendering | ✅ | Dial maintains circular geometry under constrained widths. |
+| Full-size dial countdown readability | ✅ | Larger in-face typography validated at normal dashboard card widths. |
+| Narrow card dial typography scaling | ✅ | Text scales down with dial shrink; full-size text remains unchanged. |
+| Finished state handle visibility | ✅ | Handle hidden for running, paused, and finished states. |
 | Finished -> idle fallback without finish event | ✅ | Near-zero running->idle transitions still show finished state before auto-idle timeout. |
-| Pause/resume and extend controls | ✅ | Touch-safe targets and rail grouping verified. |
+| WebView monotonic lag finish behavior | ✅ | Fallback uses wall-clock and stale-baseline inference to preserve finished overlay duration. |
 
 ## Automated checks
 
