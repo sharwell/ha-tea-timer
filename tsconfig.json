@@ -5,6 +5,14 @@
     "noEmit": true,
     "useDefineForClassFields": false
   },
-  "include": ["src", "demo", "tests", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  "include": [
+    "src",
+    "demo",
+    "tests",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "playwright.config.ts"
+  ],
   "exclude": ["dist", "node_modules"]
 }
